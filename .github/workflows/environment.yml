@@ -1,0 +1,12 @@
+name: sdn-ml
+channels:
+  - defaults
+dependencies:
+  - python=3.8
+  - pip
+  - numpy
+  - scipy
+  - scikit-learn
+  - pandas
+  - matplotlib
+  # Add any additional dependencies here
