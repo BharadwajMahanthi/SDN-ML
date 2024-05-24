@@ -101,16 +101,21 @@ This project utilizes the [Floodlight controller](https://github.com/successlab/
 ```
 .
 ├── .github/workflows/
-│   └── python-package-conda.yml
+│   └── python-app.yml
 ├── attacker/
 │   └── 1.1.html
+├── tests/
+│   └── test_example.py
 │── Final Report - 6671703.pdf
 │── Dissertation Final.ipynb
+│── environment.yml
 ├── LICENSE
 ├── README.md
 ├── dataset_sdn.csv
 ├── floodlight_with_topoguard-master.zip
 ├── mininet_tcp_hijacking-master.zip
+├── meta.yml
+├── requirements.txt
 └── se.py
 
 ```
