@@ -1,5 +1,7 @@
 # SDN-ML
 
+Welcome to the SDN-ML Dissertation Project repository! This project is part of a Master's dissertation conducted at the University of Surrey, focusing on securing Software-Defined Networking (SDN) against various cyber threats.
+
 This repository contains research and implementation details related to securing Software-Defined Networking (SDN) against various types of cyber attacks. The focus is on identifying and mitigating threats using advanced techniques, including machine learning.
 
 ## Table of Contents
