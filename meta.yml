@@ -1,0 +1,30 @@
+package:
+  name: sdn_ml
+  version: 1.0
+
+source:
+  path: ./
+
+requirements:
+  build:
+    - python
+    - setuptools
+    - pip
+  run:
+    - python
+    # Add any additional runtime dependencies here
+
+test:
+  imports:
+    - sdn_ml  # Replace with the name of your main Python module
+
+about:
+  home: https://github.com/BharadwajMahanthi/SDN-ML
+  license: MIT
+  summary: Secure Software-Defined Networking (SDN) against cyber threats.
+  description: |
+    This package provides tools and utilities for securing Software-Defined Networking (SDN) against various cyber threats. It includes modules for threat detection, mitigation, and network management.
+  
+extra:
+  recipe-maintainers:
+    - Your Name <your.email@example.com>
