@@ -19,7 +19,7 @@ This repository contains research and implementation details related to securing
 
 Software-Defined Networking (SDN) centralizes network control, allowing for dynamic, programmable network management. While SDN offers significant advantages, it also presents unique security challenges, such as Host Hijacking, ARP Poisoning, and DDoS attacks. This repository explores these vulnerabilities and proposes solutions, including the use of machine learning to enhance SDN security.
 
-This project utilizes the [Floodlight controller](https://github.com/successlab/topoguard-floodlight?tab=readme-ov-file), which integrates TopoGuard for enhanced security monitoring of the network topology.
+This project utilizes the [Floodlight controller](https://github.com/successlab/topoguard-floodlight?tab=readme-ov-file), which integrates TopoGuard for enhanced security monitoring of the network topology. For the topology creation and management, we used the [Mininet](https://github.com/mininet/mininet) software by Bob Lantz.
 
 ## Features
 
@@ -37,6 +37,7 @@ This project utilizes the [Floodlight controller](https://github.com/successlab/
 - Apache Ant
 - Python 3.8+
 - pip
+- mininet (for network simulation and testing)
 - Virtual environment (optional but recommended)
 
 ### Installation
@@ -70,30 +71,37 @@ This project utilizes the [Floodlight controller](https://github.com/successlab/
    pip install -r requirements.txt
    ```
 
-## Usage
+## Usage (preferred in VM)
 
 1. **Run the Floodlight controller:**
 
    ```sh
    java -jar topoguard-floodlight/target/floodlight.jar
    ```
-
-2. **Run the main application:**
-
+   init the floodlight controller by following the instructions from their website [Floodlight controller](https://github.com/successlab/topoguard-floodlight?tab=readme-ov-file)
+   
+3. **clone the mininet:**
    ```sh
-   python main.py
+   https://github.com/mininet/mininet.git
    ```
+   create the topology and start an attack on the network
+   
 
-3. **Training machine learning models:**
+3. **Create the dataset:**
+
+   Capture the dataset using either Wireshark or the preferred mode of network data capturing and use that data to train your ML model to protect your SDN
+   
+
+4. **Training machine learning models:**
 
    ```sh
-   python train_model.py
+   code.ipynb
    ```
 
 4. **Testing and evaluating security mechanisms:**
 
    ```sh
-   python test_security.py
+   code.ipynb
    ```
 
 ## Directory Structure
@@ -111,6 +119,7 @@ This project utilizes the [Floodlight controller](https://github.com/successlab/
 │── environment.yml
 ├── LICENSE
 ├── README.md
+├── code.ipynb
 ├── dataset_sdn.csv
 ├── floodlight_with_topoguard-master.zip
 ├── mininet_tcp_hijacking-master.zip
@@ -135,7 +144,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-We would like to thank the open-source community for their valuable tools and resources, and the researchers whose work has contributed to the field of SDN security. Special thanks to the developers of the [Floodlight controller](https://github.com/successlab/topoguard-floodlight?tab=readme-ov-file) for their foundational work on TopoGuard.
+We would like to thank the open-source community for their valuable tools and resources, and the researchers whose work has contributed to the field of SDN security. Special thanks to the developers of the [Floodlight controller](https://github.com/successlab/topoguard-floodlight?tab=readme-ov-file) for their foundational work on TopoGuard. Also we thank mininet for their valuable resources, Special thanks to the developers of the [Mininet](https://github.com/mininet/mininet)
 
 ---
 
