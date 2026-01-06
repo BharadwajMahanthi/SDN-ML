@@ -1,0 +1,101 @@
+{
+  "name": "win-test-lab",
+  "type": "clab",
+  "clab": {
+    "config": {
+      "prefix": "clab",
+      "mgmt": {
+        "network": "clab",
+        "bridge": "br-3ee2a592b1ca",
+        "ipv4-subnet": "172.20.20.0/24",
+        "ipv4-gw": "172.20.20.1",
+        "ipv6-subnet": "3fff:172:20:20::/64",
+        "ipv6-gw": "3fff:172:20:20::1",
+        "external-access": true
+      }
+    }
+  },
+  "ssh-pub-keys": [],
+  "nodes": {
+    "n1": {
+      "index": "0",
+      "shortname": "n1",
+      "longname": "clab-win-test-lab-n1",
+      "fqdn": "n1.win-test-lab.io",
+      "group": "",
+      "labdir": "/mnt/c/Users/mbpd1/Downloads/SDN-ML/clab-win-test-lab/n1",
+      "kind": "linux",
+      "image": "alpine",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "172.20.20.3",
+      "mgmt-ipv4-prefix-length": 24,
+      "mgmt-ipv6-address": "3fff:172:20:20::3",
+      "mgmt-ipv6-prefix-length": 64,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "br-3ee2a592b1ca",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/mnt/c/Users/mbpd1/Downloads/SDN-ML/clab-win-test-lab/n1",
+        "clab-node-longname": "clab-win-test-lab-n1",
+        "clab-node-name": "n1",
+        "clab-node-type": "",
+        "clab-owner": "mbpd",
+        "clab-topo-file": "/mnt/c/Users/mbpd1/Downloads/SDN-ML/test.clab.yml",
+        "containerlab": "win-test-lab"
+      },
+      "port-bindings": [
+      ]
+    },
+    "n2": {
+      "index": "1",
+      "shortname": "n2",
+      "longname": "clab-win-test-lab-n2",
+      "fqdn": "n2.win-test-lab.io",
+      "group": "",
+      "labdir": "/mnt/c/Users/mbpd1/Downloads/SDN-ML/clab-win-test-lab/n2",
+      "kind": "linux",
+      "image": "alpine",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "172.20.20.2",
+      "mgmt-ipv4-prefix-length": 24,
+      "mgmt-ipv6-address": "3fff:172:20:20::2",
+      "mgmt-ipv6-prefix-length": 64,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "br-3ee2a592b1ca",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/mnt/c/Users/mbpd1/Downloads/SDN-ML/clab-win-test-lab/n2",
+        "clab-node-longname": "clab-win-test-lab-n2",
+        "clab-node-name": "n2",
+        "clab-node-type": "",
+        "clab-owner": "mbpd",
+        "clab-topo-file": "/mnt/c/Users/mbpd1/Downloads/SDN-ML/test.clab.yml",
+        "containerlab": "win-test-lab"
+      },
+      "port-bindings": [
+      ]
+    }
+  },
+  "links": [
+    {
+      "endpoints": {
+        "a": {
+          "node": "n1",
+          "interface": "eth1",
+          "mac": "aa:c1:ab:91:a6:45",
+          "peer": "z"
+        },
+        "z": {
+          "node": "n2",
+          "interface": "eth1",
+          "mac": "aa:c1:ab:1c:ab:ab",
+          "peer": "a"
+        }
+      }
+    }
+  ]
+}

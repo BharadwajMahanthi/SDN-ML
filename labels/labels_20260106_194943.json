@@ -1,0 +1,9 @@
+{
+  "timestamp": "20260106_194943",
+  "attack_type": "host_location_hijack",
+  "lab_prefix": "clab-sdn-complex",
+  "attacker": "h4",
+  "victim": "h1",
+  "spoofed_mac": "4a:8d:01:22:e4:3a",
+  "target_ip": "172.20.20.9"
+}

@@ -1,0 +1,71 @@
+name: sdn-ovs
+
+topology:
+  nodes:
+    # ===== OPENFLOW SWITCHES =====
+    s1:
+      kind: ovs-bridge
+      image: ghcr.io/openvswitch/ovs:latest
+      exec:
+        - ovs-vsctl set bridge br0 protocols=OpenFlow13
+        - ovs-vsctl set-controller br0 tcp:host.docker.internal:6653
+        - ovs-vsctl set-fail-mode br0 secure
+
+    s2:
+      kind: ovs-bridge
+      image: ghcr.io/openvswitch/ovs:latest
+      exec:
+        - ovs-vsctl set bridge br0 protocols=OpenFlow13
+        - ovs-vsctl set-controller br0 tcp:host.docker.internal:6653
+        - ovs-vsctl set-fail-mode br0 secure
+
+    s3:
+      kind: ovs-bridge
+      image: ghcr.io/openvswitch/ovs:latest
+      exec:
+        - ovs-vsctl set bridge br0 protocols=OpenFlow13
+        - ovs-vsctl set-controller br0 tcp:host.docker.internal:6653
+        - ovs-vsctl set-fail-mode br0 secure
+
+    # ===== HOSTS =====
+    h1:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool:latest
+    h2:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool:latest
+    h3:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool:latest
+    h4:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool:latest
+    h5:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool:latest
+    h6:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool:latest
+    h7:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool:latest
+    h8:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool:latest
+
+  links:
+    # Inter-switch links
+    - endpoints: ["s1:eth1", "s2:eth1"]
+    - endpoints: ["s2:eth2", "s3:eth1"]
+
+    # Access links
+    - endpoints: ["s1:eth2", "h1:eth1"]
+    - endpoints: ["s1:eth3", "h2:eth1"]
+    - endpoints: ["s1:eth4", "h3:eth1"]
+
+    - endpoints: ["s2:eth3", "h4:eth1"]
+    - endpoints: ["s2:eth4", "h5:eth1"]
+
+    - endpoints: ["s3:eth2", "h6:eth1"]
+    - endpoints: ["s3:eth3", "h7:eth1"]
+    - endpoints: ["s3:eth4", "h8:eth1"]

@@ -1,0 +1,65 @@
+name: sdn-attack-lab
+
+mgmt:
+  network: bridge # Use default Docker bridge instead of custom network
+
+topology:
+  nodes:
+    # OpenFlow Switch (Open vSwitch)
+    ovs1:
+      kind: linux
+      image: socketplane/openvswitch:latest
+      exec:
+        # Start OVS services
+        - /usr/share/openvswitch/scripts/ovs-ctl start
+        # Create bridge
+        - ovs-vsctl add-br br0
+        # Add ports (eth1-eth4 connect to hosts)
+        - ovs-vsctl add-port br0 eth1
+        - ovs-vsctl add-port br0 eth2
+        - ovs-vsctl add-port br0 eth3
+        - ovs-vsctl add-port br0 eth4
+        # Connect to Floodlight controller on Windows
+        # host.docker.internal resolves to Windows host IP
+        - ovs-vsctl set-controller br0 tcp:host.docker.internal:6653
+        - ovs-vsctl set bridge br0 protocols=OpenFlow13
+        - ovs-vsctl set-fail-mode br0 secure
+
+    # Host 1
+    h1:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool
+      exec:
+        - ip addr add 10.0.0.1/24 dev eth1
+        - ip link set eth1 up
+
+    # Host 2
+    h2:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool
+      exec:
+        - ip addr add 10.0.0.2/24 dev eth1
+        - ip link set eth1 up
+
+    # Host 3
+    h3:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool
+      exec:
+        - ip addr add 10.0.0.3/24 dev eth1
+        - ip link set eth1 up
+
+    # Host 4 (will be used for attacks)
+    h4:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool
+      exec:
+        - ip addr add 10.0.0.4/24 dev eth1
+        - ip link set eth1 up
+
+  links:
+    # Connect all hosts to the switch
+    - endpoints: ["ovs1:eth1", "h1:eth1"]
+    - endpoints: ["ovs1:eth2", "h2:eth1"]
+    - endpoints: ["ovs1:eth3", "h3:eth1"]
+    - endpoints: ["ovs1:eth4", "h4:eth1"]

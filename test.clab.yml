@@ -1,0 +1,13 @@
+name: win-test-lab
+
+topology:
+  nodes:
+    n1:
+      kind: linux
+      image: alpine
+    n2:
+      kind: linux
+      image: alpine
+
+  links:
+    - endpoints: ["n1:eth1", "n2:eth1"]

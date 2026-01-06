@@ -1,0 +1,421 @@
+{
+  "name": "sdn-simple",
+  "type": "clab",
+  "clab": {
+    "config": {
+      "prefix": "clab",
+      "mgmt": {
+        "network": "bridge",
+        "bridge": "docker0",
+        "ipv4-subnet": "172.20.20.0/24",
+        "ipv4-gw": "172.17.0.1",
+        "ipv6-subnet": "3fff:172:20:20::/64",
+        "external-access": true
+      }
+    }
+  },
+  "ssh-pub-keys": [],
+  "nodes": {
+    "h1": {
+      "index": "0",
+      "shortname": "h1",
+      "longname": "clab-sdn-simple-h1",
+      "fqdn": "h1.sdn-simple.io",
+      "group": "",
+      "labdir": "/mnt/c/Users/mbpd1/Downloads/SDN-ML/clab-sdn-simple/h1",
+      "kind": "linux",
+      "image": "ghcr.io/srl-labs/network-multitool:latest",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "172.17.0.3",
+      "mgmt-ipv4-prefix-length": 16,
+      "mgmt-ipv6-address": "",
+      "mgmt-ipv6-prefix-length": 0,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "docker0",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/mnt/c/Users/mbpd1/Downloads/SDN-ML/clab-sdn-simple/h1",
+        "clab-node-longname": "clab-sdn-simple-h1",
+        "clab-node-name": "h1",
+        "clab-node-type": "",
+        "clab-owner": "mbpd",
+        "clab-topo-file": "/mnt/c/Users/mbpd1/Downloads/SDN-ML/simple_topology.clab.yml",
+        "containerlab": "sdn-simple"
+      },
+      "port-bindings": [
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 80,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 8080,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 11443,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 1180,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 22,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 443,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    "h2": {
+      "index": "1",
+      "shortname": "h2",
+      "longname": "clab-sdn-simple-h2",
+      "fqdn": "h2.sdn-simple.io",
+      "group": "",
+      "labdir": "/mnt/c/Users/mbpd1/Downloads/SDN-ML/clab-sdn-simple/h2",
+      "kind": "linux",
+      "image": "ghcr.io/srl-labs/network-multitool:latest",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "172.17.0.6",
+      "mgmt-ipv4-prefix-length": 16,
+      "mgmt-ipv6-address": "",
+      "mgmt-ipv6-prefix-length": 0,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "docker0",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/mnt/c/Users/mbpd1/Downloads/SDN-ML/clab-sdn-simple/h2",
+        "clab-node-longname": "clab-sdn-simple-h2",
+        "clab-node-name": "h2",
+        "clab-node-type": "",
+        "clab-owner": "mbpd",
+        "clab-topo-file": "/mnt/c/Users/mbpd1/Downloads/SDN-ML/simple_topology.clab.yml",
+        "containerlab": "sdn-simple"
+      },
+      "port-bindings": [
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 22,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 80,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 8080,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 11443,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 1180,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    "h3": {
+      "index": "2",
+      "shortname": "h3",
+      "longname": "clab-sdn-simple-h3",
+      "fqdn": "h3.sdn-simple.io",
+      "group": "",
+      "labdir": "/mnt/c/Users/mbpd1/Downloads/SDN-ML/clab-sdn-simple/h3",
+      "kind": "linux",
+      "image": "ghcr.io/srl-labs/network-multitool:latest",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "172.17.0.5",
+      "mgmt-ipv4-prefix-length": 16,
+      "mgmt-ipv6-address": "",
+      "mgmt-ipv6-prefix-length": 0,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "docker0",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/mnt/c/Users/mbpd1/Downloads/SDN-ML/clab-sdn-simple/h3",
+        "clab-node-longname": "clab-sdn-simple-h3",
+        "clab-node-name": "h3",
+        "clab-node-type": "",
+        "clab-owner": "mbpd",
+        "clab-topo-file": "/mnt/c/Users/mbpd1/Downloads/SDN-ML/simple_topology.clab.yml",
+        "containerlab": "sdn-simple"
+      },
+      "port-bindings": [
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 80,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 8080,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 11443,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 1180,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 22,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    "h4": {
+      "index": "3",
+      "shortname": "h4",
+      "longname": "clab-sdn-simple-h4",
+      "fqdn": "h4.sdn-simple.io",
+      "group": "",
+      "labdir": "/mnt/c/Users/mbpd1/Downloads/SDN-ML/clab-sdn-simple/h4",
+      "kind": "linux",
+      "image": "ghcr.io/srl-labs/network-multitool:latest",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "172.17.0.4",
+      "mgmt-ipv4-prefix-length": 16,
+      "mgmt-ipv6-address": "",
+      "mgmt-ipv6-prefix-length": 0,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "docker0",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/mnt/c/Users/mbpd1/Downloads/SDN-ML/clab-sdn-simple/h4",
+        "clab-node-longname": "clab-sdn-simple-h4",
+        "clab-node-name": "h4",
+        "clab-node-type": "",
+        "clab-owner": "mbpd",
+        "clab-topo-file": "/mnt/c/Users/mbpd1/Downloads/SDN-ML/simple_topology.clab.yml",
+        "containerlab": "sdn-simple"
+      },
+      "port-bindings": [
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 8080,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 11443,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 1180,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 22,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 80,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    "switch": {
+      "index": "4",
+      "shortname": "switch",
+      "longname": "clab-sdn-simple-switch",
+      "fqdn": "switch.sdn-simple.io",
+      "group": "",
+      "labdir": "/mnt/c/Users/mbpd1/Downloads/SDN-ML/clab-sdn-simple/switch",
+      "kind": "linux",
+      "image": "ghcr.io/srl-labs/network-multitool:latest",
+      "mgmt-net": "",
+      "mgmt-intf": "",
+      "mgmt-ipv4-address": "172.17.0.2",
+      "mgmt-ipv4-prefix-length": 16,
+      "mgmt-ipv6-address": "",
+      "mgmt-ipv6-prefix-length": 0,
+      "mac-address": "",
+      "labels": {
+        "clab-mgmt-net-bridge": "docker0",
+        "clab-node-group": "",
+        "clab-node-kind": "linux",
+        "clab-node-lab-dir": "/mnt/c/Users/mbpd1/Downloads/SDN-ML/clab-sdn-simple/switch",
+        "clab-node-longname": "clab-sdn-simple-switch",
+        "clab-node-name": "switch",
+        "clab-node-type": "",
+        "clab-owner": "mbpd",
+        "clab-topo-file": "/mnt/c/Users/mbpd1/Downloads/SDN-ML/simple_topology.clab.yml",
+        "containerlab": "sdn-simple"
+      },
+      "port-bindings": [
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 8080,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 11443,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 1180,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 22,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 443,
+          "protocol": "tcp"
+        },
+        {
+          "host-ip": "",
+          "host-port": 0,
+          "port": 80,
+          "protocol": "tcp"
+        }
+      ]
+    }
+  },
+  "links": [
+    {
+      "endpoints": {
+        "a": {
+          "node": "switch",
+          "interface": "eth1",
+          "mac": "aa:c1:ab:20:64:ec",
+          "peer": "z"
+        },
+        "z": {
+          "node": "h1",
+          "interface": "eth1",
+          "mac": "aa:c1:ab:03:e2:6c",
+          "peer": "a"
+        }
+      }
+    },
+    {
+      "endpoints": {
+        "a": {
+          "node": "switch",
+          "interface": "eth2",
+          "mac": "aa:c1:ab:bb:38:d7",
+          "peer": "z"
+        },
+        "z": {
+          "node": "h2",
+          "interface": "eth1",
+          "mac": "aa:c1:ab:da:64:96",
+          "peer": "a"
+        }
+      }
+    },
+    {
+      "endpoints": {
+        "a": {
+          "node": "switch",
+          "interface": "eth3",
+          "mac": "aa:c1:ab:5a:78:af",
+          "peer": "z"
+        },
+        "z": {
+          "node": "h3",
+          "interface": "eth1",
+          "mac": "aa:c1:ab:75:f7:47",
+          "peer": "a"
+        }
+      }
+    },
+    {
+      "endpoints": {
+        "a": {
+          "node": "switch",
+          "interface": "eth4",
+          "mac": "aa:c1:ab:91:ee:9a",
+          "peer": "z"
+        },
+        "z": {
+          "node": "h4",
+          "interface": "eth1",
+          "mac": "aa:c1:ab:ab:ba:67",
+          "peer": "a"
+        }
+      }
+    }
+  ]
+}

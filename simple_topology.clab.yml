@@ -1,0 +1,54 @@
+name: sdn-simple
+
+mgmt:
+  network: bridge
+
+topology:
+  nodes:
+    # Using network-multitool for all nodes (already downloaded)
+    #Switch will be simulated with Linux bridge
+    switch:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool:latest
+      exec:
+        - ip link add br0 type bridge
+        - ip link set br0 up
+        - ip addr add 10.0.0.254/24 dev br0
+
+    h1:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool:latest
+      exec:
+        - ip addr add 10.0.0.1/24 dev eth1
+        - ip link set eth1 up
+        - ip route add default via 10.0.0.254
+
+    h2:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool:latest
+      exec:
+        - ip addr add 10.0.0.2/24 dev eth1
+        - ip link set eth1 up
+        - ip route add default via 10.0.0.254
+
+    h3:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool:latest
+      exec:
+        - ip addr add 10.0.0.3/24 dev eth1
+        - ip link set eth1 up
+        - ip route add default via 10.0.0.254
+
+    h4:
+      kind: linux
+      image: ghcr.io/srl-labs/network-multitool:latest
+      exec:
+        - ip addr add 10.0.0.4/24 dev eth1
+        - ip link set eth1 up
+        - ip route add default via 10.0.0.254
+
+  links:
+    - endpoints: ["switch:eth1", "h1:eth1"]
+    - endpoints: ["switch:eth2", "h2:eth1"]
+    - endpoints: ["switch:eth3", "h3:eth1"]
+    - endpoints: ["switch:eth4", "h4:eth1"]

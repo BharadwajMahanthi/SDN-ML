@@ -1,0 +1,40 @@
+FROM ubuntu:20.04
+
+USER root
+WORKDIR /root
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+# 1. Install System Dependencies (Layer 1)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    git \
+    sudo \
+    iproute2 \
+    iputils-ping \
+    net-tools \
+    tcpdump \
+    vim \
+    x11-xserver-utils \
+    xterm \
+    python3 \
+    python3-pip \
+    python3-setuptools \
+    openvswitch-switch \
+    openvswitch-common \
+    openjdk-11-jre-headless \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. Install Mininet (Layer 2)
+# We use apt-get for reliability. If you strictly need v2.3.0 source,
+# we can use git, but apt-get mininet is much more stable for Docker.
+RUN apt-get update && apt-get install -y mininet
+
+# 3. Create OVS Directories
+RUN mkdir -p /var/run/openvswitch /var/log/openvswitch
+
+# 4. Install Python Dependencies
+RUN pip3 install mininet
+
+WORKDIR /workspace
+CMD ["bash"]
