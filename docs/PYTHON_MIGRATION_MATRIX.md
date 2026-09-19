@@ -17,10 +17,10 @@ Every row's "Legacy defect" column is the bridge required by the owner:
 | M-04 | Host identity | §1 | MAC + optional IP, explicitly *observational* | MAC treated as identity | `domain/host.py` | `HostIdentity` | MAC normalisation; two hosts sharing a MAC are distinguishable by location | UNIT_VERIFIED |
 | M-05 | Host location | §2 | `PortIdentity` + first/last seen | none | `domain/host.py` | `HostLocation` | ordering by `last_seen`; immutability | UNIT_VERIFIED |
 | M-06 | Host observation | L-05 | normalised packet event | framework objects passed throughout | `domain/events.py` | `HostObservation` | constructible without any OpenFlow library | UNIT_VERIFIED |
-| M-07 | Movement event | L-06 | old → new location | multi-AP hosts skipped | `domain/events.py` | `MovementEvent` | multi-location host produces an event, not a skip | SPECIFIED |
-| M-08 | Probe request/result | L-07/08 | nonce, deadline, target | mutable shared fields, no deadline | `domain/probe.py` | `ProbeRequest`, `ProbeResult` | nonce uniqueness; deadline mandatory; frozen | SPECIFIED |
-| M-09 | Security finding | L-09 | typed, machine-readable | log lines only | `domain/finding.py` | `SecurityFinding` | stable id; serialisable; carries evidence refs | SPECIFIED |
-| M-10 | Enforcement decision | L-10 | scoped, reversible, expiring | absent | `domain/policy.py` | `EnforcementDecision` | every decision carries a scope and a TTL | SPECIFIED |
+| M-07 | Movement event | L-06 | old → new location | multi-AP hosts skipped | `domain/events.py` | `MovementEvent` | multi-location host produces an event, not a skip | UNIT_VERIFIED |
+| M-08 | Probe request/result | L-07/08 | nonce, deadline, target | mutable shared fields, no deadline | `domain/probe.py` | `ProbeRequest`, `ProbeResult` | nonce uniqueness; deadline mandatory; frozen | UNIT_VERIFIED |
+| M-09 | Security finding | L-09 | typed, machine-readable | log lines only | `domain/finding.py` | `SecurityFinding` | stable id; serialisable; carries evidence refs | UNIT_VERIFIED |
+| M-10 | Enforcement decision | L-10 | scoped, reversible, expiring | absent | `domain/policy.py` | `EnforcementDecision` | every decision carries a scope and a TTL | UNIT_VERIFIED |
 
 ## Host and topology state (Stage 2)
 
@@ -75,6 +75,7 @@ Every row's "Legacy defect" column is the bridge required by the owner:
 |---|---|---|---|
 | P3-DOMAIN-01 | `feat/p3-domain-01-value-identities` | M-01, M-02, M-03 | UNIT_VERIFIED — 163 domain tests, 306 total |
 | P3-DOMAIN-02 | `feat/p3-domain-02-host-types` | M-04, M-05, M-06 | UNIT_VERIFIED — 238 domain tests, 381 total |
+| P3-DOMAIN-03 | `feat/p3-domain-03-security-events` | M-07, M-08, M-09, M-10 | UNIT_VERIFIED — 290 domain tests, 433 total |
 
 Delivered beyond the specified minimum, with reasons:
 
