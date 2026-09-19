@@ -25,7 +25,7 @@ REPORTED / HYPOTHESIS / NOT_RUN / BLOCKED.
 | **P4 complete** | VERIFIED | full chain, no OpenFlow dependency |
 | P5-OF-01 framework selection | VERIFIED (ADR) | OS-Ken candidate; conformance NOT_RUN |
 | P5-OF-02/03/07 adapter + controller | VERIFIED | 26 adapter tests; 766 total |
-| P5-OF-04 packet normalisation | NOT_RUN | next |
+| P5-OF-04/05/06 packet normalisation | VERIFIED | 37 parser tests; 803 total |
 | P5-OF-06/08/09, real adapter | BLOCKED | needs Linux/OVS (B-1) |
 | Stage 2+ | NOT_RUN | — |
 

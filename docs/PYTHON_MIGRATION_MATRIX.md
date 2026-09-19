@@ -56,7 +56,7 @@ Every row's "Legacy defect" column is the bridge required by the owner:
 | A-02 | Adapter contract | L-01/L-05 | framework objects never reach security logic | `OFPacketIn`/`IDevice`/`IOFSwitch` threaded throughout | `adapter/contract.py` | fake and real adapter interchangeable | UNIT_VERIFIED |
 | A-03 | Fake fabric | — | test the core with no OVS | nothing equivalent existed | `adapter/fake.py` | models send failures, port flaps, reconnects | UNIT_VERIFIED |
 | A-04 | Controller wiring | L-01 | one place the components meet | wiring spread across listeners | `controller/app.py` | lifecycle, probe delivery, end-to-end | UNIT_VERIFIED |
-| A-05 | Packet normalisation | L-05 | bytes -> domain events | parsing interleaved with security logic | `adapter/normalize.py` | parser fixture tests | SPECIFIED |
+| A-05 | Packet normalisation | L-05 | bytes -> domain events | parsing interleaved with security logic; ICMP type/code confusion; BigInteger address conversion | `adapter/normalize.py` | fixtures, the ICMP defect, 3500 fuzz cases | UNIT_VERIFIED |
 | A-06 | Real OS-Ken adapter | L-01 | production transport | — | `adapter/osken.py` | conformance suite vs fake | DEFERRED (needs Linux/OVS, B-1) |
 
 ## Deferred
@@ -101,6 +101,7 @@ Every row's "Legacy defect" column is the bridge required by the owner:
 | P4-POLICY-01 / P4-EVIDENCE-01 | `feat/p4-policy-01-observe-only` | D-08, X-01 (partial) | UNIT_VERIFIED — 38 policy tests + 14 pipeline tests, 730 total |
 | P5-OF-01 | `spike/p5-openflow-01-framework-selection` | A-01 (new) | UNDERSTOOD — ADR-016/017 on verified PyPI evidence; conformance NOT_RUN |
 | P5-OF-02/03/07 | `feat/p5-openflow-02-adapter-contract` | A-02, A-03, A-04 (new) | UNIT_VERIFIED — 26 adapter tests, 766 total |
+| P5-OF-04/05/06 | `feat/p5-openflow-04-packet-normalization` | A-05 | UNIT_VERIFIED — 37 parser tests incl. fuzzing, 803 total |
 
 Delivered beyond the specified minimum, with reasons:
 
