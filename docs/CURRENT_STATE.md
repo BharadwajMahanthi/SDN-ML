@@ -15,7 +15,8 @@ REPORTED / HYPOTHESIS / NOT_RUN / BLOCKED.
 | P3-DOMAIN-03 security events | VERIFIED | 290 domain tests; 433 total |
 | P3-DOMAIN-05 clock abstraction | VERIFIED | 309 domain tests; 452 total |
 | P3-DOMAIN-04 property tests | VERIFIED | 6 invariant families; 481 total |
-| P4 deterministic security core | NOT_RUN | next |
+| P4-TOPO-01 port state | VERIFIED | 23 topology tests; 504 total |
+| P4 remaining | NOT_RUN | in progress |
 | Stage 2+ | NOT_RUN | — |
 
 ## What exists
