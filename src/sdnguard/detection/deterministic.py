@@ -79,10 +79,14 @@ class HostHijackDetector:
                 continue
             findings.append(self._build(action.detail, state, port, detected_at))
 
-        # Multi-location is orthogonal to the probe outcome: a host present at
-        # several ports at once is reportable even while validation is
-        # inconclusive. Legacy skipped exactly this case.
-        if concurrent_locations > 1:
+        # Multi-location is reported when validation did NOT establish that
+        # the host left. If the probe expired, the old location was silent,
+        # so a lingering table entry inside its TTL is bookkeeping rather
+        # than evidence of concurrent presence -- reporting it would make
+        # every ordinary relocation look multi-homed (KF-16). When the probe
+        # replied, or could not be resolved, concurrency is a real question
+        # and the legacy code skipped exactly that case.
+        if concurrent_locations > 1 and state.state is not MovementState.MOVE_ACCEPTED:
             findings.append(SecurityFinding.create(
                 FindingKind.HOST_MULTI_LOCATION,
                 Verdict.SUSPICIOUS,

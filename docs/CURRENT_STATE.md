@@ -20,8 +20,10 @@ REPORTED / HYPOTHESIS / NOT_RUN / BLOCKED.
 | P4-HOST-01 host table | VERIFIED | 560 total |
 | P4-MOVE-01/02 movement state machine | VERIFIED | 609 total |
 | P4-PROBE-01/02 probe manager | VERIFIED | 640 total |
-| P4-DETECT-01/02 detectors | VERIFIED | 19 detection tests; 665 total |
-| P4 remaining | NOT_RUN | in progress |
+| P4-DETECT-01/02 detectors | VERIFIED | 665 total |
+| P4-POLICY-01 / EVIDENCE-01 | VERIFIED | 38 policy tests; 730 total |
+| **P4 complete** | VERIFIED | full chain, no OpenFlow dependency |
+| P5 OpenFlow boundary | NOT_RUN | next |
 | Stage 2+ | NOT_RUN | — |
 
 ## What exists
@@ -63,8 +65,8 @@ PYTHON_MIGRATION_MATRIX.md.
 
 ## Exact next action
 
-**P4-TOPO-01** on branch `feat/p4-topology-01-port-state`: port records and
-HOST/SWITCH/UNKNOWN classification driven by LLDP observation, plus the
-per-host port-down evidence flag recovered from `PortProperty` (rows S-01,
-S-02, S-03). P3 is complete: the domain model is framework-independent and
-every invariant has a property test.
+**P5-OF-01** on branch `spike/p5-openflow-01-framework-selection`: evaluate
+current Python OpenFlow options against protocol coverage, Python version
+support, maintenance, event and concurrency model, OVS compatibility and
+licence, and record an ADR. P4 is complete: the deterministic security core
+runs the full chain with no OpenFlow dependency.

@@ -46,13 +46,13 @@ Every row's "Legacy defect" column is the bridge required by the owner:
 | D-05 | Probe expiry | §10 | every probe expires | no timer at all | `probes/timeout.py` | unanswered probe resolves exactly once at its deadline | UNIT_VERIFIED |
 | D-06 | Link-fabrication defence | L-05 | LLDP from HOST port is hostile | reachable and roughly correct | `detection/deterministic.py` | LLDP on a HOST port emits a finding and consumes the packet | UNIT_VERIFIED |
 | D-07 | Host traffic from SWITCH port | L-05 | `LEGACY_AMBIGUOUS` | `STOP` commented out | `detection/deterministic.py` | finding emitted; no enforcement by default | UNIT_VERIFIED |
-| D-08 | Findings output | L-09 | typed and queryable | log lines only | `observability/evidence.py` | finding is serialisable and retrievable by id | SPECIFIED |
+| D-08 | Findings output | L-09 | typed and queryable | log lines only | `observability/evidence.py` | finding is serialisable and retrievable by id | UNIT_VERIFIED |
 
 ## Deferred
 
 | ID | Capability | Reason | Status |
 |---|---|---|---|
-| X-01 | Enforcement adapter | Stage 6; observe-only until acceptance criteria exist | DEFERRED |
+| X-01 | Enforcement adapter | Stage 6; observe-only until acceptance criteria exist | SPECIFIED (observe-only decided; adapter is P7) |
 | X-02 | ML detection | Stage 8; deterministic protection must be measurable first | DEFERRED |
 | X-03 | Zeek path | duplicates TopoGuard; revisit only if it adds measurable value | DEFERRED |
 | X-04 | REST/API surface | Stage 6; needs an authentication design | DEFERRED |
@@ -87,6 +87,7 @@ Every row's "Legacy defect" column is the bridge required by the owner:
 | P4-MOVE-01/02 | `feat/p4-movement-01-state-machine` | D-01 | UNIT_VERIFIED — 71 host tests incl. full transition matrix + benign/adversarial decision table, 609 total |
 | P4-PROBE-01/02 | `feat/p4-probes-01-manager` | D-03, D-04, D-05 | UNIT_VERIFIED — 31 probe tests, 640 total |
 | P4-DETECT-01/02 | `feat/p4-detection-01-host-hijack` | D-02, D-06, D-07 | UNIT_VERIFIED — 19 detection tests, 665 total |
+| P4-POLICY-01 / P4-EVIDENCE-01 | `feat/p4-policy-01-observe-only` | D-08, X-01 (partial) | UNIT_VERIFIED — 38 policy tests + 14 pipeline tests, 730 total |
 
 Delivered beyond the specified minimum, with reasons:
 
@@ -99,3 +100,15 @@ Delivered beyond the specified minimum, with reasons:
   silent lookup miss inside the security logic.
 - `tests/domain/test_no_framework_dependencies.py` enforces ADR-005 by AST
   inspection: the core may import the standard library and itself, nothing else.
+
+## P4 acceptance
+
+`tests/integration/test_p4_pipeline.py` runs the required chain end to end:
+
+```
+observation -> movement state -> validation evidence -> finding -> policy decision
+```
+
+with **no OpenFlow dependency**, asserted structurally by AST inspection of
+`src/sdnguard/` and dynamically by checking no framework module is loaded
+after a full run. The chain is exercised across the full datapath-id space.

@@ -233,3 +233,21 @@ def test_detectors_emit_findings_and_never_enforcement(detector, link_detector):
     for finding in findings:
         assert not hasattr(finding, "action")
         assert finding.verdict in set(Verdict)
+
+
+def test_benign_relocation_is_not_reported_as_multi_location(detector):
+    """KF-16: the host table holds the old sighting until its TTL expires.
+    If the probe found the old location silent, that lingering entry is
+    bookkeeping, not evidence of concurrent presence -- reporting it would
+    make every ordinary relocation look multi-homed."""
+    state, actions = resolve(ProbeOutcome.EXPIRED, port_down=True)
+    findings = detector.from_resolution(state, actions, T0, concurrent_locations=2)
+    assert [f.kind for f in findings] == []
+
+
+def test_multi_location_is_still_reported_when_the_host_answered(detector):
+    state, actions = resolve(ProbeOutcome.REPLIED)
+    kinds = [f.kind for f in detector.from_resolution(state, actions, T0,
+                                                      concurrent_locations=2)]
+    assert FindingKind.HOST_MULTI_LOCATION in kinds
+    assert FindingKind.HOST_LOCATION_HIJACK in kinds

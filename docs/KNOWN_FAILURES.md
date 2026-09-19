@@ -148,3 +148,19 @@ This is the conversion the owner mandated in place of repairing Java.
   `::test_an_unknown_nonce_is_not_evidence`, and
   `tests/hosts/test_movement_scenarios.py::test_attack_forged_probe_reply_with_a_guessed_id_is_rejected`.
   Status: VERIFIED.
+
+### KF-16 — lingering table entries made every relocation look multi-homed
+
+- **Found by the P4 integration test, not by a unit test.** The host table
+  retains a previous location until its TTL expires. The detector treated any
+  `concurrent_locations > 1` as concurrent presence, so an entirely ordinary
+  relocation inside the TTL window produced a `HOST_MULTI_LOCATION` finding.
+  Multi-homing is a hijack signal, so this was a false-positive generator on
+  the most common benign event in the system.
+- **Distinction that fixes it**: a stale table entry is *bookkeeping*; a probe
+  reply is *observation*. Multi-location is now reported only when validation
+  did not establish that the host left -- `SUSPICIOUS_MOVE` or
+  `INCONCLUSIVE`, never `MOVE_ACCEPTED`.
+- **Regression tests**: `tests/detection/test_deterministic.py::test_benign_relocation_is_not_reported_as_multi_location`,
+  `tests/integration/test_p4_pipeline.py::test_benign_relocation_emits_no_finding_at_all`.
+  Status: VERIFIED.
