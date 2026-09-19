@@ -25,3 +25,36 @@ Rejected approaches and regressions to avoid repeating.
   development checkpoint, never on a timer.
 - **Catch-up deletion after an idle gap** — forbidden. A 40-day absence must
   not retire 40 days of memory.
+
+## Legacy defect → Python requirement → regression test (P3+)
+
+This is the conversion the owner mandated in place of repairing Java.
+
+### KF-07 — reference equality for switch-port identity
+
+- **Legacy**: `TopoloyUpdateChecker.Port.equals` compared boxed `Long`/`Short`
+  with `!=`, i.e. by reference. Correct only inside Java's integer cache
+  (−128..127). `hashCode` was value-based, so entries hashed to the right
+  bucket and then failed the equality check. A lab using datapath ids 1, 2 and
+  3 could never have exposed it.
+- **Python requirement**: switch and port identity are frozen value types with
+  equality and hashing over the full unsigned 64-bit space.
+- **Regression test**:
+  `tests/domain/test_identity.py::test_independently_constructed_dpids_are_equal_and_hash_alike`
+  parametrised over 15 values including `0x0000AABBCCDDEEFF`, `2**63`,
+  `2**64-1`, and both `127` and `128` to straddle the old cache boundary.
+  Status: VERIFIED.
+
+### KF-08 — `dataclass(frozen=True, slots=True)` reports the wrong error
+
+- **Found**: while testing immutability. `slots=True` rebuilds the class, so
+  the generated frozen `__setattr__` closes over a stale class reference.
+  Assigning a *known* field raises `FrozenInstanceError`, but assigning an
+  *unknown* attribute raises `TypeError: super(type, obj): obj must be an
+  instance or subtype of type`. Protection holds; the error is misleading.
+- **Fix**: declare `__slots__` manually, which restores a consistent
+  `FrozenInstanceError`. That in turn broke pickling, because the default
+  unpickling path uses `setattr`; a `_ValueObject` mixin restores state via
+  `object.__setattr__`.
+- **Regression tests**: `test_slots_prevent_attribute_injection`,
+  `test_survives_a_pickle_round_trip`. Status: VERIFIED.
