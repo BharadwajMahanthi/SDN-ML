@@ -164,3 +164,16 @@ This is the conversion the owner mandated in place of repairing Java.
 - **Regression tests**: `tests/detection/test_deterministic.py::test_benign_relocation_is_not_reported_as_multi_location`,
   `tests/integration/test_p4_pipeline.py::test_benign_relocation_emits_no_finding_at_all`.
   Status: VERIFIED.
+
+### KF-17 — clearing state before reading it leaked every host on a departed switch
+
+- **Found by an adapter test.** `on_switch_disconnected` called
+  `ports.remove_switch()` *before* iterating that switch's ports to forget
+  the hosts attached to them. The iteration therefore found nothing and every
+  host survived its switch -- the same class of leak as KF-12, reintroduced
+  by statement order in the very code written to fix it.
+- **Fix**: capture the port list before clearing the registry.
+- **Lesson recorded**: a cleanup path needs a test that asserts what is *gone*,
+  not only that the call was made.
+- **Regression test**: `tests/adapter/test_contract_and_controller.py::test_disconnect_does_not_leak_hosts_on_multiple_ports`.
+  Status: VERIFIED.
