@@ -177,3 +177,16 @@ This is the conversion the owner mandated in place of repairing Java.
   not only that the call was made.
 - **Regression test**: `tests/adapter/test_contract_and_controller.py::test_disconnect_does_not_leak_hosts_on_multiple_ports`.
   Status: VERIFIED.
+
+### KF-18 — ICMP type compared against a code field
+
+- **Legacy**: `icmp.getIcmpCode() == ICMP.ECHO_REPLY`, where `ECHO_REPLY` is
+  a *type* constant equal to `0x0`. Echo request, TTL-exceeded and
+  destination-unreachable all carry code 0, so every one of them would have
+  satisfied the probe-reply test.
+- **Python requirement**: `ParsedFrame.is_icmp_echo_reply` checks the ICMP
+  *type*, and the correlation test additionally requires a nonce, the probed
+  host's MAC and the probed port (KF-15).
+- **Regression test**: `tests/adapter/test_normalize.py::test_the_legacy_icmp_confusion_cannot_recur`
+  asserts all three of those messages fail the check while carrying code 0.
+  Status: VERIFIED.
