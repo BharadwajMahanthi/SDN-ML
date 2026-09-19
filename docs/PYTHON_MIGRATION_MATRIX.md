@@ -40,12 +40,12 @@ Every row's "Legacy defect" column is the bridge required by the owner:
 | ID | Capability | Legacy | Intended | Legacy defect | Python module | Test | Status |
 |---|---|---|---|---|---|---|---|
 | D-01 | Movement state machine | L-06 | explicit states/guards/timeouts | implicit, partly unreachable | `hosts/movement.py` | full transition table; unreachable states proven absent | UNIT_VERIFIED |
-| D-02 | Port-Down pre-condition | §4 | evidence, not proof | logged then ignored | `detection/deterministic.py` | move without port-down raises suspicion, does not convict | SPECIFIED |
+| D-02 | Port-Down pre-condition | §4 | evidence, not proof | logged then ignored | `detection/deterministic.py` | move without port-down raises suspicion, does not convict | UNIT_VERIFIED |
 | D-03 | Liveness post-condition | §4 | probe old location | unreachable branch | `probes/manager.py` | reply ⇒ SUSPICIOUS; no reply by deadline ⇒ ACCEPTED (weak) | UNIT_VERIFIED |
 | D-04 | Probe correlation | L-08 | nonce + type + deadline | ICMP *code* compared to a *type* constant | `probes/correlation.py` | forged reply without the nonce is rejected; echo request never matches a reply | UNIT_VERIFIED |
 | D-05 | Probe expiry | §10 | every probe expires | no timer at all | `probes/timeout.py` | unanswered probe resolves exactly once at its deadline | UNIT_VERIFIED |
-| D-06 | Link-fabrication defence | L-05 | LLDP from HOST port is hostile | reachable and roughly correct | `detection/deterministic.py` | LLDP on a HOST port emits a finding and consumes the packet | SPECIFIED |
-| D-07 | Host traffic from SWITCH port | L-05 | `LEGACY_AMBIGUOUS` | `STOP` commented out | `detection/deterministic.py` | finding emitted; no enforcement by default | SPECIFIED |
+| D-06 | Link-fabrication defence | L-05 | LLDP from HOST port is hostile | reachable and roughly correct | `detection/deterministic.py` | LLDP on a HOST port emits a finding and consumes the packet | UNIT_VERIFIED |
+| D-07 | Host traffic from SWITCH port | L-05 | `LEGACY_AMBIGUOUS` | `STOP` commented out | `detection/deterministic.py` | finding emitted; no enforcement by default | UNIT_VERIFIED |
 | D-08 | Findings output | L-09 | typed and queryable | log lines only | `observability/evidence.py` | finding is serialisable and retrievable by id | SPECIFIED |
 
 ## Deferred
@@ -86,6 +86,7 @@ Every row's "Legacy defect" column is the bridge required by the owner:
 | P4-HOST-01 | `feat/p4-hosts-01-host-table` | S-04, S-05 | UNIT_VERIFIED — 24 host tests, 560 total |
 | P4-MOVE-01/02 | `feat/p4-movement-01-state-machine` | D-01 | UNIT_VERIFIED — 71 host tests incl. full transition matrix + benign/adversarial decision table, 609 total |
 | P4-PROBE-01/02 | `feat/p4-probes-01-manager` | D-03, D-04, D-05 | UNIT_VERIFIED — 31 probe tests, 640 total |
+| P4-DETECT-01/02 | `feat/p4-detection-01-host-hijack` | D-02, D-06, D-07 | UNIT_VERIFIED — 19 detection tests, 665 total |
 
 Delivered beyond the specified minimum, with reasons:
 
