@@ -39,7 +39,7 @@ Every row's "Legacy defect" column is the bridge required by the owner:
 
 | ID | Capability | Legacy | Intended | Legacy defect | Python module | Test | Status |
 |---|---|---|---|---|---|---|---|
-| D-01 | Movement state machine | L-06 | explicit states/guards/timeouts | implicit, partly unreachable | `hosts/movement.py` | full transition table; unreachable states proven absent | SPECIFIED |
+| D-01 | Movement state machine | L-06 | explicit states/guards/timeouts | implicit, partly unreachable | `hosts/movement.py` | full transition table; unreachable states proven absent | UNIT_VERIFIED |
 | D-02 | Port-Down pre-condition | §4 | evidence, not proof | logged then ignored | `detection/deterministic.py` | move without port-down raises suspicion, does not convict | SPECIFIED |
 | D-03 | Liveness post-condition | §4 | probe old location | unreachable branch | `probes/manager.py` | reply ⇒ SUSPICIOUS; no reply by deadline ⇒ ACCEPTED (weak) | SPECIFIED |
 | D-04 | Probe correlation | L-08 | nonce + type + deadline | ICMP *code* compared to a *type* constant | `probes/correlation.py` | forged reply without the nonce is rejected; echo request never matches a reply | SPECIFIED |
@@ -84,6 +84,7 @@ Every row's "Legacy defect" column is the bridge required by the owner:
 | P4-TOPO-01 | `feat/p4-topology-01-port-state` | S-01, S-02, S-03 | UNIT_VERIFIED — 23 topology tests, 508 total |
 | P4-TOPO-02 | `feat/p4-topology-02-link-state` | S-06, S-07 (new) | UNIT_VERIFIED — 43 topology tests, 532 total |
 | P4-HOST-01 | `feat/p4-hosts-01-host-table` | S-04, S-05 | UNIT_VERIFIED — 24 host tests, 560 total |
+| P4-MOVE-01/02 | `feat/p4-movement-01-state-machine` | D-01 | UNIT_VERIFIED — 71 host tests incl. full transition matrix + benign/adversarial decision table, 609 total |
 
 Delivered beyond the specified minimum, with reasons:
 
