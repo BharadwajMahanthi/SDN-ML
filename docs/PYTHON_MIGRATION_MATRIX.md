@@ -78,6 +78,7 @@ Every row's "Legacy defect" column is the bridge required by the owner:
 | P3-DOMAIN-02 | `feat/p3-domain-02-host-types` | M-04, M-05, M-06 | UNIT_VERIFIED — 238 domain tests, 381 total |
 | P3-DOMAIN-03 | `feat/p3-domain-03-security-events` | M-07, M-08, M-09, M-10 | UNIT_VERIFIED — 290 domain tests, 433 total |
 | P3-DOMAIN-05 | `feat/p3-domain-05-time-abstraction` | M-11 (new) | UNIT_VERIFIED — 309 domain tests, 452 total |
+| P3-DOMAIN-04 | `test/p3-domain-04-properties` | all M-* | UNIT_VERIFIED — 6 invariant families, 338 domain tests, 481 total |
 
 Delivered beyond the specified minimum, with reasons:
 

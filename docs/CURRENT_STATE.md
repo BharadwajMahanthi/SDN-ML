@@ -14,7 +14,8 @@ REPORTED / HYPOTHESIS / NOT_RUN / BLOCKED.
 | P3-DOMAIN-02 host types | VERIFIED | 238 domain tests; 381 total |
 | P3-DOMAIN-03 security events | VERIFIED | 290 domain tests; 433 total |
 | P3-DOMAIN-05 clock abstraction | VERIFIED | 309 domain tests; 452 total |
-| P3-DOMAIN-04 property tests | NOT_RUN | next |
+| P3-DOMAIN-04 property tests | VERIFIED | 6 invariant families; 481 total |
+| P4 deterministic security core | NOT_RUN | next |
 | Stage 2+ | NOT_RUN | — |
 
 ## What exists
@@ -56,7 +57,8 @@ PYTHON_MIGRATION_MATRIX.md.
 
 ## Exact next action
 
-**P3-DOMAIN-02** on branch `feat/p3-domain-02-host-types`, starting from the
-latest `main`: `MacAddress`, `IPAddress`, `HostIdentity`, `HostLocation`,
-`HostObservation` (matrix rows M-04..M-06). Merge gate: validation plus
-immutable semantics, and the framework-independence guard must stay green.
+**P4-TOPO-01** on branch `feat/p4-topology-01-port-state`: port records and
+HOST/SWITCH/UNKNOWN classification driven by LLDP observation, plus the
+per-host port-down evidence flag recovered from `PortProperty` (rows S-01,
+S-02, S-03). P3 is complete: the domain model is framework-independent and
+every invariant has a property test.
