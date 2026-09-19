@@ -31,6 +31,8 @@ Every row's "Legacy defect" column is the bridge required by the owner:
 | S-02 | Port typing | L-03 | SWITCH/HOST/ANY from LLDP | dead `receiveTrafficFromPort` disagrees with inline logic | `topology/port_state.py` | LLDP promotes ANY→SWITCH; host traffic promotes ANY→HOST | UNIT_VERIFIED |
 | S-03 | Port-down evidence | L-03 | per-host shutdown flag | never cleared on switch loss | `topology/port_state.py` | flag set on down, cleared on re-observation, dropped with the switch | UNIT_VERIFIED |
 | S-04 | Host table | §1 | single authority incl. ARP | broadcast returns before learning | `hosts/table.py` | ARP populates the table | SPECIFIED |
+| S-06 | Switch lifecycle + generations | L-04 | connect/disconnect/reconnect | no generation concept, so a reconnect kept stale state and in-flight events were indistinguishable | `topology/switches.py` | stale generation rejected after reconnect | UNIT_VERIFIED |
+| S-07 | Inter-switch links | L-05 | unordered port pair | none modelled | `topology/links.py` | unordered pairs; endpoint on a host port is inconsistent | UNIT_VERIFIED |
 | S-05 | Bounded state | §9 | TTL + maxima everywhere | three unbounded maps | `hosts/table.py`, `probes/manager.py` | 10k synthetic hosts stay within a configured bound | SPECIFIED |
 
 ## Security logic (Stages 3–4)
@@ -79,7 +81,8 @@ Every row's "Legacy defect" column is the bridge required by the owner:
 | P3-DOMAIN-03 | `feat/p3-domain-03-security-events` | M-07, M-08, M-09, M-10 | UNIT_VERIFIED — 290 domain tests, 433 total |
 | P3-DOMAIN-05 | `feat/p3-domain-05-time-abstraction` | M-11 (new) | UNIT_VERIFIED — 309 domain tests, 452 total |
 | P3-DOMAIN-04 | `test/p3-domain-04-properties` | all M-* | UNIT_VERIFIED — 6 invariant families, 338 domain tests, 481 total |
-| P4-TOPO-01 | `feat/p4-topology-01-port-state` | S-01, S-02, S-03 | UNIT_VERIFIED — 23 topology tests, 504 total |
+| P4-TOPO-01 | `feat/p4-topology-01-port-state` | S-01, S-02, S-03 | UNIT_VERIFIED — 23 topology tests, 508 total |
+| P4-TOPO-02 | `feat/p4-topology-02-link-state` | S-06, S-07 (new) | UNIT_VERIFIED — 43 topology tests, 532 total |
 
 Delivered beyond the specified minimum, with reasons:
 
