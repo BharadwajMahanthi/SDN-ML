@@ -72,3 +72,43 @@ Architecture decision records. Supersede rather than delete.
 - **Evidence**: `LEGACY_SECURITY_MODEL.md` §5–7.
 - **Risk**: ARP-based liveness is spoofable by an on-segment attacker, so a
   probe reply is evidence, never proof. Recorded in the threat model when written.
+
+## ADR-016 — OS-Ken is the candidate OpenFlow framework, pending a conformance spike
+
+- **Status**: accepted as *candidate*; final selection remains NOT_RUN until
+  P5-OF-02's fake adapter is matched against a real OS-Ken adapter.
+- **Problem**: the security core needs a way onto the wire. The legacy
+  tutorial answer was Ryu, and the roadmap explicitly forbids choosing
+  because an old tutorial did.
+- **Evidence** (`RESEARCH_LEDGER.md` R-001..R-005, verified 2026-09-20 from
+  the PyPI JSON API, not from memory):
+  - Ryu 4.34 last released **2020-05-27** and declares no `requires_python`.
+  - OS-Ken 4.2.2 released **2026-08-20**, `requires_python >=3.10`,
+    classifiers through 3.13, Apache-2.0.
+  - Faucet is an application built on this layer, not an alternative to it.
+- **Decision**: build against OS-Ken, but only behind the adapter contract.
+- **What is NOT established**: protocol conformance, OpenFlow version
+  coverage, throughput, and behaviour under switch reconnect are all
+  `NOT_RUN`. Classifiers are self-declared. Nothing here justifies calling
+  the choice validated.
+- **Cost of being wrong**: bounded by ADR-005 and ADR-017 -- the framework is
+  confined to the adapter, so replacing it does not touch the security core.
+
+## ADR-017 — eventlet must not escape the adapter
+
+- **Status**: accepted
+- **Problem**: OS-Ken depends on `eventlet>=0.27.0` (R-003), a green-thread
+  library that monkey-patches the standard library's I/O. That is a
+  concurrency model, not an implementation detail: code written for it
+  behaves differently from plain-threaded or asyncio code, and mixing the two
+  produces deadlocks that only appear under load.
+- **Decision**: `eventlet` may be imported **only** inside the OpenFlow
+  adapter package. The security core stays synchronous and non-blocking,
+  communicating with the adapter through a bounded queue. The existing
+  framework-independence test already enforces the import boundary
+  mechanically.
+- **Consequence**: the core can be driven by a fake adapter, by a test, by a
+  replay harness, or by a different framework later, with no change.
+- **Risk**: eventlet's long-term direction has been debated in the OpenStack
+  ecosystem. Version 0.41.2 (2026-08-14) is current, so this is a
+  watch-item, not a blocker. Re-check before P11.
