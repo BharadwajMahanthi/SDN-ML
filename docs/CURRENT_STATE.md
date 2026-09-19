@@ -13,7 +13,8 @@ REPORTED / HYPOTHESIS / NOT_RUN / BLOCKED.
 | P3-DOMAIN-01 value identities | VERIFIED | 163 domain tests; 306 total |
 | P3-DOMAIN-02 host types | VERIFIED | 238 domain tests; 381 total |
 | P3-DOMAIN-03 security events | VERIFIED | 290 domain tests; 433 total |
-| P3-DOMAIN-04..05 | NOT_RUN | branches queued |
+| P3-DOMAIN-05 clock abstraction | VERIFIED | 309 domain tests; 452 total |
+| P3-DOMAIN-04 property tests | NOT_RUN | next |
 | Stage 2+ | NOT_RUN | — |
 
 ## What exists

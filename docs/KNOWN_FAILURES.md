@@ -80,3 +80,16 @@ This is the conversion the owner mandated in place of repairing Java.
   different ports remain distinct values.
 - **Regression test**: `test_same_mac_at_two_ports_stays_distinguishable`,
   `test_confidence_is_a_label_not_a_number`. Status: VERIFIED.
+
+### KF-11 — no clock abstraction, so no probe could ever time out
+
+- **Legacy**: timeouts did not exist. `probedPorts` entries were created and
+  never resolved, so the "no reply implies legitimate migration" branch was
+  unreachable and the map grew without bound.
+- **Python requirement**: time is injected. Elapsed-time decisions use a
+  *monotonic* source so that an NTP step, VM migration or manual correction
+  cannot un-expire a probe or expire a live one early; wall-clock time is used
+  only for timestamps that evidence bundles must display.
+- **Regression tests**: `tests/domain/test_clock.py::test_deadline_survives_a_wall_clock_step_backwards`
+  and `::test_deadline_does_not_expire_early_on_a_wall_clock_jump_forward`.
+  Status: VERIFIED.
