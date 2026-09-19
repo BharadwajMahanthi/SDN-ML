@@ -113,3 +113,23 @@ ml_dataset/*
 !MULTI*.md
 !CONTINUOUS*.md
 !MANUAL*.md
+
+# --- context firewall / project memory (P0, P1) ---
+# Rolling runtime memory and local command logs are never committed and are
+# themselves blocked paths in tools/context_policy.yaml.
+memory/runtime/
+!memory/policy.json
+
+# Credential-shaped files, restated here so `git add -A` cannot stage them.
+.env
+.env.*
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+secrets/
+credentials/
+patent/
+captures/
+datasets/private/
+private/

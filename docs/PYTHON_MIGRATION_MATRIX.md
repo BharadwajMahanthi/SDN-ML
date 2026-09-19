@@ -1,0 +1,70 @@
+# PYTHON MIGRATION MATRIX
+
+Authoritative plan for the Python system. This matrix matters more than
+repairing Java. Status: `UNDERSTOOD` → `SPECIFIED` → `IMPLEMENTING` →
+`UNIT_VERIFIED` → `INTEGRATION_VERIFIED` → `DEFERRED`.
+
+Every row's "Legacy defect" column is the bridge required by the owner:
+`KNOWN_FAILURE → PYTHON DESIGN REQUIREMENT → REGRESSION TEST`.
+
+## Domain model (Stage 1)
+
+| ID | Capability | Legacy | Intended behaviour | Legacy defect | Python module | Interface | Required test | Status |
+|---|---|---|---|---|---|---|---|---|
+| M-01 | Datapath identity | L-02 | 64-bit switch id | boxed `Long` reference compare | `domain/identity.py` | `DatapathId` (frozen) | equality/hash for `0x0000aabbccddeeff`, `2**63-1`, values far outside −128..127 | SPECIFIED |
+| M-02 | Port number | L-02 | 32-bit OF port | boxed `Short` reference compare | `domain/identity.py` | `PortNumber` (frozen) | reject negative; accept OF reserved ports | SPECIFIED |
+| M-03 | Port identity | L-02 | `(dpid, port)` value key | `==` used on objects | `domain/identity.py` | `PortIdentity` (frozen) | two independently built instances compare equal and hash identically; usable as a dict key | SPECIFIED |
+| M-04 | Host identity | §1 | MAC + optional IP, explicitly *observational* | MAC treated as identity | `domain/host.py` | `HostIdentity` | MAC normalisation; two hosts sharing a MAC are distinguishable by location | SPECIFIED |
+| M-05 | Host location | §2 | `PortIdentity` + first/last seen | none | `domain/host.py` | `HostLocation` | ordering by `last_seen`; immutability | SPECIFIED |
+| M-06 | Host observation | L-05 | normalised packet event | framework objects passed throughout | `domain/events.py` | `HostObservation` | constructible without any OpenFlow library | SPECIFIED |
+| M-07 | Movement event | L-06 | old → new location | multi-AP hosts skipped | `domain/events.py` | `MovementEvent` | multi-location host produces an event, not a skip | SPECIFIED |
+| M-08 | Probe request/result | L-07/08 | nonce, deadline, target | mutable shared fields, no deadline | `domain/probe.py` | `ProbeRequest`, `ProbeResult` | nonce uniqueness; deadline mandatory; frozen | SPECIFIED |
+| M-09 | Security finding | L-09 | typed, machine-readable | log lines only | `domain/finding.py` | `SecurityFinding` | stable id; serialisable; carries evidence refs | SPECIFIED |
+| M-10 | Enforcement decision | L-10 | scoped, reversible, expiring | absent | `domain/policy.py` | `EnforcementDecision` | every decision carries a scope and a TTL | SPECIFIED |
+
+## Host and topology state (Stage 2)
+
+| ID | Capability | Legacy | Intended | Legacy defect | Python module | Test | Status |
+|---|---|---|---|---|---|---|---|
+| S-01 | Port registry | L-04 | ports per switch | ports added after `switchAdded` untracked | `topology/ports.py` | late port appears; `switchRemoved` reclaims | SPECIFIED |
+| S-02 | Port typing | L-03 | SWITCH/HOST/ANY from LLDP | dead `receiveTrafficFromPort` disagrees with inline logic | `topology/port_state.py` | LLDP promotes ANY→SWITCH; host traffic promotes ANY→HOST | SPECIFIED |
+| S-03 | Port-down evidence | L-03 | per-host shutdown flag | never cleared on switch loss | `topology/port_state.py` | flag set on down, cleared on re-observation, dropped with the switch | SPECIFIED |
+| S-04 | Host table | §1 | single authority incl. ARP | broadcast returns before learning | `hosts/table.py` | ARP populates the table | SPECIFIED |
+| S-05 | Bounded state | §9 | TTL + maxima everywhere | three unbounded maps | `hosts/table.py`, `probes/manager.py` | 10k synthetic hosts stay within a configured bound | SPECIFIED |
+
+## Security logic (Stages 3–4)
+
+| ID | Capability | Legacy | Intended | Legacy defect | Python module | Test | Status |
+|---|---|---|---|---|---|---|---|
+| D-01 | Movement state machine | L-06 | explicit states/guards/timeouts | implicit, partly unreachable | `hosts/movement.py` | full transition table; unreachable states proven absent | SPECIFIED |
+| D-02 | Port-Down pre-condition | §4 | evidence, not proof | logged then ignored | `detection/deterministic.py` | move without port-down raises suspicion, does not convict | SPECIFIED |
+| D-03 | Liveness post-condition | §4 | probe old location | unreachable branch | `probes/manager.py` | reply ⇒ SUSPICIOUS; no reply by deadline ⇒ ACCEPTED (weak) | SPECIFIED |
+| D-04 | Probe correlation | L-08 | nonce + type + deadline | ICMP *code* compared to a *type* constant | `probes/correlation.py` | forged reply without the nonce is rejected; echo request never matches a reply | SPECIFIED |
+| D-05 | Probe expiry | §10 | every probe expires | no timer at all | `probes/timeout.py` | unanswered probe resolves exactly once at its deadline | SPECIFIED |
+| D-06 | Link-fabrication defence | L-05 | LLDP from HOST port is hostile | reachable and roughly correct | `detection/deterministic.py` | LLDP on a HOST port emits a finding and consumes the packet | SPECIFIED |
+| D-07 | Host traffic from SWITCH port | L-05 | `LEGACY_AMBIGUOUS` | `STOP` commented out | `detection/deterministic.py` | finding emitted; no enforcement by default | SPECIFIED |
+| D-08 | Findings output | L-09 | typed and queryable | log lines only | `observability/evidence.py` | finding is serialisable and retrievable by id | SPECIFIED |
+
+## Deferred
+
+| ID | Capability | Reason | Status |
+|---|---|---|---|
+| X-01 | Enforcement adapter | Stage 6; observe-only until acceptance criteria exist | DEFERRED |
+| X-02 | ML detection | Stage 8; deterministic protection must be measurable first | DEFERRED |
+| X-03 | Zeek path | duplicates TopoGuard; revisit only if it adds measurable value | DEFERRED |
+| X-04 | REST/API surface | Stage 6; needs an authentication design | DEFERRED |
+| X-05 | AWS lab | Stage 10 | DEFERRED |
+
+## Will not be ported
+
+| Legacy | Reason |
+|---|---|
+| `Port.equals`/`hashCode` | defective by construction; replaced by a value type |
+| `PortProperty.receiveTrafficFromPort` | dead code contradicting the live path |
+| `HostProber.generateARPPing` as written | wrong opcode (`OP_RARP_REQUEST`); the ARP *concept* is kept and reimplemented |
+| `ControllerIP` constant | replaced by per-segment probe source selection |
+| `BigInteger.toByteArray()` address conversion | replaced by `ipaddress` |
+| `ip.hashCode()` as an address | relies on an undocumented JDK detail |
+| Logging as the detection interface | replaced by typed findings |
+| `org.sdnplatform.sync` | clustering is out of scope |
+| Upstream Floodlight modules (firewall, loadbalancer, virtualnetwork, …) | not used by this project |

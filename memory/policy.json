@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "project_id": "sdn-ml-padmavyuh",
+  "timezone": "Asia/Kolkata",
+
+  "retention": {
+    "bucket_days": 7,
+    "max_active_buckets": 13,
+    "retention_effective_days": 91,
+    "idle_gap_threshold_days": 20,
+    "_comment": "A bucket ending on effective day E becomes rotation-eligible when effective_day >= E + (retention_effective_days - bucket_days + 1) = E + 85. Bucket 1-7 -> day 92; bucket 8-14 -> day 99. Retained detailed history therefore varies from 85 to 91 effective days; it is NOT a guaranteed minimum of 91."
+  },
+
+  "quota": {
+    "total_bytes": 8388608,
+    "journal_bytes": 6291456,
+    "metadata_bytes": 1048576,
+    "transaction_reserve_bytes": 1048576,
+    "max_record_bytes": 16384,
+    "max_bucket_bytes": 458752,
+    "_comment": "6 MiB journal + 1 MiB metadata + 1 MiB transaction reserve = 8 MiB. 13 buckets x 448 KiB = 5.69 MiB, inside the journal budget. The reserve is added to every projected append so GC always has room to run."
+  },
+
+  "lock": {
+    "timeout_seconds": 30,
+    "poll_seconds": 0.05
+  },
+
+  "durable_documents": [
+    "docs/PROJECT_CONTRACT.md",
+    "docs/CURRENT_STATE.md",
+    "docs/ARCHITECTURE.md",
+    "docs/DECISIONS.md",
+    "docs/KNOWN_FAILURES.md",
+    "docs/ACCEPTANCE_CRITERIA.md",
+    "docs/RESEARCH_LEDGER.md",
+    "docs/PATENT_TRACEABILITY.md"
+  ]
+}

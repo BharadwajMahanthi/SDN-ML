@@ -1,0 +1,103 @@
+# Context firewall policy.
+#
+# This file is the enforcement source of truth for tools/*.py. It is
+# deliberately independent of any agent prompt: the tools read THIS file,
+# not instructions supplied in a conversation.
+#
+# Honest limitation: these are safeguards, not a proof of data-loss
+# prevention. They reduce accidental disclosure. They do not guarantee it.
+
+version: 1
+
+# Paths never returned to a hosted model. Matched against repo-relative
+# POSIX paths. A pattern containing '/' matches the whole relative path
+# (with 'dir/**' also matching everything under 'dir'). A pattern without
+# '/' matches any single path component, so '.env' blocks 'a/b/.env'.
+blocked_paths:
+  - ".env"
+  - ".env.*"
+  - "*.pem"
+  - "*.key"
+  - "*.p12"
+  - "*.pfx"
+  - "*.pcap"
+  - "*.pcapng"
+  - "secrets/**"
+  - "credentials/**"
+  - "patent/**"
+  - "memory/runtime/**"
+  - "datasets/private/**"
+  - "captures/**"
+  - "private/**"
+  - ".aws/**"
+  - ".ssh/**"
+  - "*.jceks"
+  - "*.keystore"
+  - "id_rsa*"
+  - "id_ed25519*"
+
+# Paths that may be listed by name but whose CONTENT is never returned.
+# Large binary/derived artifacts: disclosure is pointless and expensive.
+opaque_paths:
+  - "*.pdf"
+  - "*.csv"
+  - "*.ipynb"
+  - "*.jar"
+  - "*.class"
+  - "*.png"
+  - "*.joblib"
+  - "*.pkl"
+  - "*.h5"
+
+# Hard output ceilings. Tools truncate and say so; they never silently trim.
+limits:
+  max_source_lines: 100
+  max_search_results: 20
+  max_command_lines: 200
+  max_diff_lines: 200
+  max_tree_entries: 200
+  max_line_chars: 400
+
+# Commands tools/safe_exec.py may run. Matched on argv[0] basename only;
+# arguments are still screened for blocked paths.
+allowed_commands:
+  - git
+  - rg
+  - grep
+  - python
+  - python3
+  - pytest
+  - ruff
+  - mypy
+  - bandit
+  - semgrep
+  - docker
+  - containerlab
+  - clab
+  - ovs-vsctl
+  - ovs-ofctl
+  - ant
+  - java
+  - ls
+  - wc
+  - head
+  - tail
+  - stat
+  - file
+
+# Commands refused outright: whole-environment or history disclosure.
+denied_commands:
+  - env
+  - printenv
+  - set
+  - export
+  - history
+  - aws
+  - curl
+  - wget
+  - ssh
+  - scp
+  - nc
+
+# Where safe_exec / safe_test keep full local logs (never returned wholesale).
+local_log_dir: "memory/runtime/exec"
