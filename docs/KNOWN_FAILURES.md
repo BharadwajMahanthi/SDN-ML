@@ -107,3 +107,29 @@ This is the conversion the owner mandated in place of repairing Java.
   an attacker flush a victim's record.
 - **Regression tests**: `tests/topology/test_ports.py::test_removing_a_switch_reclaims_all_of_its_ports`,
   `::test_port_count_is_bounded_and_refuses_rather_than_evicting`. Status: VERIFIED.
+
+### KF-13 — silent eviction would let an attacker erase the evidence
+
+- **Found while designing the host table.** The obvious way to bound a host
+  table is LRU eviction. That is wrong here: an attacker who can generate
+  traffic from many MACs can force the eviction of a victim's record, and
+  with it the prior location that makes their own move detectable.
+- **Python requirement**: bounded collections *refuse* growth and say so.
+  Capacity exhaustion becomes a visible operational condition rather than
+  silent evidence loss.
+- **Regression test**: `tests/hosts/test_table.py::test_host_count_is_bounded_and_refuses_rather_than_evicting`
+  asserts the victim's record survives the refusal. Status: VERIFIED.
+
+### KF-14 — pruning rule that hid ordinary relocation as multi-homing
+
+- **Found by a failing test during P4-HOST-01.** `without_stale` always kept
+  the primary location, which is correct for routine pruning but wrong when
+  a *new* location is being added: a host that moved after the location TTL
+  retained its stale old sighting and appeared concurrently multi-homed.
+  Multi-homing is the hijack signal, so this would have produced false
+  positives for entirely ordinary relocation.
+- **Fix**: `keep_primary` distinguishes the two needs, and the non-empty
+  invariant moved to `HostTable._store`, the single point where records enter
+  the table.
+- **Regression tests**: `::test_old_location_ages_out_and_the_move_becomes_plain`,
+  `::test_a_stored_record_always_has_at_least_one_location`. Status: VERIFIED.
