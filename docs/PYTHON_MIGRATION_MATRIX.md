@@ -48,6 +48,17 @@ Every row's "Legacy defect" column is the bridge required by the owner:
 | D-07 | Host traffic from SWITCH port | L-05 | `LEGACY_AMBIGUOUS` | `STOP` commented out | `detection/deterministic.py` | finding emitted; no enforcement by default | UNIT_VERIFIED |
 | D-08 | Findings output | L-09 | typed and queryable | log lines only | `observability/evidence.py` | finding is serialisable and retrievable by id | UNIT_VERIFIED |
 
+## Adapter boundary (P5)
+
+| ID | Capability | Legacy | Intended | Legacy defect | Python module | Test | Status |
+|---|---|---|---|---|---|---|---|
+| A-01 | Framework selection | L-01 | a maintained, current OpenFlow library | Ryu-era code frozen since 2020 | — | ADR with dated evidence | UNDERSTOOD |
+| A-02 | Adapter contract | L-01/L-05 | framework objects never reach security logic | `OFPacketIn`/`IDevice`/`IOFSwitch` threaded throughout | `adapter/contract.py` | fake and real adapter interchangeable | UNIT_VERIFIED |
+| A-03 | Fake fabric | — | test the core with no OVS | nothing equivalent existed | `adapter/fake.py` | models send failures, port flaps, reconnects | UNIT_VERIFIED |
+| A-04 | Controller wiring | L-01 | one place the components meet | wiring spread across listeners | `controller/app.py` | lifecycle, probe delivery, end-to-end | UNIT_VERIFIED |
+| A-05 | Packet normalisation | L-05 | bytes -> domain events | parsing interleaved with security logic | `adapter/normalize.py` | parser fixture tests | SPECIFIED |
+| A-06 | Real OS-Ken adapter | L-01 | production transport | — | `adapter/osken.py` | conformance suite vs fake | DEFERRED (needs Linux/OVS, B-1) |
+
 ## Deferred
 
 | ID | Capability | Reason | Status |
@@ -88,6 +99,8 @@ Every row's "Legacy defect" column is the bridge required by the owner:
 | P4-PROBE-01/02 | `feat/p4-probes-01-manager` | D-03, D-04, D-05 | UNIT_VERIFIED — 31 probe tests, 640 total |
 | P4-DETECT-01/02 | `feat/p4-detection-01-host-hijack` | D-02, D-06, D-07 | UNIT_VERIFIED — 19 detection tests, 665 total |
 | P4-POLICY-01 / P4-EVIDENCE-01 | `feat/p4-policy-01-observe-only` | D-08, X-01 (partial) | UNIT_VERIFIED — 38 policy tests + 14 pipeline tests, 730 total |
+| P5-OF-01 | `spike/p5-openflow-01-framework-selection` | A-01 (new) | UNDERSTOOD — ADR-016/017 on verified PyPI evidence; conformance NOT_RUN |
+| P5-OF-02/03/07 | `feat/p5-openflow-02-adapter-contract` | A-02, A-03, A-04 (new) | UNIT_VERIFIED — 26 adapter tests, 766 total |
 
 Delivered beyond the specified minimum, with reasons:
 
