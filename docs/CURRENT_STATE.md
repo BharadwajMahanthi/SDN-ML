@@ -10,7 +10,8 @@ REPORTED / HYPOTHESIS / NOT_RUN / BLOCKED.
 | P0 context firewall | VERIFIED | `pytest tests/tools` — 82 passed |
 | P1 project memory | VERIFIED | `pytest tests/memory` — 59 passed |
 | P2 legacy comprehension + migration spec | VERIFIED (docs) | LEGACY_CAPABILITY_MAP, LEGACY_SECURITY_MODEL, PYTHON_MIGRATION_MATRIX, ARCHITECTURE |
-| Stage 1 Python domain model | NOT_RUN | specified in the migration matrix (M-01..M-10) |
+| P3-DOMAIN-01 value identities | VERIFIED | 163 domain tests; 306 total |
+| P3-DOMAIN-02..05 | NOT_RUN | branches queued |
 | Stage 2+ | NOT_RUN | — |
 
 ## What exists
@@ -23,9 +24,12 @@ REPORTED / HYPOTHESIS / NOT_RUN / BLOCKED.
 
 ## What does NOT exist yet
 
-No Python controller, no OVS lab, no detector, no policy engine, no feature
-pipeline, no model artifact, no AWS lab. The Java Floodlight tree is
-untouched and still the only controller in the repository.
+`src/sdnguard/domain/identity.py` — `DatapathId`, `PortNumber`,
+`PortIdentity` as frozen value types, standard library only.
+
+No controller, no OVS lab, no detector, no policy engine, no feature pipeline,
+no model artifact, no AWS lab. The Java Floodlight tree is untouched and is
+reference material only (ADR-004).
 
 ## Blockers
 
@@ -49,7 +53,7 @@ PYTHON_MIGRATION_MATRIX.md.
 
 ## Exact next action
 
-**P3-DOMAIN-01** — implement `src/sdnguard/domain/` covering matrix rows
-M-01..M-03 (`DatapathId`, `PortNumber`, `PortIdentity`) as frozen value types,
-with property-based tests that include full 64-bit DPIDs far outside the
-range where the legacy reference-equality defect was invisible.
+**P3-DOMAIN-02** on branch `feat/p3-domain-02-host-types`, starting from the
+latest `main`: `MacAddress`, `IPAddress`, `HostIdentity`, `HostLocation`,
+`HostObservation` (matrix rows M-04..M-06). Merge gate: validation plus
+immutable semantics, and the framework-independence guard must stay green.

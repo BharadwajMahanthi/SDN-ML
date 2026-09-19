@@ -1,0 +1,7 @@
+# Minimal project configuration. Packaging metadata is deliberately deferred
+# to P12-PKG-01; this file exists so that `src/` is importable by tests
+# without per-test sys.path manipulation.
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "."]
+testpaths = ["tests"]
