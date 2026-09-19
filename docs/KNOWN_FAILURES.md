@@ -58,3 +58,25 @@ This is the conversion the owner mandated in place of repairing Java.
   `object.__setattr__`.
 - **Regression tests**: `test_slots_prevent_attribute_injection`,
   `test_survives_a_pickle_round_trip`. Status: VERIFIED.
+
+### KF-09 — broadcast frames returned before host learning
+
+- **Legacy**: `processPacketInMessage` called `if (eth.isBroadcast()) return
+  Command.CONTINUE;` *above* the host-learning branch, so ARP -- the primary
+  way a host announces itself -- never populated `mac_port`.
+- **Python requirement**: a broadcast frame is a first-class host observation.
+  `HostObservation` carries `is_broadcast` as data rather than as a reason to
+  discard the event.
+- **Regression test**: `tests/domain/test_host.py::test_broadcast_arp_is_a_valid_observation`.
+  Status: VERIFIED at the domain layer; the adapter-level guarantee lands in P5-OF-07.
+
+### KF-10 — MAC treated as host identity
+
+- **Legacy**: the host table was keyed on MAC alone, so one MAC at two ports
+  collapsed into a single record -- which is precisely the state a location
+  hijack creates, making the attack invisible to every layer above.
+- **Python requirement**: `HostIdentity` pairs MAC with an explicit, coarse
+  `confidence` *label* (never a number), and observations of one MAC at
+  different ports remain distinct values.
+- **Regression test**: `test_same_mac_at_two_ports_stays_distinguishable`,
+  `test_confidence_is_a_label_not_a_number`. Status: VERIFIED.
