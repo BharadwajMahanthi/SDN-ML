@@ -30,10 +30,10 @@ Every row's "Legacy defect" column is the bridge required by the owner:
 | S-01 | Port registry | L-04 | ports per switch | ports added after `switchAdded` untracked | `topology/ports.py` | late port appears; `switchRemoved` reclaims | UNIT_VERIFIED |
 | S-02 | Port typing | L-03 | SWITCH/HOST/ANY from LLDP | dead `receiveTrafficFromPort` disagrees with inline logic | `topology/port_state.py` | LLDP promotes ANY→SWITCH; host traffic promotes ANY→HOST | UNIT_VERIFIED |
 | S-03 | Port-down evidence | L-03 | per-host shutdown flag | never cleared on switch loss | `topology/port_state.py` | flag set on down, cleared on re-observation, dropped with the switch | UNIT_VERIFIED |
-| S-04 | Host table | §1 | single authority incl. ARP | broadcast returns before learning | `hosts/table.py` | ARP populates the table | SPECIFIED |
+| S-04 | Host table | §1 | single authority incl. ARP | broadcast returns before learning | `hosts/table.py` | ARP populates the table | UNIT_VERIFIED |
 | S-06 | Switch lifecycle + generations | L-04 | connect/disconnect/reconnect | no generation concept, so a reconnect kept stale state and in-flight events were indistinguishable | `topology/switches.py` | stale generation rejected after reconnect | UNIT_VERIFIED |
 | S-07 | Inter-switch links | L-05 | unordered port pair | none modelled | `topology/links.py` | unordered pairs; endpoint on a host port is inconsistent | UNIT_VERIFIED |
-| S-05 | Bounded state | §9 | TTL + maxima everywhere | three unbounded maps | `hosts/table.py`, `probes/manager.py` | 10k synthetic hosts stay within a configured bound | SPECIFIED |
+| S-05 | Bounded state | §9 | TTL + maxima everywhere | three unbounded maps | `hosts/table.py`, `probes/manager.py` | 10k synthetic hosts stay within a configured bound | UNIT_VERIFIED |
 
 ## Security logic (Stages 3–4)
 
@@ -83,6 +83,7 @@ Every row's "Legacy defect" column is the bridge required by the owner:
 | P3-DOMAIN-04 | `test/p3-domain-04-properties` | all M-* | UNIT_VERIFIED — 6 invariant families, 338 domain tests, 481 total |
 | P4-TOPO-01 | `feat/p4-topology-01-port-state` | S-01, S-02, S-03 | UNIT_VERIFIED — 23 topology tests, 508 total |
 | P4-TOPO-02 | `feat/p4-topology-02-link-state` | S-06, S-07 (new) | UNIT_VERIFIED — 43 topology tests, 532 total |
+| P4-HOST-01 | `feat/p4-hosts-01-host-table` | S-04, S-05 | UNIT_VERIFIED — 24 host tests, 560 total |
 
 Delivered beyond the specified minimum, with reasons:
 

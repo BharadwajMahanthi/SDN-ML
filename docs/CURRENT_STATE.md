@@ -16,7 +16,8 @@ REPORTED / HYPOTHESIS / NOT_RUN / BLOCKED.
 | P3-DOMAIN-05 clock abstraction | VERIFIED | 309 domain tests; 452 total |
 | P3-DOMAIN-04 property tests | VERIFIED | 6 invariant families; 481 total |
 | P4-TOPO-01 port state | VERIFIED | 508 total |
-| P4-TOPO-02 switch/link lifecycle | VERIFIED | 43 topology tests; 532 total |
+| P4-TOPO-02 switch/link lifecycle | VERIFIED | 532 total |
+| P4-HOST-01 host table | VERIFIED | 24 host tests; 560 total |
 | P4 remaining | NOT_RUN | in progress |
 | Stage 2+ | NOT_RUN | — |
 
