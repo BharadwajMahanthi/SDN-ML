@@ -93,3 +93,17 @@ This is the conversion the owner mandated in place of repairing Java.
 - **Regression tests**: `tests/domain/test_clock.py::test_deadline_survives_a_wall_clock_step_backwards`
   and `::test_deadline_does_not_expire_early_on_a_wall_clock_jump_forward`.
   Status: VERIFIED.
+
+### KF-12 — switch removal never reclaimed port state
+
+- **Legacy**: `PortManager.switchRemoved` was an empty method with a `TODO`,
+  so `port_list` and `mac_port` accumulated entries for the process lifetime.
+  Combined with the unbounded `probedPorts`, three collections grew without
+  limit -- a state-exhaustion surface reachable by anyone who could make
+  switches connect and disconnect.
+- **Python requirement**: `PortRegistry.remove_switch(dpid)` drops every port
+  of a departed switch, and every collection has an explicit limit that
+  *refuses* growth rather than evicting silently. Silent eviction would let
+  an attacker flush a victim's record.
+- **Regression tests**: `tests/topology/test_ports.py::test_removing_a_switch_reclaims_all_of_its_ports`,
+  `::test_port_count_is_bounded_and_refuses_rather_than_evicting`. Status: VERIFIED.

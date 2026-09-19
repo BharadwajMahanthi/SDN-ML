@@ -27,9 +27,9 @@ Every row's "Legacy defect" column is the bridge required by the owner:
 
 | ID | Capability | Legacy | Intended | Legacy defect | Python module | Test | Status |
 |---|---|---|---|---|---|---|---|
-| S-01 | Port registry | L-04 | ports per switch | ports added after `switchAdded` untracked | `topology/ports.py` | late port appears; `switchRemoved` reclaims | SPECIFIED |
-| S-02 | Port typing | L-03 | SWITCH/HOST/ANY from LLDP | dead `receiveTrafficFromPort` disagrees with inline logic | `topology/port_state.py` | LLDP promotes ANY→SWITCH; host traffic promotes ANY→HOST | SPECIFIED |
-| S-03 | Port-down evidence | L-03 | per-host shutdown flag | never cleared on switch loss | `topology/port_state.py` | flag set on down, cleared on re-observation, dropped with the switch | SPECIFIED |
+| S-01 | Port registry | L-04 | ports per switch | ports added after `switchAdded` untracked | `topology/ports.py` | late port appears; `switchRemoved` reclaims | UNIT_VERIFIED |
+| S-02 | Port typing | L-03 | SWITCH/HOST/ANY from LLDP | dead `receiveTrafficFromPort` disagrees with inline logic | `topology/port_state.py` | LLDP promotes ANY→SWITCH; host traffic promotes ANY→HOST | UNIT_VERIFIED |
+| S-03 | Port-down evidence | L-03 | per-host shutdown flag | never cleared on switch loss | `topology/port_state.py` | flag set on down, cleared on re-observation, dropped with the switch | UNIT_VERIFIED |
 | S-04 | Host table | §1 | single authority incl. ARP | broadcast returns before learning | `hosts/table.py` | ARP populates the table | SPECIFIED |
 | S-05 | Bounded state | §9 | TTL + maxima everywhere | three unbounded maps | `hosts/table.py`, `probes/manager.py` | 10k synthetic hosts stay within a configured bound | SPECIFIED |
 
@@ -79,6 +79,7 @@ Every row's "Legacy defect" column is the bridge required by the owner:
 | P3-DOMAIN-03 | `feat/p3-domain-03-security-events` | M-07, M-08, M-09, M-10 | UNIT_VERIFIED — 290 domain tests, 433 total |
 | P3-DOMAIN-05 | `feat/p3-domain-05-time-abstraction` | M-11 (new) | UNIT_VERIFIED — 309 domain tests, 452 total |
 | P3-DOMAIN-04 | `test/p3-domain-04-properties` | all M-* | UNIT_VERIFIED — 6 invariant families, 338 domain tests, 481 total |
+| P4-TOPO-01 | `feat/p4-topology-01-port-state` | S-01, S-02, S-03 | UNIT_VERIFIED — 23 topology tests, 504 total |
 
 Delivered beyond the specified minimum, with reasons:
 
