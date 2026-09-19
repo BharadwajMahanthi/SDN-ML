@@ -18,7 +18,8 @@ REPORTED / HYPOTHESIS / NOT_RUN / BLOCKED.
 | P4-TOPO-01 port state | VERIFIED | 508 total |
 | P4-TOPO-02 switch/link lifecycle | VERIFIED | 532 total |
 | P4-HOST-01 host table | VERIFIED | 560 total |
-| P4-MOVE-01/02 movement state machine | VERIFIED | 71 host tests; 609 total |
+| P4-MOVE-01/02 movement state machine | VERIFIED | 609 total |
+| P4-PROBE-01/02 probe manager | VERIFIED | 31 probe tests; 640 total |
 | P4 remaining | NOT_RUN | in progress |
 | Stage 2+ | NOT_RUN | — |
 

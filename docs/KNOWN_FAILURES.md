@@ -133,3 +133,18 @@ This is the conversion the owner mandated in place of repairing Java.
   the table.
 - **Regression tests**: `::test_old_location_ages_out_and_the_move_becomes_plain`,
   `::test_a_stored_record_always_has_at_least_one_location`. Status: VERIFIED.
+
+### KF-15 — probe replies could be forged by any on-segment attacker
+
+- **Legacy**: the reply check compared source IP, source MAC and a hardcoded
+  controller IP. Every one of those is forgeable by an attacker on the same
+  segment, and there was no nonce at all. An attacker could therefore have
+  *manufactured* a hijack verdict against a host that had legitimately moved.
+- **Python requirement**: three independent checks must all pass -- a
+  single-use unguessable nonce, the probed host's MAC, and the port the probe
+  was actually sent to. An unmatched reply is not an error; it is simply not
+  evidence.
+- **Regression tests**: `tests/probes/test_manager.py::test_all_three_checks_are_required`,
+  `::test_an_unknown_nonce_is_not_evidence`, and
+  `tests/hosts/test_movement_scenarios.py::test_attack_forged_probe_reply_with_a_guessed_id_is_rejected`.
+  Status: VERIFIED.
