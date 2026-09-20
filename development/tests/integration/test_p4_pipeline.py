@@ -203,8 +203,19 @@ def test_the_whole_p4_core_imports_no_openflow_library():
     forbidden = {"ryu", "os_ken", "pox", "ovs", "scapy", "dpkt",
                  "eventlet", "gevent", "twisted", "floodlight"}
     root = Path(__file__).resolve().parents[2] / "src" / "sdnguard"
+
+    # The P4 claim is about the *core*: the chain from observation to decision.
+    # adapter/ is the framework boundary by design (ADR-005/017) and has its
+    # own guard in tests/domain/test_no_framework_dependencies.py, which also
+    # asserts the exemption list is exactly one file. Naming the core packages
+    # explicitly keeps this test honest about what it covers.
+    core_packages = ("domain", "topology", "hosts", "probes", "detection",
+                     "policy", "observability", "controller")
+    paths = [p for pkg in core_packages for p in (root / pkg).rglob("*.py")]
+    assert len(paths) >= 12, "guard would pass vacuously"
+
     offenders = {}
-    for path in root.rglob("*.py"):
+    for path in paths:
         tree = ast.parse(path.read_text())
         roots = set()
         for node in ast.walk(tree):
@@ -215,6 +226,19 @@ def test_the_whole_p4_core_imports_no_openflow_library():
         if roots & forbidden:
             offenders[str(path.relative_to(root))] = sorted(roots & forbidden)
     assert offenders == {}
+
+
+def test_the_p4_core_package_list_matches_the_tree():
+    """If a new core package appears, this test fails until someone decides
+    whether it belongs inside the framework-free boundary. Silence here would
+    mean a package could quietly escape the guard."""
+    root = Path(__file__).resolve().parents[2] / "src" / "sdnguard"
+    on_disk = {p.name for p in root.iterdir() if p.is_dir() and p.name != "__pycache__"}
+    accounted = {"domain", "topology", "hosts", "probes", "detection", "policy",
+                 "observability", "controller", "adapter"}
+    assert on_disk == accounted, (
+        f"unaccounted packages: {sorted(on_disk - accounted)}; decide whether "
+        "each belongs inside the framework-free core before adding it here")
 
 
 def test_no_framework_module_is_loaded_after_running_the_pipeline():
