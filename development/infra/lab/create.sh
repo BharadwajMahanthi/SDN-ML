@@ -2,6 +2,9 @@
 # Create the sdnguard P6 lab. One command, idempotent, pinned AMI.
 set -euo pipefail
 REGION="${SDNGUARD_REGION:-ap-south-1}"
+# Least-privilege by default: temporary STS credentials from the lab role.
+# Override only with a deliberate SDNGUARD_PROFILE.
+export AWS_PROFILE="${SDNGUARD_PROFILE:-sdnguard}"
 STACK="${SDNGUARD_STACK:-sdnguard-p6-lab}"
 AMI="${SDNGUARD_AMI:-ami-0c0fd09cfe77b59dc}"      # Ubuntu 24.04 LTS x86_64, pinned
 TYPE="${SDNGUARD_INSTANCE_TYPE:-t3a.large}"

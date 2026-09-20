@@ -1,0 +1,162 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  sdnguard credential baseline. Replaces root access keys as the normal
+  operating credential with an assumable role reached through a near-powerless
+  entry user, so day-to-day work runs on temporary STS credentials.
+
+Parameters:
+  LabRegion:
+    Type: String
+    Default: ap-south-1
+  LabStackName:
+    Type: String
+    Default: sdnguard-p6-lab
+
+Resources:
+  # The working role. Permissions are derived from the operations P6 actually
+  # performs, not from a convenience grant. Sessions are one hour.
+  SdnguardLabRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: sdnguard-lab-role
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'}
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: sdnguard-lab-operations
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # Stack lifecycle for the lab, by name.
+              - Sid: CloudFormationLabStacks
+                Effect: Allow
+                Action:
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:DeleteStack
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeStackResources
+                  - cloudformation:GetTemplateSummary
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DeleteChangeSet
+                Resource:
+                  - !Sub 'arn:aws:cloudformation:${LabRegion}:${AWS::AccountId}:stack/${LabStackName}/*'
+                  - !Sub 'arn:aws:cloudformation:${LabRegion}:${AWS::AccountId}:stack/${LabStackName}-*/*'
+                  - !Sub 'arn:aws:cloudformation:${LabRegion}:${AWS::AccountId}:changeSet/*'
+              - Sid: CloudFormationReadOnly
+                Effect: Allow
+                Action: [cloudformation:ListStacks, cloudformation:ValidateTemplate]
+                Resource: '*'
+                Condition: {StringEquals: {'aws:RequestedRegion': !Ref LabRegion}}
+
+              # EC2 describes are unavoidably '*' -- the API does not support
+              # resource-level authorization for them -- but they are read-only
+              # and pinned to the lab region.
+              - Sid: Ec2ReadOnlyInLabRegion
+                Effect: Allow
+                Action:
+                  - ec2:Describe*
+                  - ec2:GetConsoleOutput
+                Resource: '*'
+                Condition: {StringEquals: {'aws:RequestedRegion': !Ref LabRegion}}
+
+              - Sid: Ec2LabMutationsInLabRegion
+                Effect: Allow
+                Action:
+                  - ec2:RunInstances
+                  - ec2:TerminateInstances
+                  - ec2:StopInstances
+                  - ec2:StartInstances
+                  - ec2:CreateTags
+                  - ec2:CreateSecurityGroup
+                  - ec2:DeleteSecurityGroup
+                  - ec2:AuthorizeSecurityGroupEgress
+                  - ec2:RevokeSecurityGroupEgress
+                  - ec2:ModifyInstanceAttribute
+                  - ec2:DeleteVolume
+                Resource: '*'
+                Condition: {StringEquals: {'aws:RequestedRegion': !Ref LabRegion}}
+
+              # IAM is deliberately narrow: only the lab instance role, and
+              # PassRole only for that role. No user or policy management, so
+              # this credential cannot escalate itself.
+              - Sid: LabInstanceRoleOnly
+                Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:TagRole
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:ListRolePolicies
+                  - iam:ListAttachedRolePolicies
+                  - iam:CreateInstanceProfile
+                  - iam:DeleteInstanceProfile
+                  - iam:GetInstanceProfile
+                  - iam:AddRoleToInstanceProfile
+                  - iam:RemoveRoleFromInstanceProfile
+                Resource:
+                  - !Sub 'arn:aws:iam::${AWS::AccountId}:role/${LabStackName}-*'
+                  - !Sub 'arn:aws:iam::${AWS::AccountId}:instance-profile/${LabStackName}-*'
+              - Sid: PassOnlyTheLabInstanceRole
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${LabStackName}-*'
+                Condition: {StringEquals: {'iam:PassedToService': ec2.amazonaws.com}}
+
+              # SSM is the only access path to the lab host.
+              - Sid: SsmRunCommandInLabRegion
+                Effect: Allow
+                Action:
+                  - ssm:SendCommand
+                  - ssm:GetCommandInvocation
+                  - ssm:ListCommandInvocations
+                  - ssm:ListCommands
+                  - ssm:DescribeInstanceInformation
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                Resource: '*'
+                Condition: {StringEquals: {'aws:RequestedRegion': !Ref LabRegion}}
+
+              # Read-only discovery used by the preflight report.
+              - Sid: PricingAndIdentityReadOnly
+                Effect: Allow
+                Action: [pricing:GetProducts, pricing:DescribeServices, sts:GetCallerIdentity]
+                Resource: '*'
+              - Sid: CleanupVerificationReadOnly
+                Effect: Allow
+                Action: [elasticloadbalancing:DescribeLoadBalancers, iam:ListRoles]
+                Resource: '*'
+      Tags:
+        - {Key: Project, Value: sdnguard}
+
+  # The entry principal. Its ONLY permission is to assume the role above, so
+  # its long-term key is close to worthless on its own.
+  SdnguardOperator:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: sdnguard-operator
+      Policies:
+        - PolicyName: assume-lab-role-only
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: sts:AssumeRole
+                Resource: !GetAtt SdnguardLabRole.Arn
+      Tags:
+        - {Key: Project, Value: sdnguard}
+
+Outputs:
+  LabRoleArn:
+    Value: !GetAtt SdnguardLabRole.Arn
+  OperatorUserName:
+    Value: !Ref SdnguardOperator

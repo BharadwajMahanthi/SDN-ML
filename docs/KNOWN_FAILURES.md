@@ -198,9 +198,31 @@ This is the conversion the owner mandated in place of repairing Java.
   by a permission boundary, and cannot be contained after a leak without
   closing the account. This contradicts the project's own contract, which
   requires least-privilege IAM and short-lived credentials.
-- **Status**: OPEN. Work proceeded because the owner authorised it and the
-  lab itself has no inbound exposure, but this is not a resolved risk.
+- **Status**: MITIGATED, not closed (2026-09-20). Normal operation now runs on
+  temporary STS credentials from `sdnguard-lab-role`, reached through an IAM
+  user whose only permission is to assume it (ADR-023). Root keys are still
+  **active**; deactivating them is an owner action that must not be automated.
+  See `ROOT_KEY_REPLACEMENT_READY` in CURRENT_STATE.md for the exact steps.
 - **Recommendation**: create an IAM principal scoped to EC2, CloudFormation
   and SSM in `ap-south-1`, switch to it, and **delete the root access keys**.
 - **Carried into**: P11-AWS-02, which cannot honestly be called complete while
   the lab runs on root credentials.
+
+### KF-20 — a denial probe that never reached IAM authorization
+
+- **Found while verifying the new credential.** The probe
+  `ec2:RunInstances --region us-east-1` with a fake AMI id was reported as
+  "NOT DENIED - PRIVILEGE TOO BROAD". The policy was correct; EC2 validates
+  the AMI identifier before evaluating IAM, so the call failed with
+  `InvalidAMIID.Malformed` and the region condition was never exercised.
+- **Why it matters**: the error is symmetric. The same probe could as easily
+  have been counted as a pass, asserting a least-privilege property that was
+  never tested -- the same species of error as the legacy project's
+  tautological detection.
+- **Fix**: denial probes now have three outcomes, with *inconclusive* never
+  counting as a pass, and region-scoped probes carry a positive control that
+  proves they reach authorization (ADR-024).
+- **Regression evidence**: `verify_credentials.sh` reports
+  `19 expected, 0 unexpected, 0 inconclusive`, with
+  `ec2:CreateSecurityGroup --dry-run` returning `DryRunOperation` in
+  ap-south-1 and `UnauthorizedOperation` in us-east-1. Status: VERIFIED.

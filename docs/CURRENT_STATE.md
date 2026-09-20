@@ -28,6 +28,7 @@ REPORTED / HYPOTHESIS / NOT_RUN / BLOCKED.
 | P5-OF-04/05/06 packet normalisation | VERIFIED | 37 parser tests; 803 total |
 | P5-OF-06/08/09, real adapter | UNBLOCKED | lab substrate now exists |
 | **P6-LAB-01 Linux/OVS lab** | **VERIFIED ON REAL HARDWARE** | Ubuntu 24.04.4, kernel 7.0.0-1012-aws, OVS 3.3.9, dpid 0000aabbccddeeff |
+| P6-CLOUD-SEC-00 credentials | VERIFIED | scoped role, temporary sessions, 19 checks / 0 unexpected |
 | Stage 2+ | NOT_RUN | — |
 
 ## Repository layout (ADR-020)
@@ -63,7 +64,30 @@ reference material only (ADR-004).
   kernel datapath: `openvswitch` module loaded, datapath types `[netdev,
   system]`, four namespaces on explicit veth pairs, traffic proven to cross
   the datapath with **zero packets** on the EC2 management interface.
-- **B-5** The lab runs on root AWS credentials. See KF-19. Status: OPEN, HIGH.
+- **B-5** MITIGATED. Normal operation runs on temporary STS credentials from
+  `sdnguard-lab-role` (ADR-023), verified by 19 allow/deny/control checks with
+  0 unexpected results. Root keys are still active. See below.
+
+## ROOT_KEY_REPLACEMENT_READY — OWNER_ACTION_REQUIRED
+
+The replacement credential path is live and proven. Deactivating the root keys
+is deliberately **not** automated, because a mistake there locks the account.
+
+Exact manual steps for the owner:
+
+1. Sign in to the AWS console **as root**.
+2. Account menu -> **Security credentials**.
+3. Under **Access keys**, find the key currently configured on this
+   workstation's `default` CLI profile.
+4. Choose **Deactivate** first, not Delete.
+5. Confirm the project still works: `development/infra/lab/verify_credentials.sh`
+   should still report 0 unexpected, since it uses the `sdnguard` profile.
+6. Once satisfied, return and **Delete** the deactivated key.
+7. Optional but recommended: enable MFA on the root user and stop using it
+   for anything except account-level administration.
+
+Afterwards, KF-19 can be closed and P11-AWS-02 becomes completable. Until
+then P11-AWS-02 must be reported as incomplete.
 - **B-2** The legacy Java build expects JDK 11; the host has JDK 17 and
   `build.xml` pins `source/target=1.6`. Marked
   `LEGACY_JAVA_RUNTIME_NOT_REQUIRED_FOR_CURRENT_MIGRATION`. Not a blocker; no
