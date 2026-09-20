@@ -30,14 +30,53 @@ from datetime import datetime, timedelta, timezone
 __all__ = [
     "SCHEMA_VERSION", "ActionType", "TargetKind", "Target", "ActionRequest",
     "Decision", "DenyReason", "AuthorizationDecision", "ActionState",
-    "ContractError", "MAX_REASON_CHARS", "MAX_TTL",
+    "ContractError", "MAX_REASON_CHARS", "MAX_POLICY_VERSION_CHARS", "MAX_TTL",
 ]
 
 SCHEMA_VERSION = 1
 MAX_REASON_CHARS = 256
+MAX_POLICY_VERSION_CHARS = 64
 MAX_TTL = timedelta(hours=1)
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{7,63}$")
 _NAME = re.compile(r"^[a-z][a-z0-9_-]{1,63}$")
+
+
+def _require_str(raw: dict, field: str, *, default: str | None = None) -> str:
+    """Read a string field without coercing anything into one.
+
+    ``str(value)`` is the defect this replaces. It turned ``None`` into the
+    string ``"None"`` -- non-empty, under the length cap, and therefore an
+    acceptable reason for a privileged action -- and turned an integer
+    ``request_id`` into a string that matched the id pattern. Both were
+    ALLOWED by the broker until fuzzing found them (KF-36).
+
+    A caller that sends the wrong type is refused, not reinterpreted.
+    """
+    if field not in raw or raw[field] is None:
+        if default is not None:
+            return default
+        raise ContractError(f"{field} is required")
+    value = raw[field]
+    if not isinstance(value, str):
+        raise ContractError(
+            f"{field} must be a string, got {type(value).__name__}")
+    return value
+
+
+def _require_int(raw: dict, field: str) -> int:
+    """An integer, and not a bool.
+
+    ``True == 1`` in Python, so a bare equality check accepts ``true`` where
+    an integer was required -- which let ``schema_version: true`` pass as
+    schema version 1.
+    """
+    if field not in raw:
+        raise ContractError(f"{field} is required")
+    value = raw[field]
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ContractError(
+            f"{field} must be an integer, got {type(value).__name__}")
+    return value
 
 
 class ContractError(ValueError):
@@ -126,8 +165,14 @@ class Target:
             kind = TargetKind(raw.get("kind"))
         except ValueError as exc:
             raise ContractError(f"unknown target kind {raw.get('kind')!r}") from exc
-        return Target(kind, str(raw.get("host_id", "")), str(raw.get("boot_id", "")),
-                      str(raw.get("identifier", "")), str(raw.get("service_name", "")))
+        unknown = set(raw) - {"kind", "host_id", "boot_id", "identifier",
+                              "service_name"}
+        if unknown:
+            raise ContractError(f"unknown target field(s): {sorted(unknown)}")
+        return Target(kind, _require_str(raw, "host_id"),
+                      _require_str(raw, "boot_id"),
+                      _require_str(raw, "identifier"),
+                      _require_str(raw, "service_name", default=""))
 
     def __str__(self) -> str:
         label = self.service_name or self.identifier
@@ -169,14 +214,32 @@ class ActionRequest:
             raise ContractError("duration must be a timedelta")
         if self.duration <= timedelta(0):
             raise ContractError("duration must be positive")
-        if not self.reason or len(self.reason) > MAX_REASON_CHARS:
-            raise ContractError("reason required, and bounded")
+        if not self.reason.strip() or len(self.reason) > MAX_REASON_CHARS:
+            # A blank reason makes a privileged action unauditable, and " "
+            # passed the old emptiness check. Found by fuzzing (KF-36).
+            raise ContractError("reason required, non-blank, and bounded")
+        if any(ord(c) < 0x20 or ord(c) == 0x7F for c in self.reason):
+            # Control characters in a field that lands in an audit record are
+            # a log-forging primitive: a newline lets a caller write what
+            # looks like a second entry.
+            raise ContractError("reason must not contain control characters")
         if not _ID.match(self.finding_id):
             raise ContractError("finding_id must reference a real finding")
         if self.requested_at.tzinfo is None:
             raise ContractError("requested_at must be timezone-aware")
         if not _NAME.match(self.requesting_component):
             raise ContractError("requesting_component must be a simple name")
+        if any(ord(c) < 0x20 or ord(c) == 0x7F for c in self.policy_version):
+            # Same log-forging concern as ``reason``: it is recorded, so it
+            # is held to the same rule. Fuzzing found it accepting a NUL.
+            raise ContractError(
+                "policy_version must not contain control characters")
+        if len(self.policy_version) > MAX_POLICY_VERSION_CHARS:
+            # Unbounded until fuzzing asked what a 10,000-character policy
+            # version would do. It is informational and lands in the journal,
+            # so it is bounded like everything else that does.
+            raise ContractError("policy_version exceeds "
+                                f"{MAX_POLICY_VERSION_CHARS} characters")
         if self.destination_cidr is not None:
             _validate_cidr(self.destination_cidr)
 
@@ -203,7 +266,7 @@ class ActionRequest:
     def from_dict(raw: object) -> "ActionRequest":
         if not isinstance(raw, dict):
             raise ContractError("request must be an object")
-        if raw.get("schema_version") != SCHEMA_VERSION:
+        if _require_int(raw, "schema_version") != SCHEMA_VERSION:
             raise ContractError(
                 f"unsupported request schema {raw.get('schema_version')!r}")
         # An unknown field is refused rather than ignored: a caller that
@@ -220,24 +283,26 @@ class ActionRequest:
         except ValueError as exc:
             raise ContractError(
                 f"unknown action_type {raw.get('action_type')!r}") from exc
-        seconds = raw.get("duration_seconds")
-        if not isinstance(seconds, int) or isinstance(seconds, bool):
-            raise ContractError("duration_seconds must be an integer")
+        seconds = _require_int(raw, "duration_seconds")
         if not 0 < seconds <= 86_400:
             raise ContractError("duration_seconds out of representable range")
         try:
-            requested_at = datetime.fromisoformat(str(raw.get("requested_at")))
+            requested_at = datetime.fromisoformat(_require_str(raw, "requested_at"))
         except ValueError as exc:
             raise ContractError("malformed requested_at") from exc
+        destination = raw.get("destination_cidr")
+        if destination is not None and not isinstance(destination, str):
+            raise ContractError("destination_cidr must be a string or null")
         return ActionRequest(
-            request_id=str(raw.get("request_id", "")), action_type=action_type,
+            request_id=_require_str(raw, "request_id"), action_type=action_type,
             target=Target.from_dict(raw.get("target")),
-            duration=timedelta(seconds=seconds), reason=str(raw.get("reason", "")),
-            finding_id=str(raw.get("finding_id", "")), requested_at=requested_at,
-            requesting_component=str(raw.get("requesting_component", "")),
-            policy_version=str(raw.get("policy_version", "")),
-            destination_cidr=(str(raw["destination_cidr"])
-                              if raw.get("destination_cidr") else None))
+            duration=timedelta(seconds=seconds),
+            reason=_require_str(raw, "reason"),
+            finding_id=_require_str(raw, "finding_id"),
+            requested_at=requested_at,
+            requesting_component=_require_str(raw, "requesting_component"),
+            policy_version=_require_str(raw, "policy_version", default=""),
+            destination_cidr=destination or None)
 
 
 class Decision(enum.Enum):

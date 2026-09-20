@@ -4,6 +4,38 @@ Claude Code and Codex share this file. It is guidance, not a security
 boundary: the enforcement lives in `tools/context_policy.yaml` and the code
 that reads it.
 
+## 0. What this project is, and what it is for
+
+Read this before deciding anything. Sessions that skip it re-derive the
+project wrongly and build the wrong thing.
+
+**Annulon is a local-first security agent for ordinary Linux cloud servers.**
+It observes what actually happens on a host (processes, and later network and
+file activity), turns observations into evidence, turns evidence into
+findings with separate severity and confidence, and — only through a
+privileged broker that the core cannot command — takes narrow, reversible,
+time-bounded containment actions. The end goal is a host that can contain a
+compromise itself, within seconds, without an operator present, and without
+the security agent ever becoming the more dangerous component.
+
+**SDN is one optional protection pack, not the product.** Software-defined
+networking separates the *control plane* (a central controller that decides
+where packets may go) from the *data plane* (switches that only forward).
+The controller has a global view and programs flow rules into switches over
+OpenFlow. That centralisation is the security opportunity — one place can see
+and stop a lateral movement across the whole fabric — and the security
+problem: the controller believes what switches and hosts tell it, so a lying
+host can poison topology (fake links, host hijacking) and redirect traffic.
+`development/src/sdnguard` is our controller-side defence against exactly
+that, and it plugs into the same evidence and response boundary as the host
+agent. If someone runs Annulon on a plain server with no SDN, everything
+except that pack must still work.
+
+The privileged-response boundary is the load-bearing safety property:
+**compromise, malfunction, hallucination, or bad logic in the Annulon core
+must not yield arbitrary privileged execution.** Every design choice that
+looks over-strict is defending that sentence.
+
 ## 1. Start every session here
 
 ```bash
@@ -54,12 +86,58 @@ diffs — the store refuses probable secrets and oversized records.
 Durable knowledge belongs in `docs/`, not the journal. The journal rotates;
 `docs/` does not.
 
+**These obligations are mandatory and survive context compaction.** A new
+context window is not a new project. Every session — including one resumed
+mid-task after a summary — must run the section 1 commands, honour the claim
+it holds, checkpoint before it risks losing context, and release the claim at
+the end. An agent that skips the brief and starts editing is operating on a
+reconstruction of the project rather than the project.
+
 ## 4. Claim status honestly
 
 Use exactly one of: `VERIFIED` (executed evidence), `SUPPORTED_BY_STATIC_ANALYSIS`,
 `REPORTED` (inherited), `HYPOTHESIS`, `NOT_RUN`, `BLOCKED`. Never promote
 expected/planned/assumed into measured/verified/proven. Never call the system
 impenetrable, provably secure, or production-ready without scoped evidence.
+
+## Real systems only — no fakes in the delivery path
+
+We are building real security infrastructure. A simulation is never evidence
+about reality, and a test double is never a deliverable.
+
+- A fake or in-memory implementation is permitted **only** as a test double.
+  It must never be reachable from a production entry point, and no capability
+  may be claimed on the strength of one. `sdnguard/adapter/fake.py` is
+  allowed because it is imported solely by tests and because the real OS-Ken
+  adapter must pass the *same* conformance suite.
+- Every test double has a real counterpart, and both run against one shared
+  contract suite. A double without a real counterpart is a stub for work that
+  has not been done — say so, in `NOT_RUN` terms.
+- Privileged actions are proven against a real kernel: real nftables, real
+  netlink, real interfaces, real packet counters. "The unit test passed" is
+  `SUPPORTED_BY_STATIC_ANALYSIS`, never `VERIFIED`.
+- Every enforcement experiment needs a negative control. An experiment that
+  cannot fail has not measured anything.
+
+## Platform parity — macOS is a first-class development platform
+
+The repository must be fully workable on macOS. Two tiers, both real:
+
+- **Tier 1, native macOS.** The full test suite, `tools/verify_all.py`, the
+  SDN controller, the domain and evidence layers, and the privileged broker
+  with genuine peer-credential authentication (`LOCAL_PEERCRED`/`LOCAL_PEERPID`
+  on Darwin, `SO_PEERCRED` on Linux). These run on a Mac with no VM.
+- **Tier 2, macOS hosting a real Linux kernel.** Kernel-coupled work —
+  netlink process events, nftables containment, OVS datapaths — runs in a
+  Linux VM on the Mac (Docker Desktop's VM, Lima or Colima). This is a real
+  kernel executing the same code as EC2, not an emulation of one. AWS is a
+  deployment target, never a prerequisite for development.
+
+Platform-specific code states its platform and fails loudly where it cannot
+work. It never silently degrades to a weaker guarantee — a broker that cannot
+identify its callers refuses the connection rather than trusting the payload.
+"macOS cannot do X" is not a conclusion; it triggers the ALTERNATIVE_ANALYSIS
+in "No artificial dead ends".
 
 ## No artificial dead ends
 
@@ -102,9 +180,23 @@ status) recorded before implementation.
 
 ## Repository hygiene
 
+`main` is the only long-lived branch, and it holds the product: the Python
+platform under `development/`, the governance tooling under `tools/`, and
+`docs/`. Nothing else lives there.
+
 Merge through `python tools/merge_gate.py merge <branch>`. It deletes the
 branch on success; the merge commit is the history and a leftover ref only
-hides what is actually in flight. Keep `main` the single long-lived branch.
+hides what is actually in flight.
+
+- A working branch exists only while its task is in flight. After the merge
+  gate passes, it is merged and deleted in the same step.
+- The sole permitted exception is `legacy/java-topoguard-research`, the
+  archive of the original Java tree. It is published to the remote so the
+  history survives, and it is never merged into `main` and never developed on.
+  `ARCHIVE_BRANCHES` in `tools/verify_all.py` protects it from deletion.
+- No other long-lived branch may be created. If work needs to persist across
+  sessions, it belongs on `main` behind a flag or in `docs/`, not on a branch
+  nobody merges.
 
 ## 6. Session close
 

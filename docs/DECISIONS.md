@@ -605,3 +605,74 @@ Architecture decision records. Supersede rather than delete.
 - **Honest note**: git history retains the deleted files; the working tree no
   longer carries them. Removing them from history would require a rewrite,
   which is not warranted and was not requested.
+
+## ADR-046 — the broker decides; only a backend acts
+
+**Status**: accepted, implemented in V2-SAFE-02.
+
+**Problem.** V2-SAFE-01 pre-declared `annulon/response/broker.py` exempt from
+the privileged-action invariant, on the reasoning that the broker is the
+single privileged path and therefore the module allowed to hold an execution
+primitive.
+
+**What changed.** Implementing the broker showed the exemption was not
+needed. The broker imports no execution module, calls no execution primitive
+and names no privileged tool. All of that lives behind the `Enforcer`
+interface in a backend module.
+
+**Decision.** The broker is held to the same invariant as every other module,
+and a dedicated test asserts it is absent from `PRIVILEGED_EXEMPT` as well as
+free of primitives. Only the enforcement backend is exempt.
+
+**Why it matters.** The broker is the component that parses input from the
+process most likely to be compromised. It is therefore the component that
+should contain the least worth reaching. Separating "decide" from "act" also
+means the authorization argument and the privileged mechanism can be reviewed
+independently, which is not true when one module does both.
+
+**Cost.** The backend boundary must carry typed values rather than rendered
+commands, which is slightly more code than calling a tool directly. That cost
+is the point.
+
+## ADR-047 — caller identity comes from the kernel, and the broker refuses to run without it
+
+**Status**: accepted, implemented in V2-SAFE-02.
+
+**Problem.** The broker must know which process is asking. A request body
+that names its sender is a claim, not evidence, and filesystem permissions on
+a socket narrow who *can* connect without establishing who *did*.
+
+**Decision.** A Unix domain socket with kernel-supplied peer credentials:
+`SO_PEERCRED` on Linux, `LOCAL_PEERCRED`/`LOCAL_PEERPID` on Darwin. The uid is
+mapped to a policy identity through broker-owned configuration. A uid that is
+not in that map becomes `UNKNOWN_CALLER`, which no policy grants. Root is not
+special-cased: a privileged local process is not automatically the core.
+
+On a platform with no peer-credential mechanism the broker **refuses to
+start**. Degrading to trusting the payload would be security theatre, and
+TCP on loopback was rejected outright — it is reachable by every local
+process and carries no identity.
+
+**Consequence.** macOS is a genuine development platform for this component
+rather than a degraded one: the same authentication property holds, verified
+by tests that run against a real socket.
+
+## ADR-048 — intent is journalled before the OS is touched
+
+**Status**: accepted, implemented in V2-SAFE-02.
+
+**Problem.** An unscheduled restart between authorizing an action and
+applying it, or between applying it and recording it, leaves the host holding
+state nobody knows about. A "temporary" restriction then becomes permanent.
+
+**Decision.** The broker writes an `APPLYING` record, fsynced, *before*
+calling the backend, and the outcome afterwards. Reconciliation at startup
+works in both directions: state owned but not journalled is an orphan and is
+removed; a record whose state is absent is closed so it stops counting
+against the active-action ceiling. An `UNCERTAIN` backend outcome keeps the
+action in a state that still counts as holding OS state, because forgetting a
+rule that might exist is the unsafe direction.
+
+**Cost.** Two synchronous writes per action, measured at 0.138 ms per
+denial-path request including fsync. Acceptable for an operation that is rare
+by design and rate-limited.

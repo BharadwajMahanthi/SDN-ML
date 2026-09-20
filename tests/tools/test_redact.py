@@ -153,3 +153,63 @@ def test_keyword_arguments_are_not_high_entropy_secrets(code):
 )
 def test_base64_with_trailing_padding_is_still_caught(secret):
     assert not redact(secret).clean, "trailing '=' padding must still match"
+
+
+# --- KF-34: prose must not be mistaken for a secret assignment -------------
+
+PROSE_THAT_IS_NOT_A_SECRET = [
+    "peer-credential auth via LOCAL_PEERCRED",
+    "the token for this session",
+    "a private key to the host",
+    "credential store",
+    "auth via peer credentials",
+    "token bucket rate limiting",
+    "secret of success",
+    "password policy applies",
+    "access-key rotation guidance",
+    "the api-key header name",
+]
+
+ASSIGNMENTS_THAT_ARE_SECRETS = [
+    "password=hunter2",
+    "API_KEY: AKIAIOSFODNN7EXAMPLE",
+    "--password hunter2",
+    'SUDO_PASS="s3cr3t!"',
+    "token abc123XYZ789",
+    "passphrase correcthorsebatterystaple",
+    "private_key: /tmp/x.pem",
+    "secret 'aVeryLongOpaqueValue12345'",
+    "credential=swordfish",
+    "run --token ghp_ABCdef123456",
+]
+
+
+@pytest.mark.parametrize("text", PROSE_THAT_IS_NOT_A_SECRET)
+def test_prose_is_not_redacted(text):
+    """Whitespace is a weak assignment signal; English is not a secret.
+
+    The redactor blocking legitimate records is not a harmless failure: a
+    guard that fires on ordinary sentences is one that gets disabled.
+    """
+    result = redact(text)
+    assert not result.findings, f"{text!r} -> {[f.kind for f in result.findings]}"
+    assert result.text == text
+
+
+@pytest.mark.parametrize("text", ASSIGNMENTS_THAT_ARE_SECRETS)
+def test_real_assignments_are_still_redacted(text):
+    """The fix for KF-34 must not open the hole it was narrowing."""
+    result = redact(text)
+    assert result.findings, f"{text!r} was not redacted"
+
+
+def test_hyphen_inside_a_word_is_not_a_command_line_flag():
+    """The second defect found while fixing KF-34."""
+    assert not redact("peer-credential auth").findings
+    assert redact("--credential swordfish1").findings
+
+
+def test_a_long_all_alphabetic_value_stays_suspicious():
+    """A real passphrase can be all letters, so length still matters."""
+    assert redact("passphrase correcthorsebatterystaple").findings
+    assert not redact("passphrase policy").findings

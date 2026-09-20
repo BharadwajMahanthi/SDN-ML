@@ -20,7 +20,10 @@ SRC = Path(__file__).resolve().parents[2] / "src"
 #: Only these modules may hold an execution primitive, and each is listed with
 #: the reason. Widening this set is a deliberate, reviewable act.
 PRIVILEGED_EXEMPT = {
-    "annulon/response/broker.py": "the broker is the single privileged path",
+    # The broker is deliberately NOT exempt. It decides; it does not act.
+    # Every execution primitive lives in an enforcement backend behind the
+    # Enforcer interface, which is a stronger separation than allowing the
+    # broker to hold one -- see ADR-046 and the dedicated test below.
     "annulon/response/nftables.py": "the OS mechanism the broker drives",
     "annulon/agent/liveness.py": "execs a nonce marker of its own to prove the "
                                  "sensor still delivers; touches nothing else",
@@ -123,3 +126,39 @@ def test_pickle_appears_nowhere_in_the_tree():
             elif isinstance(node, ast.ImportFrom) and node.module:
                 assert node.module.split(".")[0] not in {"pickle", "marshal", "shelve"}, \
                     _relative(path)
+
+
+def test_the_broker_itself_holds_no_execution_primitive():
+    """The broker decides; the backend acts.
+
+    Authorization logic and privileged execution are reviewable separately
+    only if they are actually separate. The broker is the component that
+    interprets untrusted input from the core, so it is the one that most
+    needs to contain nothing worth reaching. Enforcement lives behind the
+    ``Enforcer`` interface in a backend module, and this test is what keeps
+    it there -- the exemption the broker was originally granted turned out
+    not to be needed, and removing it is only meaningful if it is enforced.
+    """
+    path = SRC / "annulon" / "response" / "broker.py"
+    assert _relative(path) not in PRIVILEGED_EXEMPT, (
+        "the broker must be held to the same rule as every other module")
+    tree = ast.parse(path.read_text())
+
+    imported: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.update(a.name.split(".")[0] for a in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+            imported.add(node.module.split(".")[0])
+    assert not imported & EXECUTION_MODULES, (
+        f"broker.py imports {sorted(imported & EXECUTION_MODULES)}")
+
+    called: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            function = node.func
+            if isinstance(function, ast.Name) and function.id in FORBIDDEN_BUILTINS:
+                called.add(function.id)
+            if isinstance(function, ast.Attribute) and function.attr in EXECUTION_NAMES:
+                called.add(function.attr)
+    assert not called, f"broker.py calls {sorted(called)}"
