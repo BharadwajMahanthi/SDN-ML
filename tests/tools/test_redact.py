@@ -127,3 +127,29 @@ def test_mixed_case_high_entropy_tokens_are_still_redacted(secret):
     case let the canonical AWS secret through -- fixing over-redaction must
     not create under-redaction."""
     assert not redact(secret).clean, f"secret survived: {secret[:6]}..."
+
+
+@pytest.mark.parametrize(
+    "code",
+    [
+        "default_factory=CollectionQuality",
+        "default_factory=MovementStateMachine",
+        "Server_Side_Request_Forgery_Prevention_Cheat_Sheet",
+        "max_outstanding=DEFAULT_MAX_OUTSTANDING",
+    ],
+)
+def test_keyword_arguments_are_not_high_entropy_secrets(code):
+    """KF-32: '=' is only ever trailing base64 padding. Allowing it mid-token
+    made ordinary keyword arguments read as one high-entropy blob."""
+    assert redact(code).clean, f"false positive on {code}"
+
+
+@pytest.mark.parametrize(
+    "secret",
+    [
+        "dGhpcyBpcyBhIHRlc3Qgc2VjcmV0IHZhbHVlIGhlcmU=",
+        "YWFhYWJiYmJjY2NjZGRkZGVlZWVmZmZmZ2dnZ2hoaGg==",
+    ],
+)
+def test_base64_with_trailing_padding_is_still_caught(secret):
+    assert not redact(secret).clean, "trailing '=' padding must still match"

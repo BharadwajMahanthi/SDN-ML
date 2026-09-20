@@ -478,3 +478,46 @@ Architecture decision records. Supersede rather than delete.
 - **Consequence for the evidence model**: this is what feeds
   `MissingReason.SENSOR_UNAVAILABLE` and the degraded collection health that
   forces an assessment to `INCONCLUSIVE` (ADR-036). The two halves now meet.
+
+## ADR-040 — nothing stays verified: periodic whole-system re-verification
+
+- **Status**: accepted (owner direction: "always check once in a while all")
+- **Problem**: every invariant in this project was verified once, at the
+  moment it was built. A guard can be narrowed, a policy edited, a package
+  added outside a boundary, an AWS resource left running, an allowance left
+  in place after it stopped being needed. None of these announce themselves,
+  and the tests that would catch them are not the tests anyone is running
+  while working on something else.
+- **Decision**: `tools/verify_all.py` re-checks every standing invariant in
+  one pass -- working tree, branch hygiene, memory integrity, the context
+  firewall, framework boundaries, committed secrets, the full suite, and
+  optionally live AWS state. Run it between tasks, not only when something
+  feels wrong.
+- **Two design rules, both learned immediately**: a check that always warns
+  is a check everyone ignores, so the secret scan **fails** on anything
+  outside an explicit list of known fixtures with stated reasons; and the
+  list itself is checked for entries that no longer apply, so allowances
+  cannot quietly accumulate.
+- **Evidence it was worth building**: the first run found KF-32 in a shipped
+  module, and raising the bar from WARN to FAIL immediately surfaced two more
+  files nobody had accounted for.
+
+## ADR-041 — the agent proves its sensor is alive rather than assuming it
+
+- **Status**: accepted
+- **Problem**: `running=True` because a socket is open asserts almost
+  nothing. The descriptor survives the kernel ceasing delivery, a filter
+  installed underneath, a dropped subscription, or a dead collector thread.
+  In each case the agent reports healthy and sees nothing, and downstream
+  "no findings" reads as "nothing happened". No counter can catch it,
+  because there is nothing to count.
+- **Decision**: the agent periodically execs a nonce-named marker of its own
+  and confirms it observed it. A failed probe sets the sensor to FAILED and
+  removes the claim that its silence is meaningful, which propagates into
+  collection health and from there into assessments (ADR-036, ADR-039).
+- **Details that matter**: the nonce means a stale event from an earlier
+  probe cannot satisfy the current one; events drained while hunting for the
+  marker are put back, so self-checking never destroys evidence; an
+  un-probed monitor reports *not* healthy, because reporting healthy on no
+  evidence is the habit being broken; and a host that genuinely cannot exec
+  disables the check explicitly rather than silently failing it forever.
