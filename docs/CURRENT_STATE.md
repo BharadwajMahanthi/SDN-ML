@@ -1,5 +1,8 @@
 # CURRENT STATE
 
+> **Product name: Annulon** (ADR-034). Shared package `annulon`;
+> the SDN integration remains `sdnguard`.
+>
 > **Scope changed 2026-09-20 (ADR-027).** The product is a local-first security
 > agent for an ordinary Linux cloud server. SDN topology integrity is one
 > optional protection pack. Everything below that predates this line describes
@@ -112,12 +115,14 @@ test that performs a real merge attempt in a throwaway repository.
 | Track | State |
 |---|---|
 | SDN pack (P0–P6) | physically evidenced; see the table above |
-| V2 shared core | NOT_RUN — reconciliation complete, see `V2_RECONCILIATION.md` |
+| V2 shared core | **V2 SHARED CONTRACT FOUNDATION** — completion semantics, common event envelope, entity refs, capability manifest |
 | Cloud host agent | NOT_RUN — no sensor, no agent, no host detection exists |
 | AI security | NOT_RUN |
 
-No host, cloud, identity or AI protection capability exists. Completed SDN
-task IDs are **not** evidence for any of them.
+No host, cloud, identity or AI protection capability exists: there is no
+sensor, no agent, no host detection and no containment. Completed SDN task IDs
+are **not** evidence for any of them. What V2-CORE-01 delivers is contracts
+and their tests, not protection.
 
 ## Current task
 
@@ -128,8 +133,7 @@ PYTHON_MIGRATION_MATRIX.md.
 
 ## Exact next action
 
-**V2-CORE-01** on branch `feat/v2-core-01-events-capabilities`: the common
-event envelope, entity identities and capability manifest with degraded
-states. First item of that branch is the ADR-029 completion manifest, because
-until it exists an abnormally terminated experiment is indistinguishable from
-a clean one.
+**V2-CORE-02** on branch `feat/v2-core-02-evidence-model`: the finding model
+with severity and confidence basis separated, evidence lineage, and
+contradictory and missing evidence (ADR-030). Host sensor work waits until
+these semantics are stable enough to consume its events.

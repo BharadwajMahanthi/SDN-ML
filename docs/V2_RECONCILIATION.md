@@ -122,6 +122,6 @@ a second consumer exists. Extraction before a second consumer is speculation.
 
 ## 6. What this branch deliberately does not do
 
-No package renames, no `padmavyuh/` tree of empty modules, no re-labelling of
+No package renames, no `annulon/` tree of empty modules, no re-labelling of
 completed P-tasks. V2 §32: every component added must have a real
 responsibility, a typed contract, tests and evidence.
