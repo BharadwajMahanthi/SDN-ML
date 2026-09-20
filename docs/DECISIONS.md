@@ -112,3 +112,30 @@ Architecture decision records. Supersede rather than delete.
 - **Risk**: eventlet's long-term direction has been debated in the OpenStack
   ecosystem. Version 0.41.2 (2026-08-14) is current, so this is a
   watch-item, not a blocker. Re-check before P11.
+
+## ADR-020 — the new system lives entirely under `development/`
+
+- **Status**: accepted (owner direction, 2026-09-20)
+- **Problem**: `src/sdnguard/` sat beside `src/models.py`, `src/eda.py` and the
+  other legacy ML modules. Deleting the legacy tree would have meant picking
+  files out of a shared directory, which is exactly the situation that makes
+  people keep dead code rather than risk removing it.
+- **Decision**:
+
+  ```
+  development/src/sdnguard   the system being built
+  development/tests          its tests
+  development/infra          the lab that exercises it
+
+  tools/, tests/tools, tests/memory, docs/, memory/   project governance
+  everything else at the repository root              legacy
+  ```
+
+- **Consequence**: the legacy tree can be deleted, or moved to its own branch,
+  in one operation with no risk to the product. `pyproject.toml` carries the
+  only wiring (`pythonpath`, `testpaths`), so nothing else needs to know.
+- **Not moved**: the context firewall, the memory system and the durable docs
+  stay at the root. They are project governance that outlives the legacy code
+  and would have to be moved back if they went into `development/`.
+- **Evidence**: 805 tests green immediately after the move, with no source
+  edits -- only `git mv` and two lines of `pyproject.toml`.
