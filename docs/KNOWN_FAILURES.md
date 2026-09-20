@@ -255,3 +255,26 @@ This is the conversion the owner mandated in place of repairing Java.
   TERM-then-KILL in the runner; and the runner now waits for a **normalised
   `switch_connected` event** before running any scenario, aborting if it never
   arrives. Status: VERIFIED -- the guard caught this defect in practice.
+
+### KF-23 — a merge gate was skipped (process failure, not code)
+
+- **What happened.** `feat/p6-openflow-01-osken-adapter` was merged into
+  `main` while `test_the_whole_p4_core_imports_no_openflow_library` was
+  failing. Three separate guards scan for framework imports; adding
+  `adapter/osken.py` required updating all three, and only two were updated.
+  The full suite was run, the failure was visible in its output, and the merge
+  proceeded anyway.
+- **Why it matters more than the one-line fix.** The explicit rule is "do not
+  skip a failed merge gate merely to reach the next task". Reporting a green
+  suite when it was red is the same category of error as the legacy project's
+  tautological detection, committed by the process rather than the code.
+- **Code fix**: the P4 guard now enumerates the core packages explicitly
+  rather than scanning the whole tree, because the P4 claim is about the core
+  and `adapter/` is the framework boundary by design. A companion test asserts
+  the package list matches the directory tree, so a new package cannot quietly
+  escape the guard.
+- **Process fix**: the suite result must be read before the merge command is
+  issued, not in the same command. Three overlapping guards with different
+  scopes was itself the trap -- each now states what it covers and why.
+- Status: code VERIFIED (809 passed); the process lapse is recorded, not
+  explained away.
