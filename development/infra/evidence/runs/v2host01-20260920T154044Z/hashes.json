@@ -1,0 +1,9 @@
+{
+  "algorithm": "sha256",
+  "files": {
+    "completion.json": "c8cdb27e308c1959111580967aa076da1feffea7d3a82565da0308d06c6e7b08",
+    "ground_truth.json": "033c3cb1d18dfb1abd2030df207fc87c7729fea42d8ef64a0281d3319c02c5dc",
+    "observed.json": "dea55c2624096555bc3847d228b591e075d5041d85b45ebf4e75924351fbaddd",
+    "summary.json": "76f5cb8954f031818f579b9c98f35757ac448d42edb8e88e66673f00c9b7d21d"
+  }
+}

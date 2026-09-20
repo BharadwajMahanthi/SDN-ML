@@ -1,0 +1,35 @@
+{
+  "result": {
+    "sensor": "proc_poll_100ms",
+    "available": true,
+    "requires_root": false,
+    "capabilities": [
+      "credential_change",
+      "process_ancestry",
+      "process_argv",
+      "process_exec"
+    ],
+    "launched": 500,
+    "observed_events": 1,
+    "matched_pids": 0,
+    "detection_rate": 0.0,
+    "missed": 500,
+    "workload_elapsed_seconds": 0.5063,
+    "sensor_health": {
+      "running": false,
+      "lossy": false,
+      "emitted": 1,
+      "dropped": 0,
+      "decode_errors": 0,
+      "restarts": 0
+    }
+  },
+  "events": [
+    {
+      "event_type": "host.process.exec",
+      "pid": 3772,
+      "sequence": 1,
+      "received": "2026-09-20T15:36:08.512265+00:00"
+    }
+  ]
+}

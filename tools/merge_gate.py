@@ -18,6 +18,9 @@ Design constraints, each from a specific way the previous process failed:
     python tools/merge_gate.py run --task V2-CORE-01 --focused development/tests/core
     python tools/merge_gate.py status
     python tools/merge_gate.py merge feat/v2-core-01-events-capabilities
+
+A successful merge deletes the branch. The merge commit is the history; a
+leftover ref is clutter that hides what is actually in flight.
 """
 
 from __future__ import annotations
@@ -292,7 +295,8 @@ class Gate:
                 blocking.append(f"{spec.name}: {status}")
         return blocking
 
-    def merge(self, branch: str, message: str | None) -> int:
+    def merge(self, branch: str, message: str | None,
+              keep_branch: bool = False) -> int:
         ok, reason, gate = self.validate(branch)
         print(f"MERGE GATE: {'PASS' if ok else 'FAIL'}")
         print(f"branch: {branch}")
@@ -312,6 +316,19 @@ class Gate:
         text = message or f"Merge {branch} into main"
         code, out = self.git("merge", "--no-ff", "-m", text, branch)
         print(out)
+        if code != 0:
+            return code
+
+        # Delete the branch as part of the merge, not as a habit to remember.
+        # The merge commit preserves the history; a branch ref left behind is
+        # only clutter, and stale refs make it harder to see what is actually
+        # in flight.
+        if not keep_branch:
+            deleted, detail = self.git("branch", "-d", branch)
+            print(detail if deleted == 0 else f"branch not deleted: {detail}")
+            if deleted != 0:
+                print("warning: branch retained; delete it once resolved",
+                      file=sys.stderr)
         return code
 
 
@@ -332,6 +349,8 @@ def main(argv: list[str] | None = None) -> int:
     m = sub.add_parser("merge")
     m.add_argument("branch")
     m.add_argument("-m", "--message", default=None)
+    m.add_argument("--keep-branch", action="store_true",
+                   help="retain the branch ref after merging (rarely wanted)")
 
     args = parser.parse_args(argv)
     root = Path(args.root).resolve() if args.root else default_policy().root
@@ -352,7 +371,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{branch}: {'PASS' if ok else 'FAIL'} -- {reason}")
         return 0 if ok else 1
 
-    return gate.merge(args.branch, args.message)
+    return gate.merge(args.branch, args.message, args.keep_branch)
 
 
 if __name__ == "__main__":

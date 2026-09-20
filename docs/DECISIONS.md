@@ -424,3 +424,57 @@ Architecture decision records. Supersede rather than delete.
 - **Deliberately absent**: weighted sums, Bayesian fusion, Dempster-Shafer.
   A sophisticated formula over poorly defined evidence is worse than an
   explicit rule. Fusion is evaluated against real experiments in V2-CORR-01.
+
+## ADR-038 — netlink proc connector is the baseline host sensor
+
+- **Status**: accepted, on measurement rather than popularity.
+- **Method**: ground truth written only by the launcher, each candidate
+  observing independently, compared afterwards. Ubuntu 24.04.4,
+  kernel 7.0.0-1012-aws, t3a.large.
+
+| Workload | proc connector | /proc poll 100 ms | /proc poll 10 ms |
+|---|---|---|---|
+| 500 x `/bin/true` | **500/500** | **0/500** | **0/500** |
+| 100 x `sleep 250ms` | 100/100 | 100/100 | 100/100 |
+
+- **Decision**: the netlink process connector (`CN_IDX_PROC`) is the baseline
+  discovery sensor. It needs no compiler, no BPF toolchain, no third-party
+  package and no BTF -- a raw socket and `struct` -- and it observed every
+  process in both workloads.
+- **`/proc` is demoted from discovery to enrichment.** It may be read for a
+  PID the connector has already reported, to obtain argv and credentials. It
+  is never the mechanism by which a process is discovered. The race where the
+  process exits before `/proc` is read becomes a `PARTIAL_FIELDS` quality
+  flag on an event we already have, rather than an event we never had.
+- **eBPF is the upgrade path, not the baseline.** Measured directly with
+  `bpftrace` on `sys_enter_execve`: 507 events captured including all 500
+  target binaries, *with filenames*. It offers push semantics and argv
+  together, which the connector cannot. It is deferred because it adds a
+  toolchain and a kernel-version surface for a capability the baseline can
+  approximate, and it sits behind the same `HostSensor` interface so adopting
+  it later changes one package.
+- **Rejected**: `/proc` polling as a discovery mechanism, at any interval.
+  10 ms was no better than 100 ms, and the failure is structural rather than
+  a tuning problem.
+- **Not evaluated**: auditd (absent on the image, and its rule configuration
+  is a deployment surface in its own right). Recorded as an option, not a
+  dismissal.
+
+## ADR-039 — a sensor must declare what it cannot see
+
+- **Status**: accepted. Comes directly from the V2-HOST-01 measurement and is
+  the more important half of it.
+- **Observation**: both polling sensors missed 500 of 500 short-lived
+  processes and reported `lossy: false`. They were not wrong -- a drop
+  counter reports only the loss a sensor *noticed*, and polling never
+  notices. A sensor that misses everything while reporting healthy is more
+  dangerous than one that fails loudly, because downstream "no findings"
+  reads as "nothing happened".
+- **Decision**: `SensorHealth` carries `attests_completeness` and a
+  `blind_spot` description, and exposes `trustworthy_absence`. A detector
+  asks that question before treating silence as meaningful. Polling declares
+  it cannot attest; the connector attests only until the kernel signals a
+  drop, after which it stops.
+- **Consequence for the evidence model**: this is what feeds
+  `MissingReason.SENSOR_UNAVAILABLE` and the degraded collection health that
+  forces an assessment to `INCONCLUSIVE` (ADR-036). The two halves now meet.

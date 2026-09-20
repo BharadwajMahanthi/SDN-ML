@@ -100,6 +100,12 @@ A major architectural change needs an ADR in `docs/DECISIONS.md` (problem,
 current approach, proposal, benefits, costs, risks, migration, evidence,
 status) recorded before implementation.
 
+## Repository hygiene
+
+Merge through `python tools/merge_gate.py merge <branch>`. It deletes the
+branch on success; the merge commit is the history and a leftover ref only
+hides what is actually in flight. Keep `main` the single long-lived branch.
+
 ## 6. Session close
 
 Report changed files and symbols, commands actually run with exit statuses,
