@@ -579,3 +579,29 @@ Architecture decision records. Supersede rather than delete.
   are an explicit list of three modules, each with a stated reason.
 - **Why mechanical**: a rule written only in a document erodes. KF-23 already
   demonstrated that for merge gates.
+
+## ADR-045 — the legacy Java and research tree leaves `main`
+
+- **Status**: accepted (owner direction, 2026-09-20)
+- **Decision**: everything inherited from the Floodlight/TopoGuard research
+  prototype is removed from `main` and preserved on the long-lived branch
+  `legacy/java-topoguard-research`.
+- **Removed**: `floodlight_with_topoguard/` (the vendored Java controller),
+  `apache-ant-1.10.15/` (a build tool committed into the repository, 45 MB),
+  `mininet_archive/`, `zeek/`, `labels/`, `plots/`, the `clab-*` directories
+  and topology files, the legacy shell orchestration, the old ML modules
+  (`src/*.py`, `main.py`), both notebooks, `dataset_sdn.csv`, the dissertation
+  PDF, the legacy CI workflow and the trivial `assert 1 + 1 == 2` test.
+- **Kept deliberately**: `docs/LEGACY_CAPABILITY_MAP.md` and
+  `docs/LEGACY_SECURITY_MODEL.md`. The *recovered knowledge* is the valuable
+  part of that work -- what the research intended, and which behaviours were
+  rejected on evidence. Deleting those would discard the reasoning while
+  keeping only the conclusions.
+- **Branch retention exception**: `legacy/java-topoguard-research` is a
+  long-lived archive and is exempt from the delete-on-merge rule. It is never
+  merged, so the rule does not reach it.
+- **Verification**: 1369 tests pass unchanged after removal, which is itself
+  evidence that nothing in the product depended on the legacy tree.
+- **Honest note**: git history retains the deleted files; the working tree no
+  longer carries them. Removing them from history would require a rewrite,
+  which is not warranted and was not requested.

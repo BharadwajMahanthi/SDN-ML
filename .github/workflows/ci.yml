@@ -1,0 +1,34 @@
+# CI for Annulon. Runs what a merge gate runs locally, so a green gate and a
+# green CI mean the same thing. The legacy Python-3.10 workflow that tested
+# the removed research code was deleted with it.
+name: annulon
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        # The platform itself is standard library only; pytest is the sole
+        # test dependency, which is the property worth keeping true.
+        run: python -m pip install --upgrade pip pytest
+
+      - name: Full test suite
+        run: python -m pytest -q
+
+      - name: Standing invariants
+        # Re-checks framework boundaries, the privileged-action invariant,
+        # the context firewall, memory integrity and committed secrets.
+        run: python tools/verify_all.py
