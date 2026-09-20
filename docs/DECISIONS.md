@@ -317,3 +317,45 @@ Architecture decision records. Supersede rather than delete.
   contradictory and missing evidence. Findings must also carry evidence
   lineage so that three detectors consuming one event are not counted as three
   independent confirmations (V2 §10).
+
+## ADR-031 — the merge gate is executable, not documented
+
+- **Status**: accepted
+- **Problem** (KF-23): a branch merged with a required framework guard red.
+  The rule existed in `AGENTS.md`; a documented rule did not stop it.
+- **Decision**: `tools/merge_gate.py` is the canonical merge path. Only `PASS`
+  (and `NOT_APPLICABLE` for checks whose spec permits it) is merge-eligible.
+  `FAIL`, `NOT_RUN`, `INCONCLUSIVE` and `STALE` all refuse. **There is no
+  override flag.**
+- **Decisions come from exit status plus a JUnit artifact, never from text.**
+  Parsing "816 passed" is precisely how an optimistic summary became a merge.
+  A test module that prints `999 passed` and then fails is recorded as `FAIL`.
+- **A skipped required check is not a pass.** pytest exits 0 when every test
+  skips and 5 when nothing is collected; both become `INCONCLUSIVE`.
+- **Evidence is bound to a commit.** A gate produced against an earlier HEAD
+  is `STALE`.
+- **Eligibility is re-derived at validation time** from the per-check
+  statuses. A defect found by the gate's own tests: `validate()` originally
+  trusted the stored `merge_eligible` boolean, so a buggy producer or a
+  hand-edited artifact could assert its own eligibility. Producer and
+  validator now share one evaluator.
+- **The artifact is runtime state, never committable**, so a gate result
+  cannot be carried between branches or edited into a commit.
+- **Evidence**: 26 tests, the central one driving a real `--no-ff` merge in a
+  throwaway repository — reproducing the exact KF-23 shape (everything green
+  except `framework_guards`) and proving `main` is untouched.
+
+## ADR-032 — `repo_query explicit-file` closes the untracked-document gap
+
+- **Status**: accepted
+- **Problem**: `tree` and `grep` index tracked files only, a deliberate P0
+  choice so untracked scratch cannot become context by accident. The cost
+  surfaced when `PADMAVYUH_ARCHITECTURE_V2.md` was added but unstaged and the
+  gateway could not see it.
+- **Decision**: one bounded operation that reads exactly one caller-named
+  path, tracked or not. It never enumerates, globs or recurses — a glob is
+  treated as a literal filename. Root containment, symlink-escape, blocked and
+  opaque patterns, line limits and redaction all still apply.
+- **Why this is not a new exfiltration path**: the caller must already know
+  the exact path, and every existing control is unchanged. Broad indexing
+  stays tracked-only, asserted by a test.

@@ -13,6 +13,7 @@ returns a whole file or a recursive source dump.
   python tools/repo_query.py function <path> <name>
   python tools/repo_query.py lines <path> <start> <end>
   python tools/repo_query.py imports <path>
+  python tools/repo_query.py explicit-file <exact-path> [--start N] [--end N]
 """
 
 from __future__ import annotations
@@ -350,6 +351,45 @@ def cmd_lines(policy: Policy, args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_explicit_file(policy: Policy, args: argparse.Namespace) -> int:
+    """Read ONE explicitly named file, tracked or not.
+
+    Closes a real workflow gap: tree and grep index tracked files only, so a
+    document added but not yet staged is invisible to the gateway. Discovered
+    when PADMAVYUH_ARCHITECTURE_V2.md could not be read.
+
+    The narrowness is the safety property. This reads exactly one path the
+    caller names; it will not enumerate, glob or recurse. Every other control
+    still applies: root containment, symlink escape, blocked and opaque
+    patterns, line limits and redaction. So it removes the blind spot without
+    creating a way to sweep up untracked material.
+    """
+    rel = policy.check_readable(args.path)
+    target = policy.root / rel
+    if not target.is_file():
+        print(f"EXPLICIT_FILE {rel}: not a file", file=sys.stderr)
+        return 1
+    lines = target.read_text(errors="replace").splitlines()
+    limit = policy.limits.max_source_lines
+    start = max(1, args.start)
+    end = min(len(lines), args.end) if args.end else len(lines)
+    if end - start + 1 > limit:
+        end = start + limit - 1
+    out = Out(policy, limit)
+    for idx in range(start, end + 1):
+        out.add(f"{idx:5d}  {lines[idx - 1]}")
+    tracked = _is_tracked(policy, rel)
+    out.emit(f"EXPLICIT_FILE {rel}:{start}-{end} "
+             f"({len(lines)} lines, tracked={tracked}, limit={limit})")
+    return 0
+
+
+def _is_tracked(policy: Policy, rel: PurePosixPath) -> bool:
+    proc = subprocess.run(["git", "ls-files", "--error-unmatch", rel.as_posix()],
+                          cwd=policy.root, capture_output=True, text=True, check=False)
+    return proc.returncode == 0
+
+
 def cmd_imports(policy: Policy, args: argparse.Namespace) -> int:
     rel = policy.check_readable(args.path)
     text = read_text(policy, rel)
@@ -389,6 +429,12 @@ def build_parser() -> argparse.ArgumentParser:
     f = sub.add_parser("function"); f.add_argument("path"); f.add_argument("name"); f.set_defaults(fn=cmd_function)
     l = sub.add_parser("lines"); l.add_argument("path"); l.add_argument("start", type=int); l.add_argument("end", type=int); l.set_defaults(fn=cmd_lines)
     i = sub.add_parser("imports"); i.add_argument("path"); i.set_defaults(fn=cmd_imports)
+    e = sub.add_parser("explicit-file",
+                       help="read one named file, tracked or not; never enumerates")
+    e.add_argument("path")
+    e.add_argument("--start", type=int, default=1)
+    e.add_argument("--end", type=int, default=0)
+    e.set_defaults(fn=cmd_explicit_file)
     return p
 
 

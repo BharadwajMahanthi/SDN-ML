@@ -276,8 +276,23 @@ This is the conversion the owner mandated in place of repairing Java.
 - **Process fix**: the suite result must be read before the merge command is
   issued, not in the same command. Three overlapping guards with different
   scopes was itself the trap -- each now states what it covers and why.
-- Status: code VERIFIED (809 passed); the process lapse is recorded, not
-  explained away.
+- **Now enforced in code** (ADR-031). `tools/merge_gate.py` refuses any
+  non-PASS required check, decides from exit status and a JUnit artifact
+  rather than text, and binds evidence to a commit. The regression test
+  reproduces the exact KF-23 shape and drives a real merge attempt.
+- Status: code VERIFIED; process failure now VERIFIED as mechanically blocked.
+
+### KF-25 — the gate trusted its own artifact's eligibility flag
+
+- **Found by the gate's own tests during V2-GOV-01.** `validate()` read the
+  stored `merge_eligible` boolean instead of re-deriving eligibility from the
+  per-check statuses. A producer bug -- or a hand-edited artifact -- could
+  therefore assert its own merge eligibility, which is the whole property the
+  gate exists to provide.
+- **Fix**: producer and validator share one `evaluate()` function, and a
+  disagreement between the artifact's boolean and its own checks is itself a
+  refusal. Regression: `test_a_forged_merge_eligible_flag_is_ignored`.
+  Status: VERIFIED.
 
 ### KF-24 — the redactor masked branch names, then leaked an AWS secret shape
 

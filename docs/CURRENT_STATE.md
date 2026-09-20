@@ -100,6 +100,13 @@ then P11-AWS-02 must be reported as incomplete.
   JDK will be installed unless a specific unanswered behavioural question
   requires executing Java. Status: OPEN, not on the critical path.
 
+## Governance
+
+The merge gate is executable (`tools/merge_gate.py`, ADR-031). `python
+tools/merge_gate.py run --task <ID>` produces a commit-bound result; `merge`
+refuses anything that is not PASS, with no override. KF-23 is covered by a
+test that performs a real merge attempt in a throwaway repository.
+
 ## V2 status
 
 | Track | State |
