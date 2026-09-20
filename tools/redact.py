@@ -107,7 +107,19 @@ _NOT_A_LITERAL = re.compile(
 # long file paths, which destroyed legitimate output. Entropy alone is not a
 # sufficient signal -- a token must also look unlike an identifier or path.
 _ENTROPY_CANDIDATE = re.compile(r"[A-Za-z0-9+=_-]{32,}")
-_IDENTIFIERISH = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)+$|^[A-Za-z]+$")
+# Slugs: snake_case, kebab-case and mixed. Branch names like
+# "v2-architecture-01-scope-threat-contracts" are long, mixed-class and
+# high-entropy, so without this they are masked as secrets (KF-24).
+# A slug is SINGLE-CASE with separators: "v2-architecture-01-contract",
+# "MAX_RETRY_COUNT". A secret is typically mixed-case and high-entropy:
+# "wJalrXUtnFEMI_K7MDENG_bPxRfiCYEXAMPLEKEY" is the canonical AWS example and
+# must NOT be treated as an identifier. Widening this rule to accept mixed
+# case once let that exact string through (KF-24).
+_IDENTIFIERISH = re.compile(
+    r"^[a-z0-9]+(?:[_-][a-z0-9]+)+$"     # lower kebab/snake slug
+    r"|^[A-Z0-9]+(?:[_-][A-Z0-9]+)+$"    # UPPER_SNAKE constant
+    r"|^[A-Za-z]+$"                       # a plain word
+)
 
 
 def _charclass_variety(token: str) -> int:

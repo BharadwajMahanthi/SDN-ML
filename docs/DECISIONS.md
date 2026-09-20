@@ -256,3 +256,64 @@ Architecture decision records. Supersede rather than delete.
 - **Consequence for P6**: if OS-Ken lacks something, the response is to patch
   or wrap it behind `adapter/`, or implement the minimum protocol subset --
   not to abandon real OpenFlow testing.
+
+## ADR-027 — Padmavyuh v2: general cloud workload security, SDN as one pack
+
+- **Status**: accepted (owner direction + `PADMAVYUH_ARCHITECTURE_V2.md`, 2026-09-20)
+- **Previous scope**: SDN/OpenFlow security. **New scope**: a local-first
+  security agent for an ordinary Linux cloud server, with SDN topology
+  integrity as one optional protection pack.
+- **Preserved**: the entire Python domain model, state machines, probe engine,
+  policy engine, evidence store, lab harness, separated ground truth, and the
+  P6 physical chain evidence. Nothing is deleted or renamed by this decision.
+- **Superseded**: the assumption that SDN is the whole product. `PortIdentity`
+  is not a host identity, and the port-down precondition has no host analogue;
+  V2 §3 forbids inheriting either into general host protection.
+- **Migration impact**: additive. A shared `padmavyuh` package appears only
+  when a second consumer exists; extraction before that is speculation.
+  Completed P-task IDs and their evidence are retained and are **not**
+  retroactively relabelled as covering host or AI capability.
+- **Authority**: V2 ranks above `PROJECT_CONTRACT.md` and unsuperseded ADRs;
+  an owner instruction still ranks above V2.
+
+## ADR-028 — process separation, not import separation, for eventlet
+
+- **SUPERSEDES**: ADR-017 (eventlet confined to the adapter package)
+- **REASON**: ADR-017 enforced the boundary with an AST import guard. V2 §3 is
+  correct that *import restrictions alone do not establish a process-wide
+  concurrency boundary*. `eventlet.monkey_patch()` rewrites the standard
+  library for the entire process, so the guard proves nothing about runtime
+  behaviour if the host agent and the SDN adapter ever share a process. The
+  guard was necessary and is retained; it was never sufficient.
+- **MIGRATION IMPACT**: the SDN adapter runs as its own supervised process and
+  communicates with the core over a typed boundary. The host agent must never
+  import or inherit eventlet. The existing AST guard stays as a cheap early
+  signal, now explicitly labelled as necessary-but-not-sufficient. No code
+  moves on this branch; the constraint binds V2-CORE-01 onward.
+
+## ADR-029 — forced termination must be recorded, not silently succeed
+
+- **SUPERSEDES**: the KF-22 remedy as implemented
+- **REASON**: KF-22 was fixed with `os._exit(0)`, which bypasses cleanup
+  handlers and stdio flushing. V2 §3 is right that this makes a killed run
+  indistinguishable from a completed one -- the same failure family as KF-22
+  itself, where an empty run could be read as "nothing detected".
+- **MIGRATION IMPACT**: every experiment writes a **completion manifest**
+  recording whether it ended normally, by deadline, by signal or by force;
+  the event writer performs a durable drain before exit; and port/process
+  cleanup is verified independently rather than assumed. An experiment without
+  a manifest is `EVIDENCE_INCOMPLETE`, never a negative result.
+- **Status**: accepted; implementation is the first item of the next branch.
+
+## ADR-030 — severity and confidence are separate axes
+
+- **EXTENDS**: ADR-014 (severity is a label in one policy object)
+- **REASON**: V2 §9. A low-confidence event may be catastrophic; a
+  high-confidence one may be trivial. Collapsing them into one number hides
+  exactly the distinction an operator needs, and invites the unearned
+  precision this project already rejected once (the legacy hardcoded 0.93).
+- **MIGRATION IMPACT**: the shared finding model carries severity, a
+  confidence *basis* (which evidence, from which sensors), and explicit
+  contradictory and missing evidence. Findings must also carry evidence
+  lineage so that three detectors consuming one event are not counted as three
+  independent confirmations (V2 §10).

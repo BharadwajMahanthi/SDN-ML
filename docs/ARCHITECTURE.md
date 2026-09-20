@@ -1,5 +1,9 @@
 # ARCHITECTURE
 
+> The target architecture is now `PADMAVYUH_ARCHITECTURE_V2.md` (ADR-027).
+> This document describes the SDN pack, which remains one integration inside
+> it. `V2_RECONCILIATION.md` maps the components below onto V2.
+
 Status language: this is a **prototype under design**. Nothing here is
 production-ready, proven or validated.
 
