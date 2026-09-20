@@ -115,7 +115,7 @@ test that performs a real merge attempt in a throwaway repository.
 | Track | State |
 |---|---|
 | SDN pack (P0–P6) | physically evidenced; see the table above |
-| V2 shared core | **V2 SHARED CONTRACT FOUNDATION** — completion semantics, common event envelope, entity refs, capability manifest |
+| V2 shared core | **V2 SHARED SEMANTICS FOUNDATION** — completion semantics, common event envelope, entity refs, capability manifest |
 | Cloud host agent | NOT_RUN — no sensor, no agent, no host detection exists |
 | AI security | NOT_RUN |
 
@@ -133,7 +133,6 @@ PYTHON_MIGRATION_MATRIX.md.
 
 ## Exact next action
 
-**V2-CORE-02** on branch `feat/v2-core-02-evidence-model`: the finding model
-with severity and confidence basis separated, evidence lineage, and
-contradictory and missing evidence (ADR-030). Host sensor work waits until
-these semantics are stable enough to consume its events.
+**V2-HOST-01** on branch `spike/v2-host-01-linux-sensor-evaluation`: compare
+candidate Linux telemetry approaches on evidence before committing to one.
+The evidence semantics are now stable enough to consume a sensor's events.

@@ -378,3 +378,49 @@ Architecture decision records. Supersede rather than delete.
 - **Metaphor discipline unchanged**: layered defence remains a design
   metaphor. More rings do not automatically mean more security, and no single
   ring is advertised as perfect.
+
+## ADR-035 — severity, confidence and model score are three different things
+
+- **Status**: accepted. Implements ADR-030.
+- **Decision**: an assessment carries *severity* (impact if true), *confidence*
+  (evidential strength, ordinal), and a *confidence basis* (why). A statistical
+  result carries `model_score_uncalibrated` plus a mandatory `model_id`, and
+  nothing in the codebase converts it into a probability.
+- **Why ordinal, not numeric**: `0.92` is meaningless without a defined
+  meaning, a documented calibration procedure, an identified dataset and an
+  evaluation. None of those exist, so a number here would be the legacy
+  detector's hardcoded `0.93` with extra steps.
+- **Enforced by test**: no `risk_score` field exists; no arithmetic relates
+  severity to confidence; a confidence without a basis is refused; a model
+  score without a model identity is refused.
+
+## ADR-036 — missing evidence is a separate type from evidence
+
+- **Status**: accepted
+- **Problem**: absence has several causes -- the thing did not happen, the
+  sensor was down, the queue overflowed, the capability is unsupported. If
+  absence is modelled as evidence with a stance it will eventually be
+  counted, and "we did not see it" becomes "it did not happen".
+- **Decision**: `MissingEvidence` is its own type with no stance, and every
+  `MissingReason` describes a *collection* gap. Collection faults are
+  distinguished from configuration choices, and a fault degrades the
+  assessment's collection health.
+- **Concrete consequence**: an unanswered liveness probe is recorded as
+  missing evidence, never as evidence the host departed. That is the legacy
+  reasoning error, now impossible to express.
+
+## ADR-037 — corroboration is checked by lineage, not by detector count
+
+- **Status**: accepted
+- **Problem**: three detectors reading one event are not three confirmations.
+  Nothing prevents a product from claiming otherwise.
+- **Decision**: evidence carries `origin_group` and `parent_evidence_ids`;
+  `EvidenceGraph.root_event_ids` resolves what a piece of evidence ultimately
+  rests on, and a summary flags `shared_root_events`. The deterministic
+  explanation says so in words.
+- **Honest limit**: `origin_group` means *distinct collection origin*. It is
+  **not** a claim of statistical independence, and the docstring says so
+  because the field name invites the stronger reading.
+- **Deliberately absent**: weighted sums, Bayesian fusion, Dempster-Shafer.
+  A sophisticated formula over poorly defined evidence is worse than an
+  explicit rule. Fusion is evaluated against real experiments in V2-CORR-01.
