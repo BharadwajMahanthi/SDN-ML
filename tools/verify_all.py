@@ -72,6 +72,15 @@ def check_memory(root: Path) -> Check:
                  if out else "")
 
 
+#: Long-lived branches that are never merged and must not be deleted.
+#: Exempt from the delete-on-merge rule, with the reason stated here so that
+#: neither a human nor an agent tidies one away.
+ARCHIVE_BRANCHES = {
+    "legacy/java-topoguard-research":
+        "the original Floodlight/TopoGuard tree, preserved by ADR-045",
+}
+
+
 def check_branches(root: Path) -> Check:
     _, out = _run(["git", "branch", "--format=%(refname:short)"], root, 60)
     branches = [b for b in out.splitlines() if b and b != "main"]
@@ -81,7 +90,12 @@ def check_branches(root: Path) -> Check:
     # A freshly created branch with no commits is trivially "merged". Excluding
     # the checked-out branch keeps the check about leftovers, not work in hand.
     stale = [b for b in merged.splitlines()
-             if b and b not in ("main", current.strip())]
+             if b and b not in ("main", current.strip())
+             and b not in ARCHIVE_BRANCHES]
+    missing_archive = [b for b in ARCHIVE_BRANCHES if b not in branches]
+    if missing_archive:
+        return Check("branch_hygiene", FAIL,
+                     f"archive branch(es) missing: {missing_archive}")
     if stale:
         return Check("branch_hygiene", WARN,
                      f"{len(stale)} merged branch(es) not deleted: {stale[:3]}")
@@ -104,7 +118,6 @@ EXPECTED_SECRET_SHAPES = {
     "tests/tools/test_redact.py": "the canonical AWS example, asserted to be redacted",
     "development/tests/core/test_events.py": "fuzz alphabet strings",
     "docs/KNOWN_FAILURES.md": "KF-24 documents the AWS example verbatim",
-    "mininet_archive/fullcode.py": "legacy tree, pending removal",
     "tests/memory/test_quota_and_concurrency.py":
         "fabricated AWS key id, asserting the memory store refuses it",
     "tools/redact.py": "the redactor's own docstring cites the AWS example",

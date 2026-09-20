@@ -324,3 +324,13 @@ def test_keep_branch_retains_the_ref_when_explicitly_asked(repo):
     write_gate(repo, BRANCH, ALL_GREEN)
     assert main(["--root", str(repo), "merge", BRANCH, "--keep-branch"]) == 0
     assert BRANCH in git(repo, "branch")
+
+
+def test_the_archive_branch_is_protected_from_tidying():
+    """ADR-045 keeps the legacy tree on a long-lived branch. Neither a human
+    nor an agent should delete it while tidying merged branches."""
+    from tools.verify_all import ARCHIVE_BRANCHES
+
+    assert "legacy/java-topoguard-research" in ARCHIVE_BRANCHES
+    for name, reason in ARCHIVE_BRANCHES.items():
+        assert reason, f"{name} is protected without a stated reason"

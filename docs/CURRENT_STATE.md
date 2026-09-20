@@ -42,10 +42,20 @@ REPORTED / HYPOTHESIS / NOT_RUN / BLOCKED.
 
 ## Repository layout (ADR-020)
 
-`development/` holds the new system and nothing else. Everything at the root
-that is not `tools/`, `tests/tools`, `tests/memory`, `docs/` or `memory/` is
-legacy, and is due for deletion or removal to its own branch. That is the
-owner's call; the split is already complete on this side.
+The legacy Floodlight/TopoGuard tree has been removed from `main` (ADR-045)
+and preserved on the long-lived branch `legacy/java-topoguard-research`. The
+repository is now Python only:
+
+```
+development/src/annulon      the platform
+development/src/sdnguard     SDN integration, one optional pack
+development/infra            lab and experiments
+tools/ docs/ memory/         governance
+```
+
+The recovered-knowledge documents are kept deliberately: the reasoning about
+what the research intended, and which behaviours were rejected, is the part
+worth having.
 
 ## What exists
 
