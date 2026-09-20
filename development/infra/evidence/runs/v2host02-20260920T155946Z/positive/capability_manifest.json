@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "profile": "linux_host",
+  "agent_version": "0.1",
+  "state": "degraded_collection",
+  "capabilities": [
+    {
+      "name": "host_file_integrity",
+      "support": "not_implemented",
+      "configuration": "not_configured",
+      "health": "not_applicable",
+      "detail": "no sensor on this profile provides it",
+      "effective": false
+    },
+    {
+      "name": "host_network_connections",
+      "support": "not_implemented",
+      "configuration": "not_configured",
+      "health": "not_applicable",
+      "detail": "no sensor on this profile provides it",
+      "effective": false
+    },
+    {
+      "name": "host_process_detail",
+      "support": "supported",
+      "configuration": "enabled",
+      "health": "degraded",
+      "detail": "38 process(es) exited before detail could be read",
+      "effective": false
+    },
+    {
+      "name": "host_process_events",
+      "support": "supported",
+      "configuration": "enabled",
+      "health": "healthy",
+      "detail": "collecting",
+      "effective": true
+    }
+  ],
+  "effective": [
+    "host_process_events"
+  ],
+  "degraded": [
+    "host_process_detail"
+  ]
+}

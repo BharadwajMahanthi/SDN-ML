@@ -106,7 +106,10 @@ _NOT_A_LITERAL = re.compile(
 # '/' and '.' are deliberately excluded: including them made this rule match
 # long file paths, which destroyed legitimate output. Entropy alone is not a
 # sufficient signal -- a token must also look unlike an identifier or path.
-_ENTROPY_CANDIDATE = re.compile(r"[A-Za-z0-9+=_-]{32,}")
+# '=' appears only as TRAILING base64 padding. Allowing it mid-token made
+# `default_factory=CollectionQuality` read as one high-entropy blob, so
+# ordinary code was flagged as a possible secret (KF-32).
+_ENTROPY_CANDIDATE = re.compile(r"[A-Za-z0-9+_-]{32,}={0,2}")
 # Slugs: snake_case, kebab-case and mixed. Branch names like
 # "v2-architecture-01-scope-threat-contracts" are long, mixed-class and
 # high-entropy, so without this they are masked as secrets (KF-24).
@@ -118,8 +121,13 @@ _ENTROPY_CANDIDATE = re.compile(r"[A-Za-z0-9+=_-]{32,}")
 _IDENTIFIERISH = re.compile(
     r"^[a-z0-9]+(?:[_-][a-z0-9]+)+$"     # lower kebab/snake slug
     r"|^[A-Z0-9]+(?:[_-][A-Z0-9]+)+$"    # UPPER_SNAKE constant
+    r"|^[A-Z][a-z]+(?:_[A-Z][a-z]+)+$"   # Title_Snake_Case, e.g. a doc anchor
     r"|^[A-Za-z]+$"                       # a plain word
 )
+
+# The discriminator against a mixed-case secret is that each Title_Snake
+# segment is capital-then-lowercase. "wJalrXUtnFEMI_K7MDENG" has capitals
+# *inside* a segment and so is not matched here.
 
 
 def _charclass_variety(token: str) -> int:

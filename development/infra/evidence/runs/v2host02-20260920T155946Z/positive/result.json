@@ -1,0 +1,18 @@
+{
+  "sensor_disabled": false,
+  "launched": 25,
+  "marker_events_observed": 50,
+  "findings_produced": 5,
+  "agent_state": "degraded_collection",
+  "trustworthy_absence": true,
+  "collection_complete": true,
+  "agent_stats": {
+    "received": 77,
+    "enriched": 77,
+    "enrichment_incomplete": 38,
+    "queued": 77,
+    "dropped_queue_full": 0,
+    "consumed": 77
+  },
+  "completion_status": "complete"
+}

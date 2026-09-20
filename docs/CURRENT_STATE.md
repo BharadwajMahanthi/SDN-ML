@@ -116,7 +116,7 @@ test that performs a real merge attempt in a throwaway repository.
 |---|---|
 | SDN pack (P0–P6) | physically evidenced; see the table above |
 | V2 shared core | **V2 SHARED SEMANTICS FOUNDATION** — completion semantics, common event envelope, entity refs, capability manifest |
-| Cloud host agent | **sensor chosen on evidence** (ADR-038); no agent, no host detection yet |
+| Cloud host agent | **real process -> event -> evidence -> finding, on real Linux** with a passing negative control; no containment |
 | AI security | NOT_RUN |
 
 No host, cloud, identity or AI protection capability exists: there is no
@@ -133,8 +133,7 @@ PYTHON_MIGRATION_MATRIX.md.
 
 ## Exact next action
 
-**V2-HOST-02** on branch `feat/v2-host-02-linux-agent`: the first Ubuntu
-cloud-server agent, built on the netlink proc connector, with `/proc` used
-only to enrich a PID the connector already reported. Target is the §30
-crossover: a real process, observed by a real sensor, becoming an Annulon
-event and then evidence.
+**V2-SAFE-01** on branch `feat/v2-response-01-privileged-broker`: typed
+response actions and an independent authorization boundary. Detection exists
+and is evidenced; nothing may act on it until the broker can be shown to
+refuse an unauthorised action.

@@ -362,3 +362,29 @@ risks the KF-24 regression again.
   directly in `src/`, so neither was importable. Trivial, and it cost a
   deployment cycle; noted because the failure mode was a confusing
   `ModuleNotFoundError` rather than an obvious copy error.
+
+### KF-31 — two names for one predicate drifted apart
+
+- **Found immediately by a test when liveness was added.** `collection_complete`
+  and `trustworthy_absence` answered the same question through separate
+  implementations. Liveness was wired into one and not the other, so a sensor
+  *proven dead by its own probe* still reported that its silence was
+  meaningful -- exactly the property the probe exists to deny.
+- **Fix**: one implementation, the other delegates. Two names are kept
+  because a detector and an operator ask the question differently, but there
+  is now only one answer.
+- **General lesson recorded**: duplicated predicates do not stay equal. When
+  a safety property has two accessors, one must call the other.
+
+### KF-32 — the entropy rule treated keyword arguments as secrets
+
+- **Found by `tools/verify_all.py` on its first run**, which is the whole
+  argument for periodic whole-system re-verification: the defect had been
+  sitting in a shipped, tested module and no existing test looked for it.
+- `=` was in the entropy candidate class, so `default_factory=CollectionQuality`
+  matched as one 33-character high-entropy token. `=` is only ever *trailing*
+  base64 padding, so it now appears only in that position. `Title_Snake_Case`
+  doc anchors needed their own rule, discriminated from a mixed-case secret
+  by each segment being capital-then-lowercase -- `wJalrXUtnFEMI_K7MDENG`
+  has capitals *inside* a segment and is still redacted.
+- **Regression**: both directions tested, as KF-24 taught.

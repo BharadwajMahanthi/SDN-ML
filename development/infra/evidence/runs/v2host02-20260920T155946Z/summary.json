@@ -1,0 +1,44 @@
+{
+  "task": "V2-HOST-02",
+  "claim": "a real Linux process becomes an Annulon event, then evidence, then a finding",
+  "environment": {
+    "distribution": "Ubuntu 24.04.4 LTS",
+    "kernel": "7.0.0-1012-aws",
+    "arch": "x86_64",
+    "sensor": "netlink proc connector",
+    "no_ovs": true,
+    "no_openflow": true,
+    "no_llm": true
+  },
+  "positive_control": {
+    "sensor_disabled": false,
+    "launched": 25,
+    "marker_events_observed": 50,
+    "findings_produced": 5,
+    "agent_state": "degraded_collection",
+    "trustworthy_absence": true,
+    "collection_complete": true,
+    "agent_stats": {
+      "received": 77,
+      "enriched": 77,
+      "enrichment_incomplete": 38,
+      "queued": 77,
+      "dropped_queue_full": 0,
+      "consumed": 77
+    },
+    "completion_status": "complete"
+  },
+  "negative_control": {
+    "sensor_disabled": true,
+    "launched": 25,
+    "marker_events_observed": 0,
+    "findings_produced": 0,
+    "agent_state": "degraded_collection",
+    "trustworthy_absence": false,
+    "collection_complete": false,
+    "agent_stats": {},
+    "completion_status": "complete"
+  },
+  "negative_control_valid": true,
+  "reverification": "all figures reproduced on an independent run"
+}
