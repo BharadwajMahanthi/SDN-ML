@@ -316,3 +316,15 @@ ordinary prose like "credential theft" and "signature checks" is masked when
 reading documents. This is the safe direction and the meaning stays
 recoverable from context, so it is recorded rather than fixed; tightening it
 risks the KF-24 regression again.
+
+### KF-26 — the event decoder crashed on a malformed array field
+
+- **Found by fuzzing during V2-CORE-01.** A payload whose `entity_refs` was a
+  JSON object rather than an array reached an unguarded slice and raised
+  `KeyError` out of the decoder. At a trust boundary the answer to malformed
+  input is a rejection; an exception escaping into the caller is a crash the
+  agent cannot afford.
+- **Fix**: `_as_list` coerces and bounds any list-shaped field before use.
+- **Regression**: `test_a_non_list_entity_refs_field_is_rejected_not_a_crash`
+  plus 6000 fuzz cases across random and structurally-valid-but-mutated
+  payloads. Status: VERIFIED.

@@ -210,7 +210,7 @@ def test_the_whole_p4_core_imports_no_openflow_library():
     # asserts the exemption list is exactly one file. Naming the core packages
     # explicitly keeps this test honest about what it covers.
     core_packages = ("domain", "topology", "hosts", "probes", "detection",
-                     "policy", "observability", "controller")
+                     "policy", "observability", "controller", "v2")
     paths = [p for pkg in core_packages for p in (root / pkg).rglob("*.py")]
     assert len(paths) >= 12, "guard would pass vacuously"
 
@@ -234,8 +234,10 @@ def test_the_p4_core_package_list_matches_the_tree():
     mean a package could quietly escape the guard."""
     root = Path(__file__).resolve().parents[2] / "src" / "sdnguard"
     on_disk = {p.name for p in root.iterdir() if p.is_dir() and p.name != "__pycache__"}
+    # v2/ maps SDN observations onto the shared Padmavyuh contracts. It is
+    # stdlib-and-padmavyuh only, so it sits inside the framework-free core.
     accounted = {"domain", "topology", "hosts", "probes", "detection", "policy",
-                 "observability", "controller", "adapter"}
+                 "observability", "controller", "adapter", "v2"}
     assert on_disk == accounted, (
         f"unaccounted packages: {sorted(on_disk - accounted)}; decide whether "
         "each belongs inside the framework-free core before adding it here")

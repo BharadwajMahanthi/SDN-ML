@@ -107,3 +107,33 @@ the boundary rule above means the choice cannot leak into security logic.
 OS-Ken is a candidate to evaluate on protocol coverage, Python version
 support, maintenance, event and concurrency model, OVS compatibility and
 licence — not a decision.
+
+
+## Shared V2 contracts (V2-CORE-01)
+
+`development/src/padmavyuh/` — domain-neutral, standard library only, and
+asserted by test to import neither an OpenFlow framework nor `sdnguard`.
+
+```
+completion.py   experiment lifecycle and completion manifests (ADR-029)
+identity.py     EntityRef: kind + namespace + identifier
+events.py       the common envelope, bounds, and the decode boundary
+capability.py   support / configuration / health, and agent state
+```
+
+Dependency direction is one-way and enforced:
+
+```
+sdnguard/v2/mapping.py  ──consumes──▶  padmavyuh
+padmavyuh               ──never──▶     sdnguard
+```
+
+Three design rules carried by the code rather than by convention:
+
+* **No `risk_score` in an event.** Raw observation and interpreted finding are
+  different things; one number that later code mistakes for
+  severity-and-confidence is what ADR-030 forbids.
+* **No field for raw material.** Prompts, file contents and packet payloads
+  are referenced or hashed, never carried, so minimisation is structural.
+* **`SUPPORTED` never implies `ACTIVE AND HEALTHY`.** A capability is only
+  effective when support, configuration and health all line up.
