@@ -1,0 +1,12 @@
+{
+  "method": "aws cloudformation delete-stack followed by an explicit query of every billable resource class",
+  "baseline_before_create": {
+    "instances": 0, "volumes": 0, "elastic_ips": 0, "key_pairs": 0, "stacks": 0
+  },
+  "after_destroy": {
+    "stacks": 0, "instances_not_terminated": 0, "ebs_volumes": 0, "snapshots": 0,
+    "elastic_ips": 0, "network_interfaces": 0, "security_groups": 0, "key_pairs": 0,
+    "load_balancers": 0, "nat_gateways": 0, "iam_roles": 0
+  },
+  "result": "CLEANUP VERIFIED - state matches the pre-create baseline"
+}

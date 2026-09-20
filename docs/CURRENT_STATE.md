@@ -26,7 +26,8 @@ REPORTED / HYPOTHESIS / NOT_RUN / BLOCKED.
 | P5-OF-01 framework selection | VERIFIED (ADR) | OS-Ken candidate; conformance NOT_RUN |
 | P5-OF-02/03/07 adapter + controller | VERIFIED | 26 adapter tests; 766 total |
 | P5-OF-04/05/06 packet normalisation | VERIFIED | 37 parser tests; 803 total |
-| P5-OF-06/08/09, real adapter | BLOCKED | needs Linux/OVS (B-1) |
+| P5-OF-06/08/09, real adapter | UNBLOCKED | lab substrate now exists |
+| **P6-LAB-01 Linux/OVS lab** | **VERIFIED ON REAL HARDWARE** | Ubuntu 24.04.4, kernel 7.0.0-1012-aws, OVS 3.3.9, dpid 0000aabbccddeeff |
 | Stage 2+ | NOT_RUN | — |
 
 ## Repository layout (ADR-020)
@@ -58,11 +59,11 @@ reference material only (ADR-004).
 
 ## Blockers
 
-- **B-1** BLOCKS REAL OVS INTEGRATION ON CURRENT HOST. macOS + Docker Desktop
-  cannot provide an observable kernel datapath. It does **not** block the
-  Python architecture, domain model, state machine, or any unit/property test.
-  Later options: Linux VM, dedicated Linux machine, or AWS EC2 test host.
-  Status: OPEN, scoped.
+- **B-1** RESOLVED (2026-09-20). An AWS EC2 lab now provides a real OVS
+  kernel datapath: `openvswitch` module loaded, datapath types `[netdev,
+  system]`, four namespaces on explicit veth pairs, traffic proven to cross
+  the datapath with **zero packets** on the EC2 management interface.
+- **B-5** The lab runs on root AWS credentials. See KF-19. Status: OPEN, HIGH.
 - **B-2** The legacy Java build expects JDK 11; the host has JDK 17 and
   `build.xml` pins `source/target=1.6`. Marked
   `LEGACY_JAVA_RUNTIME_NOT_REQUIRED_FOR_CURRENT_MIGRATION`. Not a blocker; no
@@ -78,8 +79,8 @@ PYTHON_MIGRATION_MATRIX.md.
 
 ## Exact next action
 
-**P5-OF-01** on branch `spike/p5-openflow-01-framework-selection`: evaluate
-current Python OpenFlow options against protocol coverage, Python version
-support, maintenance, event and concurrency model, OVS compatibility and
-licence, and record an ADR. P4 is complete: the deterministic security core
-runs the full chain with no OpenFlow dependency.
+**P6-OF-01** on branch `feat/p6-openflow-01-osken-adapter`: implement the real
+OS-Ken adapter behind the P5 contract, with `os_ken` and `eventlet` confined
+to the adapter package and that confinement enforced by the existing AST test.
+The lab substrate is proven; recreate it with
+`development/infra/lab/create.sh` and tear it down with `destroy.sh`.

@@ -1,0 +1,8 @@
+{
+  "algorithm": "sha256",
+  "files": {
+    "cleanup.json": "f663ad6564dbb394a9bcc1140d4f63df214492edcfe403ef7c6dde8e3de6f99c",
+    "environment.json": "5658be296b5dfc123c282f0b98a2e6b39fe99e7d4458a5ff106e82840e18c55b",
+    "measurements.json": "70f6ce6617ffb6a5da334d6849ad04d9c7f7fcb3c076d93251b61da03a45bcfa"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "captured_utc": "2026-09-20T06:32:48Z",
+  "environment": {
+    "distribution": "Ubuntu 24.04.4 LTS (Noble Numbat)",
+    "distribution_id": "24.04",
+    "kernel": "7.0.0-1012-aws",
+    "architecture": "x86_64",
+    "ovs_version": "3.3.9",
+    "ovs_service_state": "active",
+    "openvswitch_kmod_loaded": true,
+    "datapath_types": "[netdev, system]",
+    "python_version": "3.12.3",
+    "os_ken_version": "4.2.2",
+    "eventlet_version": "0.41.2",
+    "management_interface": "ens5"
+  },
+  "topology": {
+    "bridge": "br-s1",
+    "datapath_id": "0000aabbccddeeff",
+    "openflow_protocols": "OpenFlow13",
+    "subnet": "10.10.0.0/24",
+    "ports": [{"host":"h1","ofport":1,"ovs_interface":"br-s1-h1","host_interface":"h1-eth0","mac":"02:00:00:00:00:01","ipv4":"10.10.0.1/24"},{"host":"h2","ofport":2,"ovs_interface":"br-s1-h2","host_interface":"h2-eth0","mac":"02:00:00:00:00:02","ipv4":"10.10.0.2/24"},{"host":"h3","ofport":3,"ovs_interface":"br-s1-h3","host_interface":"h3-eth0","mac":"02:00:00:00:00:03","ipv4":"10.10.0.3/24"},{"host":"h4","ofport":4,"ovs_interface":"br-s1-h4","host_interface":"h4-eth0","mac":"02:00:00:00:00:04","ipv4":"10.10.0.4/24"}]
+  }
+}
+

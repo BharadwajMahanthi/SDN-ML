@@ -139,3 +139,36 @@ Architecture decision records. Supersede rather than delete.
   and would have to be moved back if they went into `development/`.
 - **Evidence**: 805 tests green immediately after the move, with no source
   edits -- only `git mv` and two lines of `pyproject.toml`.
+
+## ADR-021 — SSM Run Command as the only lab access path
+
+- **Status**: accepted
+- **Problem**: the lab needs administrative access, and the obvious answer is
+  SSH. SSH means an inbound rule, a key pair to store and rotate, and a
+  standing decision about which CIDR may reach port 22.
+- **Decision**: the security group has **no ingress rules at all** and the
+  stack contains **no key pair**. Access is `aws ssm send-command` through an
+  instance role carrying only `AmazonSSMManagedInstanceCore`.
+- **Consequence**: nothing is reachable from the internet, there is no key to
+  leak, and every command is recorded in CloudTrail. The template asserts the
+  absence of ingress and key pairs in a self-check rather than trusting review.
+- **Cost**: no interactive shell without the session-manager plugin. In
+  practice this pushed the lab toward scripted, reproducible steps, which is
+  what the evidence requirements wanted anyway.
+
+## ADR-022 — AWS CLI stays out of the generic safe_exec path
+
+- **Status**: accepted
+- **Problem**: `aws` is in `denied_commands` in `tools/context_policy.yaml`
+  from P0. The owner has now authorised AWS work, so the obvious move is to
+  allow it.
+- **Decision**: keep `aws` denied in `safe_exec`. AWS access happens only
+  through the reviewed scripts in `development/infra/lab/`, which are read
+  before they run and whose output is deliberately unbounded so that cleanup
+  verification cannot be truncated.
+- **Why**: a generic allow would let any agent -- including Codex, or a future
+  session -- spend money through a convenience path. Confining it to named
+  scripts keeps the spend surface small and reviewable.
+- **Honest limitation**: this is a guardrail on `safe_exec`, not on the agent.
+  Direct shell access can still call `aws`, as it did here. The firewall
+  constrains its own tools; it has never claimed to constrain everything.
