@@ -521,3 +521,61 @@ Architecture decision records. Supersede rather than delete.
   un-probed monitor reports *not* healthy, because reporting healthy on no
   evidence is the habit being broken; and a host that genuinely cannot exec
   disables the check explicitly rather than silently failing it forever.
+
+## ADR-042 — a component may request an action; it may not authorize one
+
+- **Status**: accepted
+- **Decision**: `ActionRequest` has **no field** in which a caller can assert
+  that its request is permitted. The only type carrying an authorization
+  outcome is `AuthorizationDecision`, produced by the broker from a request
+  plus broker-owned policy, with no deserialiser that can yield an ALLOW.
+- **Why absent rather than ignored**: a boolean on the request would
+  eventually be trusted by something. Making the field non-existent is
+  cheaper to defend than making every consumer remember to disregard it.
+- **No execution primitive in the contract**: there is no `RunShell`,
+  `ExecuteCommand` or equivalent, and no free-text command anywhere. A broker
+  that accepts a command string is an RPC wrapper around root with extra steps.
+- **An unknown field in a serialised request is refused, not ignored.** A
+  caller that believes it sent something meaningful must not be silently
+  misunderstood by a privileged component.
+- **PID is not an available target kind.** A PID authorized now may be a
+  different process by the time the action is applied. Only identities whose
+  validity can be re-checked at apply time are permitted, and unimplemented
+  kinds are not declared at all -- declaring one invites a policy that appears
+  to cover something it cannot.
+
+## ADR-043 — broker policy is independent of core honesty
+
+- **Status**: accepted
+- **Decision**: fifteen explicit checks, all of which run before the result is
+  combined, starting from deny. It is easier to argue that fifteen stated
+  checks are correct than that one flexible rule engine is safe.
+- **All failures are reported, not the first.** Short-circuiting would make
+  the audit record depend on check order, and an operator reading a denial
+  wants every reason.
+- **Permitted UIDs are an allowlist**, so a new service on the host is not
+  containable until someone decides it should be.
+- **An oversized TTL is denied, never silently shortened.** Quietly granting
+  less than was asked for leaves the caller's record and the broker's
+  disagreeing about what is in force.
+- **Protected scopes are not requestable.** There is no exemption field.
+  Protected destinations include the instance metadata endpoint and loopback,
+  because cutting the management path leaves a host unrecoverable except by
+  rebuild.
+- **An unusable policy is fatal to permissiveness**: an unreadable or
+  self-contradictory policy yields a broker that denies, never one that
+  allows by default. A UID that is both permitted and protected is refused
+  at load, because resolving that contradiction silently either way is a guess.
+
+## ADR-044 — the privileged-action invariant is enforced by test
+
+- **Status**: accepted. Project-level invariant.
+- **Statement**: no component other than the authorized response broker may
+  perform Annulon privileged response actions.
+- **Enforcement**: `test_privileged_action_invariant.py` parses every
+  production module and fails if one imports `subprocess`, `ctypes`, `pty` or
+  `multiprocessing`, calls a process or privilege primitive, references a
+  privileged tool by name, uses `shell=True`, or imports `pickle`. Exemptions
+  are an explicit list of three modules, each with a stated reason.
+- **Why mechanical**: a rule written only in a document erodes. KF-23 already
+  demonstrated that for merge gates.

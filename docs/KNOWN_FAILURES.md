@@ -388,3 +388,12 @@ risks the KF-24 regression again.
   by each segment being capital-then-lowercase -- `wJalrXUtnFEMI_K7MDENG`
   has capitals *inside* a segment and is still redacted.
 - **Regression**: both directions tested, as KF-24 taught.
+
+### KF-33 — the privileged-action guard confused `re.compile` with `compile`
+
+- **Found on the guard's first run.** It applied the forbidden-builtin list to
+  attribute calls as well as bare names, so every module containing a regex
+  failed. A guard that fires on ordinary code gets weakened or ignored, which
+  would have been the real damage.
+- **Fix**: bare `Name` calls are checked against the builtin denylist;
+  attribute calls only against process and privilege primitives.

@@ -133,7 +133,7 @@ PYTHON_MIGRATION_MATRIX.md.
 
 ## Exact next action
 
-**V2-SAFE-01** on branch `feat/v2-response-01-privileged-broker`: typed
-response actions and an independent authorization boundary. Detection exists
-and is evidenced; nothing may act on it until the broker can be shown to
-refuse an unauthorised action.
+**V2-SAFE-02** on branch `feat/v2-safe-02-privileged-broker`: the separate
+broker process, authenticated local IPC with peer credentials, and a bounded
+durable action journal. The contract and policy exist and refuse a
+compromised core in unit tests; nothing is physically enforced yet.
