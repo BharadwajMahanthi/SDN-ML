@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from padmavyuh.capability import (
+from annulon.capability import (
     AgentState,
     Capability,
     CapabilityManifest,

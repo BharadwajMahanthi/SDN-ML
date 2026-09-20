@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from padmavyuh.events import (
+from annulon.events import (
     DEFAULT_LIMITS,
     CollectionQuality,
     DataClassification,
@@ -20,7 +20,7 @@ from padmavyuh.events import (
     QualityFlag,
     decode_event,
 )
-from padmavyuh.identity import EntityKind, EntityRef, InvalidEntityRef
+from annulon.identity import EntityKind, EntityRef, InvalidEntityRef
 
 T0 = datetime(2026, 9, 20, 12, 0, 0, tzinfo=timezone.utc)
 
@@ -259,7 +259,7 @@ def test_the_decoder_never_executes_anything():
     import ast
     import pathlib
 
-    import padmavyuh.events as module
+    import annulon.events as module
 
     tree = ast.parse(pathlib.Path(module.__file__).read_text())
     imported = set()

@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from padmavyuh.events import DataClassification, DecodeOutcome, decode_event
-from padmavyuh.identity import EntityKind
+from annulon.events import DataClassification, DecodeOutcome, decode_event
+from annulon.identity import EntityKind
 from sdnguard.domain.host import HostIdentity, HostObservation, IPAddress, MacAddress
 from sdnguard.domain.identity import PortIdentity
 from sdnguard.v2.mapping import SDN_SENSOR, observation_to_event

@@ -18,13 +18,13 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from padmavyuh.events import (
+from annulon.events import (
     CollectionQuality,
     DataClassification,
     Event,
     QualityFlag,
 )
-from padmavyuh.identity import EntityKind, EntityRef
+from annulon.identity import EntityKind, EntityRef
 from sdnguard.domain.host import HostObservation
 from sdnguard.domain.identity import DatapathId, PortIdentity
 

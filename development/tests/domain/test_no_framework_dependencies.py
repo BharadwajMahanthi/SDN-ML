@@ -89,13 +89,13 @@ def test_every_non_exempt_module_is_framework_free():
 
 
 def test_the_shared_core_is_framework_free_and_sdn_free():
-    """padmavyuh must work on a plain Linux VM: no framework, and no
+    """annulon must work on a plain Linux VM: no framework, and no
     dependency on the SDN package it will one day receive events from."""
-    shared = CORE.parent / "padmavyuh"
+    shared = CORE.parent / "annulon"
     assert shared.is_dir(), "shared package missing"
     modules = sorted(shared.rglob("*.py"))
     assert len(modules) >= 3, "guard would pass vacuously"
-    allowed = set(sys.stdlib_module_names) | {"padmavyuh"}
+    allowed = set(sys.stdlib_module_names) | {"annulon"}
     for path in modules:
         roots = _imported_roots(path)
         assert not (roots & FORBIDDEN), f"{path.name} imports a framework"
@@ -130,7 +130,7 @@ def test_core_depends_only_on_the_standard_library(path: Path):
     # consume the shared contracts, the shared core may never import the SDN
     # package. The reverse direction is asserted in
     # test_the_shared_core_is_framework_free_and_sdn_free.
-    allowed = set(sys.stdlib_module_names) | {"sdnguard", "padmavyuh"}
+    allowed = set(sys.stdlib_module_names) | {"sdnguard", "annulon"}
     unexpected = {r for r in _imported_roots(path) if r not in allowed}
     assert not unexpected, (
         f"{path.relative_to(CORE.parent)} imports non-stdlib {sorted(unexpected)}; "

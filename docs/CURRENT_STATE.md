@@ -1,5 +1,8 @@
 # CURRENT STATE
 
+> **Product name: Annulon** (ADR-034). Shared package `annulon`;
+> the SDN integration remains `sdnguard`.
+>
 > **Scope changed 2026-09-20 (ADR-027).** The product is a local-first security
 > agent for an ordinary Linux cloud server. SDN topology integrity is one
 > optional protection pack. Everything below that predates this line describes

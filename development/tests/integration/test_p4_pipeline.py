@@ -234,8 +234,8 @@ def test_the_p4_core_package_list_matches_the_tree():
     mean a package could quietly escape the guard."""
     root = Path(__file__).resolve().parents[2] / "src" / "sdnguard"
     on_disk = {p.name for p in root.iterdir() if p.is_dir() and p.name != "__pycache__"}
-    # v2/ maps SDN observations onto the shared Padmavyuh contracts. It is
-    # stdlib-and-padmavyuh only, so it sits inside the framework-free core.
+    # v2/ maps SDN observations onto the shared Annulon contracts. It is
+    # stdlib-and-annulon only, so it sits inside the framework-free core.
     accounted = {"domain", "topology", "hosts", "probes", "detection", "policy",
                  "observability", "controller", "adapter", "v2"}
     assert on_disk == accounted, (

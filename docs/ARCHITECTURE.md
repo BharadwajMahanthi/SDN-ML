@@ -111,7 +111,7 @@ licence — not a decision.
 
 ## Shared V2 contracts (V2-CORE-01)
 
-`development/src/padmavyuh/` — domain-neutral, standard library only, and
+`development/src/annulon/` — domain-neutral, standard library only, and
 asserted by test to import neither an OpenFlow framework nor `sdnguard`.
 
 ```

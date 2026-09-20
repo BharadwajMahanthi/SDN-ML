@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from padmavyuh.completion import (
+from annulon.completion import (
     CompletionManifest,
     CompletionStatus,
     ExitReason,

@@ -39,7 +39,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from padmavyuh.identity import EntityRef
+from annulon.identity import EntityRef
 
 __all__ = [
     "SCHEMA_VERSION",

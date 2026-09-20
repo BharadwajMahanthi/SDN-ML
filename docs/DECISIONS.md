@@ -359,3 +359,22 @@ Architecture decision records. Supersede rather than delete.
 - **Why this is not a new exfiltration path**: the caller must already know
   the exact path, and every existing control is unchanged. Broad indexing
   stays tracked-only, asserted by a test.
+
+## ADR-034 — the product and shared package are named Annulon
+
+- **Status**: accepted (owner direction, 2026-09-20)
+- **Problem**: the working name was taken directly from the architecture
+  document's metaphor. The owner asked for a distinct name not already in use.
+- **Decision**: **Annulon**, from *annulus*, a ring. The product is concentric
+  rings of independent verification, which carries the original concept
+  without borrowing the word. The Python package is `annulon`.
+- **Availability checked, not assumed** (2026-09-20): free on PyPI, free on
+  npm, and zero matching repositories on GitHub. Two alternatives were
+  rejected on collision -- `sentrion` has six GitHub projects including an
+  unrelated "SentrionAI", and `limenar` has adjacent names in use.
+- **Scope of the rename**: the package, its imports and the prose I authored.
+  The owner's `PADMAVYUH_ARCHITECTURE_V2.md` keeps its filename, and earlier
+  ADRs keep their original wording -- history is preserved, not rewritten.
+- **Metaphor discipline unchanged**: layered defence remains a design
+  metaphor. More rings do not automatically mean more security, and no single
+  ring is advertised as perfect.
