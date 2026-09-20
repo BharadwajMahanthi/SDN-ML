@@ -96,3 +96,34 @@ def test_multiple_secrets_on_separate_lines_all_reported():
 def test_idempotent():
     once = redact(f'SUDO_PASS="{FAKE_PASSWORD}"').text
     assert redact(once).text == once
+
+
+@pytest.mark.parametrize(
+    "slug",
+    [
+        "feat/v2-architecture-01-cloud-agent-contract",
+        "test/v2-response-02-containment-recovery",
+        "spike/v2-platform-01-additional-profiles",
+        "MAX_OUTSTANDING_PROBE_COUNT",
+        "preprocess_sdn_data_and_split",
+    ],
+)
+def test_single_case_slugs_are_not_mistaken_for_secrets(slug):
+    """KF-24: long hyphenated branch names are high-entropy and mixed-class,
+    so without an explicit slug rule the gateway masked them and made the
+    architecture document unreadable."""
+    assert redact(slug).clean, f"false positive on {slug}"
+
+
+@pytest.mark.parametrize(
+    "secret",
+    [
+        "wJalrXUtnFEMI_K7MDENG_bPxRfiCYEXAMPLEKEY",   # canonical AWS secret shape
+        "aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789AbCd",
+    ],
+)
+def test_mixed_case_high_entropy_tokens_are_still_redacted(secret):
+    """The companion half of KF-24. Widening the slug rule to accept mixed
+    case let the canonical AWS secret through -- fixing over-redaction must
+    not create under-redaction."""
+    assert not redact(secret).clean, f"secret survived: {secret[:6]}..."

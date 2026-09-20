@@ -1,5 +1,10 @@
 # PROJECT CONTRACT
 
+> **Superseded in scope by ADR-027 / PADMAVYUH_ARCHITECTURE_V2.md.** The
+> objective below described the SDN product. The product is now a local-first
+> agent for an ordinary Linux cloud server, with SDN as one optional pack.
+> The engineering principles in this document continue to apply unchanged.
+
 ## Objective
 
 Transform this Floodlight/TopoGuard research project into a Python-first,

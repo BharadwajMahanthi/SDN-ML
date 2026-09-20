@@ -1,5 +1,10 @@
 # CURRENT STATE
 
+> **Scope changed 2026-09-20 (ADR-027).** The product is a local-first security
+> agent for an ordinary Linux cloud server. SDN topology integrity is one
+> optional protection pack. Everything below that predates this line describes
+> the SDN pack, whose evidence remains valid within that scope.
+
 Updated at the close of P1. Status vocabulary: VERIFIED / SUPPORTED_BY_STATIC_ANALYSIS /
 REPORTED / HYPOTHESIS / NOT_RUN / BLOCKED.
 
@@ -95,6 +100,18 @@ then P11-AWS-02 must be reported as incomplete.
   JDK will be installed unless a specific unanswered behavioural question
   requires executing Java. Status: OPEN, not on the critical path.
 
+## V2 status
+
+| Track | State |
+|---|---|
+| SDN pack (P0–P6) | physically evidenced; see the table above |
+| V2 shared core | NOT_RUN — reconciliation complete, see `V2_RECONCILIATION.md` |
+| Cloud host agent | NOT_RUN — no sensor, no agent, no host detection exists |
+| AI security | NOT_RUN |
+
+No host, cloud, identity or AI protection capability exists. Completed SDN
+task IDs are **not** evidence for any of them.
+
 ## Current task
 
 P2-MIGRATION-01 complete. The objective changed by owner direction: the Java
@@ -104,8 +121,8 @@ PYTHON_MIGRATION_MATRIX.md.
 
 ## Exact next action
 
-**P6-OF-01** on branch `feat/p6-openflow-01-osken-adapter`: implement the real
-OS-Ken adapter behind the P5 contract, with `os_ken` and `eventlet` confined
-to the adapter package and that confinement enforced by the existing AST test.
-The lab substrate is proven; recreate it with
-`development/infra/lab/create.sh` and tear it down with `destroy.sh`.
+**V2-CORE-01** on branch `feat/v2-core-01-events-capabilities`: the common
+event envelope, entity identities and capability manifest with degraded
+states. First item of that branch is the ADR-029 completion manifest, because
+until it exists an abnormally terminated experiment is indistinguishable from
+a clean one.

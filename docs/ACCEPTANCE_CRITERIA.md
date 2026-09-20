@@ -1,5 +1,10 @@
 # ACCEPTANCE CRITERIA
 
+> Rebaselined against V2 (ADR-027). The targets below belong to the **SDN
+> pack**. The cloud host agent has its own, currently undefined, criteria; it
+> does not inherit these. `P13-SDN` and `P13-cloud-agent` are different
+> assurance scopes and must never be merged into one claim.
+
 All numerical targets below are **PROPOSED — NOT APPROVED, NOT MEASURED**.
 They are placeholders to be replaced with owner-approved values before any
 benchmarking, and must never be reported as measurements.
@@ -33,4 +38,10 @@ Not yet defined. Requires the P3 Linux/OVS lab to exist.
 
 Independent qualified review of security-critical assumptions and
 enforcement: **NOT PERFORMED**. Agreement between two agents is not
-independent review.
+independent review (V2 §19).
+
+Per V2 §19 a release candidate additionally requires evidence for
+installation, enrollment, sensor health, ordinary-host detection, scoped
+response, recovery, management outage, bounded resources, policy/update trust,
+and customer-data boundaries. **None of these exist.** The first production
+claim targets adversary levels A1/A2 only; A3 is explicitly out of claim.

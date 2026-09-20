@@ -278,3 +278,26 @@ This is the conversion the owner mandated in place of repairing Java.
   scopes was itself the trap -- each now states what it covers and why.
 - Status: code VERIFIED (809 passed); the process lapse is recorded, not
   explained away.
+
+### KF-24 — the redactor masked branch names, then leaked an AWS secret shape
+
+- **Found while reading the V2 architecture document.** Long hyphenated branch
+  names such as `feat/v2-response-01-privileged-broker` are high-entropy and
+  mixed-class, so the entropy rule masked them and made the milestone table
+  unreadable. The same family as KF-02, which fixed `/` but not `-`.
+- **Then the fix regressed the other way.** Widening the identifier rule to
+  accept mixed case let `wJalrXUtnFEMI_K7MDENG_bPxRfiCYEXAMPLEKEY` -- the
+  canonical AWS secret example -- through as an "identifier". Fixing
+  over-redaction created under-redaction of a real secret shape.
+- **Discriminator**: a slug is single-case with separators; a secret is
+  mixed-case and high-entropy. Both directions now have tests, because only
+  testing the direction you just fixed is how the second bug was introduced.
+- Status: VERIFIED, 89 firewall tests.
+
+### Known limitation — prose over-redaction
+
+The `assigned_secret` rule matches a secret-ish word followed by a value, so
+ordinary prose like "credential theft" and "signature checks" is masked when
+reading documents. This is the safe direction and the meaning stays
+recoverable from context, so it is recorded rather than fixed; tightening it
+risks the KF-24 regression again.
