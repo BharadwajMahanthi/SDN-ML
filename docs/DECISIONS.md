@@ -172,3 +172,63 @@ Architecture decision records. Supersede rather than delete.
 - **Honest limitation**: this is a guardrail on `safe_exec`, not on the agent.
   Direct shell access can still call `aws`, as it did here. The firewall
   constrains its own tools; it has never claimed to constrain everything.
+
+## ADR-023 — assumable role with temporary credentials replaces root keys
+
+- **Status**: accepted. Root keys remain **active** pending an owner action
+  that must not be automated.
+- **Problem** (KF-19): the project was operating on root account long-term
+  access keys. Root keys cannot be scoped, cannot be constrained by a
+  permission boundary, and cannot be contained after a leak without closing
+  the account.
+- **Options considered**, in the owner's stated order of preference:
+  1. *IAM Identity Center* — `sso-admin list-instances` returns **0**. Enabling
+     it means enabling AWS Organizations, an account-structure change with
+     consequences well beyond this project. Not appropriate to do autonomously.
+  2. *Assumable role with temporary STS credentials* — **chosen**.
+  3/4. Not needed.
+- **Decision**:
+
+  ```
+  sdnguard-operator (IAM user)   sole permission: sts:AssumeRole on one role
+        |  long-term key, near-worthless alone
+        v
+  sdnguard-lab-role              least privilege, 1-hour sessions
+  ```
+
+  The CLI profile `sdnguard` carries `role_arn` + `source_profile`, so every
+  command runs on temporary credentials. All lab scripts default to it.
+- **Least privilege derived from use, not convenience**: permissions were
+  enumerated from the operations P6 actually performs. CloudFormation is scoped
+  to the lab stack names; `iam:PassRole` is limited to the lab instance role
+  and to `ec2.amazonaws.com`; there is no user, policy or key management at
+  all, so the credential cannot widen itself; every regional statement carries
+  an `aws:RequestedRegion` condition pinning it to `ap-south-1`.
+- **Evidence**: `development/infra/lab/verify_credentials.sh` — 19 expected
+  outcomes, 0 unexpected. Ten denials including `iam:CreateUser`,
+  `iam:AttachUserPolicy`, `iam:CreateAccessKey`, `iam:PutRolePolicy` against
+  its own role, and every cross-region attempt.
+- **Residual risk**: the operator's long-term key still exists on the
+  workstation. It is a large improvement on a root key, not an elimination of
+  long-term credentials. Identity Center remains the better end state.
+
+## ADR-024 — a denial probe must be proven to reach authorization
+
+- **Status**: accepted
+- **Problem** (KF-20): the first credential test reported
+  `ec2:RunInstances in us-east-1` as "NOT DENIED - PRIVILEGE TOO BROAD". It
+  was neither. EC2 validates the AMI identifier *before* evaluating IAM, so
+  the request failed with `InvalidAMIID.Malformed` and never reached
+  authorization. The probe tested nothing.
+- **Why this matters beyond one test**: the failure mode is symmetric. A probe
+  that never reaches authorization can just as easily be read as a *pass*,
+  which would mean asserting a least-privilege property that was never tested.
+  That is the same species of error as the legacy project's tautological
+  detection.
+- **Decision**: every denial probe has three possible outcomes -- denied,
+  allowed, or **inconclusive** (rejected before authorization) -- and
+  inconclusive never counts as a pass. Region-scoped probes use `--dry-run`
+  with a **positive control** in the permitted region, so the probe is
+  demonstrated to reach IAM before its denial elsewhere is believed.
+- **Evidence**: `ec2:CreateSecurityGroup --dry-run` returns `DryRunOperation`
+  in `ap-south-1` and `UnauthorizedOperation` in `us-east-1`.

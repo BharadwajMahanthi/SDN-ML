@@ -9,6 +9,9 @@
 set -euo pipefail
 
 REGION="${SDNGUARD_REGION:-ap-south-1}"
+# Least-privilege by default: temporary STS credentials from the lab role.
+# Override only with a deliberate SDNGUARD_PROFILE.
+export AWS_PROFILE="${SDNGUARD_PROFILE:-sdnguard}"
 STACK="${SDNGUARD_STACK:-sdnguard-p6-lab}"
 TIMEOUT="${SDNGUARD_TIMEOUT:-300}"
 
