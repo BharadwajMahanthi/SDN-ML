@@ -1,0 +1,24 @@
+{
+  "label": "DIAGNOSTIC_MEASUREMENT",
+  "note": "Diagnostic only. t3a.large is burstable and is NOT the benchmark environment; authoritative latency and throughput belong to P10 on a controlled non-burstable instance.",
+  "dataplane_path_proof": {
+    "method": "interface packet counters sampled at four points across one ICMP exchange",
+    "h1_eth0_tx": 22,
+    "ovs_ingress_br_s1_h1_rx": 22,
+    "ovs_egress_br_s1_h2_tx": 23,
+    "h2_eth0_rx": 23,
+    "management_interface": "ens5",
+    "management_rx_delta": 0,
+    "management_tx_delta": 0,
+    "conclusion": "traffic crossed the OVS datapath; zero packets traversed the EC2 management interface"
+  },
+  "isolation_proof": {
+    "h1_default_route": "none; only 10.10.0.0/24 is reachable",
+    "h1_to_ec2_metadata_169_254_169_254": "unreachable"
+  },
+  "icmp_rtt_ms": {"min": 0.058, "avg": 0.097, "max": 0.521, "mdev": 0.110, "samples": 20},
+  "reproducibility": {
+    "topology_destroy": "0 namespaces, 0 bridges remaining",
+    "topology_recreate": "same datapath id 0000aabbccddeeff, h1->h2 and h3->h4 both pass"
+  }
+}

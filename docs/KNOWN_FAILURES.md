@@ -190,3 +190,17 @@ This is the conversion the owner mandated in place of repairing Java.
 - **Regression test**: `tests/adapter/test_normalize.py::test_the_legacy_icmp_confusion_cannot_recur`
   asserts all three of those messages fail the check while carrying code 0.
   Status: VERIFIED.
+
+### KF-19 — the lab is driven by root account access keys (HIGH, unresolved)
+
+- **Found during P6-LAB-01 preflight.** `sts:GetCallerIdentity` returns a
+  **root** principal. Root access keys cannot be scoped, cannot be constrained
+  by a permission boundary, and cannot be contained after a leak without
+  closing the account. This contradicts the project's own contract, which
+  requires least-privilege IAM and short-lived credentials.
+- **Status**: OPEN. Work proceeded because the owner authorised it and the
+  lab itself has no inbound exposure, but this is not a resolved risk.
+- **Recommendation**: create an IAM principal scoped to EC2, CloudFormation
+  and SSM in `ap-south-1`, switch to it, and **delete the root access keys**.
+- **Carried into**: P11-AWS-02, which cannot honestly be called complete while
+  the lab runs on root credentials.
