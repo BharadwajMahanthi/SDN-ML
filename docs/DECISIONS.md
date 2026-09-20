@@ -232,3 +232,27 @@ Architecture decision records. Supersede rather than delete.
   demonstrated to reach IAM before its denial elsewhere is believed.
 - **Evidence**: `ec2:CreateSecurityGroup --dry-run` returns `DryRunOperation`
   in `ap-south-1` and `UnauthorizedOperation` in `us-east-1`.
+
+## ADR-025 — no artificial dead ends
+
+- **Status**: accepted (owner direction, 2026-09-20). Permanent project rule,
+  recorded in `AGENTS.md` and `PROJECT_CONTRACT.md`.
+- **Problem**: this project is built from an incomplete research POC. The
+  default failure mode for such work is to treat the absence of a library,
+  an OS feature or a published solution as a terminal condition, and either
+  stop or retreat to the legacy implementation.
+- **Decision**: the objective is defined by required capabilities and security
+  properties, never by whichever libraries happen to exist. On failure:
+  understand the actual requirement, check for a safe existing solution,
+  evaluate alternatives, adapt a component, or implement the missing piece
+  ourselves behind a clean interface, then test and measure it.
+- **Explicitly rejected fallbacks**: repairing Floodlight, reintroducing
+  legacy behaviour for compatibility, substituting fake tests for physical
+  evidence, and redesigning the architecture because an adapter changed.
+- **Guard against the opposite error**: "implement it ourselves" is bounded.
+  Cryptography, TLS, OS networking and complete protocol stacks are not
+  rewritten without a narrow documented necessity. Prefer a small auditable
+  custom component over a large unnecessary reinvention.
+- **Consequence for P6**: if OS-Ken lacks something, the response is to patch
+  or wrap it behind `adapter/`, or implement the minimum protocol subset --
+  not to abandon real OpenFlow testing.

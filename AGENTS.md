@@ -61,6 +61,39 @@ Use exactly one of: `VERIFIED` (executed evidence), `SUPPORTED_BY_STATIC_ANALYSI
 expected/planned/assumed into measured/verified/proven. Never call the system
 impenetrable, provably secure, or production-ready without scoped evidence.
 
+## No artificial dead ends
+
+A failed dependency, unavailable tool, disproven legacy assumption,
+unsupported framework capability, or missing implementation does not
+terminate development. Identify the underlying required capability, evaluate
+alternatives, and implement the smallest safe replacement when necessary.
+Block only the specific operation that genuinely requires unavailable owner
+authority, external access, or irreversible action. Continue all independent
+work. Never falsify evidence to preserve an existing design.
+
+In practice:
+
+- A tool name is not a requirement. "Run Mininet on macOS" is not the
+  requirement; "a reproducible multi-host environment with isolated
+  interfaces, a controllable datapath and observable packet paths" is.
+- Before writing `BLOCKED`, perform an **ALTERNATIVE_ANALYSIS**: required
+  capability, current approach, why it failed, alternatives with cost, risk
+  and testability, recommended path. Then take the strongest safe path.
+- Use `TASK_BLOCKED`, `EXTERNAL_ACTION_REQUIRED`, `ALTERNATIVE_SELECTED` or
+  `DEFERRED_WITH_SAFE_PATH` rather than a project-wide stop.
+- Frameworks are implementation details. OS-Ken is the current adapter, not
+  the architecture. If it fails, isolate the missing capability and replace
+  the smallest piece, behind the existing boundary.
+- Anything we implement ourselves because no suitable library fits carries a
+  higher test bar: specification, boundary, property, malformed-input,
+  failure and resource-bound tests, plus fuzzing and golden fixtures for
+  protocol-facing code. Do not trust custom infrastructure because we wrote it.
+- Never reimplement cryptography, TLS, OS networking or a full TCP/IP stack
+  without a narrow, documented necessity.
+- A disproven research assumption is information, not failure. Record the
+  evidence, mark the assumption rejected or conditional, and design something
+  stronger. Never change the experiment to preserve the thesis.
+
 ## 5. Changing direction
 
 A major architectural change needs an ADR in `docs/DECISIONS.md` (problem,
