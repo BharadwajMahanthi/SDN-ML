@@ -29,8 +29,18 @@ REPORTED / HYPOTHESIS / NOT_RUN / BLOCKED.
 | P5-OF-06/08/09, real adapter | BLOCKED | needs Linux/OVS (B-1) |
 | Stage 2+ | NOT_RUN | — |
 
+## Repository layout (ADR-020)
+
+`development/` holds the new system and nothing else. Everything at the root
+that is not `tools/`, `tests/tools`, `tests/memory`, `docs/` or `memory/` is
+legacy, and is due for deletion or removal to its own branch. That is the
+owner's call; the split is already complete on this side.
+
 ## What exists
 
+- `development/src/sdnguard/` — the system (domain, topology, hosts, probes,
+  detection, policy, observability, adapter, controller)
+- `development/infra/` — the AWS/Linux/OVS lab
 - `tools/context_policy.{yaml,py}`, `redact.py`, `repo_query.py`,
   `safe_exec.py`, `safe_test.py`, `safe_diff.py`
 - `memory/policy.json`, `tools/memory_store.py`, `tools/memory.py`,

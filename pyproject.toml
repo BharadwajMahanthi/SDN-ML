@@ -1,7 +1,16 @@
-# Minimal project configuration. Packaging metadata is deliberately deferred
-# to P12-PKG-01; this file exists so that `src/` is importable by tests
-# without per-test sys.path manipulation.
+# Minimal project configuration. Packaging metadata is deferred to P12-PKG-01.
+#
+# Layout rule (ADR-020): the new Python system lives entirely under
+# development/. Nothing of it is interleaved with the legacy Floodlight-era
+# code, so the legacy tree can be deleted or moved to its own branch in one
+# operation without touching the product.
+#
+#   development/src/sdnguard   the system being built
+#   development/tests          its tests
+#   development/infra          the lab that exercises it
+#   tools/, tests/tools, tests/memory, docs/, memory/   project governance
+#   everything else at the root                          legacy, to be removed
 
 [tool.pytest.ini_options]
-pythonpath = ["src", "."]
-testpaths = ["tests"]
+pythonpath = ["development/src", "."]
+testpaths = ["tests", "development/tests"]
