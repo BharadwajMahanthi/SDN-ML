@@ -397,3 +397,92 @@ risks the KF-24 regression again.
   would have been the real damage.
 - **Fix**: bare `Name` calls are checked against the builtin denylist;
   attribute calls only against process and privilege primitives.
+
+### KF-34 — the redactor read prose as a secret assignment and blocked memory writes
+
+- **Found while recording owner rules.** A memory checkpoint describing
+  "peer-credential auth via LOCAL_PEERCRED" was refused as
+  `MEMORY_FORBIDDEN_CONTENT: probable secret material (assigned_secret)`.
+- **Cause**: the assignment rule accepted bare whitespace as an assignment
+  operator (`(?P<sep>\s*[:=]\s*|\s+)`), so any sentence containing
+  `credential`, `token`, `key`, `secret` or `auth` followed by a four-letter
+  word became a HIGH finding. `credential auth` parsed as `credential = auth`.
+- **Why it mattered even though it fails closed.** No data leaked — the store
+  refused the write. But durable record-keeping is itself a safety property
+  here, and a redactor that blocks legitimate records is one that gets
+  bypassed. A guard that fires on ordinary prose does not stay enabled.
+- **Fix**: a whitespace-separated value is treated as prose when it is a
+  plain alphabetic word of at most 15 characters and the name carries no
+  command-line flag marker. `=` and `:` separators are unchanged, flags
+  (`--password hunter2`) still match, and long all-alphabetic values stay
+  suspicious because a real passphrase can be all letters.
+- **Second defect during the fix**: the first flag-marker pattern matched the
+  hyphen *inside* `peer-credential`, so the prose case was still treated as
+  `-credential <value>`. The flag marker now requires a non-alphanumeric
+  character before the dash. Both directions are tested.
+
+### KF-35 — three RSA private keys are committed, and the secret check could not see them
+
+- **Found while preparing to publish the archive branch.** A filename scan of
+  `legacy/java-topoguard-research` returned `clab-sdn-simple/.tls/ca/ca.key`,
+  `clab-sdn-complex/.tls/ca/ca.key` and `clab-win-test-lab/.tls/ca/ca.key`,
+  each beginning `-----BEGIN RSA PRIVATE KEY-----`.
+- **They are already public.** The same blobs are present in `origin/main`,
+  which is a public GitHub repository, introduced by commit `bea42bf`. They
+  are removed from the tip of the current `main` tree but remain in history.
+  Publishing the archive branch therefore discloses nothing new; the
+  disclosure already happened.
+- **Why `committed_secrets` missed them.** That check filters to text source
+  extensions (`.py`, `.sh`, `.yaml`, …) before scanning. A `.key` or `.pem`
+  file is skipped entirely — the guard against committed secrets could not
+  see the most secret-shaped files in the repository.
+- **Fix**: a separate `key_material` check in `tools/verify_all.py` scans
+  *every* tracked file for private-key headers with no extension filter, and
+  reports the path without ever printing the body. Allowances live in
+  `EXPECTED_KEY_MATERIAL` and a stale one is reported.
+- **Assessed impact: LOW, but the keys must be treated as compromised.** They
+  are Containerlab-generated CA keys for ephemeral local lab TLS. They sign
+  certificates only for throwaway lab containers, and grant no access to AWS,
+  to any host, or to any production system. Containerlab regenerates them per
+  deployment, so nothing depends on them.
+- **OWNER_ACTION_REQUIRED**: purging them from history rewrites a published
+  public branch and cannot be done unilaterally. See `docs/CURRENT_STATE.md`.
+
+### KF-36 — the broker allowed privileged actions built from coerced garbage
+
+Four defects, all found by the V2-SAFE-02 fuzz suite, all of which produced
+an **ALLOW** rather than a crash. Each was a case of the decoder being
+helpful where it should have been strict.
+
+- **`str()` coercion laundered wrong types.** `ActionRequest.from_dict` read
+  every text field through `str(raw.get(field, ""))`. A JSON `null` reason
+  became the string `"None"` — non-empty, under the length cap, and
+  therefore an acceptable justification for a privileged action. An integer
+  `request_id` of `9223372036854775808` became a string that matched the id
+  pattern and was allowed. Fixed with `_require_str`/`_require_int`, which
+  refuse a wrong type instead of reinterpreting it.
+- **`True` passed as schema version 1.** `bool` is a subclass of `int` in
+  Python, so `raw.get("schema_version") != SCHEMA_VERSION` was false for
+  `true`. `_require_int` rejects `bool` explicitly.
+- **A blank reason was accepted.** `if not self.reason` passes for `" "`.
+  An action with no stated reason is unauditable, which defeats the point of
+  recording one. Now `reason.strip()` must be non-empty, and control
+  characters are refused in `reason` and `policy_version` alike: a newline in
+  a field that lands in an audit record is a log-forging primitive.
+- **`policy_version` was unbounded.** Every other recorded string had a cap.
+  Now 64 characters.
+- **`json` accepted `NaN` and `Infinity`.** Non-standard tokens Python's
+  decoder allows by default. Nothing in the contract can represent them, and
+  a float that compares false against itself has no place in a privileged
+  decision. `read_message` now passes `parse_constant` and rejects them.
+
+The common lesson is that every one of these was a *coercion*, not a missing
+check. The checks were present and were being handed values that had already
+been reshaped into acceptable form.
+
+Three test defects were found in the same pass and are worth recording so
+they are not reintroduced: a cap-sized message deadlocked a socketpair
+because the send was not on its own thread; reusing one `request_id` across
+fuzz cases made replay protection look like a contract failure; and low
+active-action ceilings in the fuzz fixture denied everything after the
+fourth case for an unrelated reason, hiding the property under test.

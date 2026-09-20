@@ -90,7 +90,8 @@ _RULES: tuple[tuple[str, re.Pattern[str], str], ...] = (
 # that underscore-separated names match. \b fails on SUDO_PASS because '_' is a
 # word character -- that miss would have exposed a real credential in this repo.
 _SECRET_NAME = re.compile(
-    r"(?i)(?<![A-Za-z0-9])(pass(?:word|wd|phrase)?|pwd|secret(?:[_-]?key)?|token|"
+    r"(?i)(?P<flag>(?<![A-Za-z0-9])-{1,2}|(?<![A-Za-z0-9])/)?"
+    r"(?<![A-Za-z0-9])(pass(?:word|wd|phrase)?|pwd|secret(?:[_-]?key)?|token|"
     r"api[_-]?key|apikey|access[_-]?key|private[_-]?key|credential|auth)"
     r"(?![A-Za-z0-9])"
     r"(?P<sep>\s*[:=]\s*|\s+)"
@@ -145,6 +146,27 @@ def _shannon(text: str) -> float:
     return -sum((c / n) * math.log2(c / n) for c in counts.values())
 
 
+# A plain, short, alphabetic word. `credential auth`, `token for`, `secret of`
+# -- prose, not assignments. Long alphabetic strings stay suspicious, because a
+# real passphrase can be all letters.
+_PROSE_WORD = re.compile(r"^[A-Za-z]{1,15}$")
+
+
+def _is_prose_after_whitespace(value: str) -> bool:
+    """Whether a whitespace-separated value is a following word, not a secret.
+
+    Whitespace is a far weaker assignment signal than ``=`` or ``:``. Treating
+    it as equivalent made every sentence containing "credential", "token" or
+    "key" a HIGH finding, which fails closed but blocks legitimate records --
+    KF-34, found when a decision record about peer-credential authentication
+    was refused by the memory store.
+
+    A flag marker (``--password hunter2``) is still an assignment, and is
+    handled by the caller, which is why this only sees the bare-prose case.
+    """
+    return bool(_PROSE_WORD.match(value.strip("\"'")))
+
+
 def _looks_like_secret_value(value: str) -> bool:
     stripped = value.strip("\"'")
     if len(stripped) < 4:
@@ -172,6 +194,10 @@ def redact(text: str) -> Result:
     def _sub_named(m: re.Match[str]) -> str:
         value = m.group("value")
         if not _looks_like_secret_value(value):
+            return m.group(0)
+        separator_is_whitespace = not any(c in m.group("sep") for c in ":=")
+        if separator_is_whitespace and not m.group("flag") and \
+                _is_prose_after_whitespace(value):
             return m.group(0)
         findings.append(Finding("assigned_secret", line_of(m.start(), out), HIGH))
         prefix = m.group(0)[: m.start("value") - m.start(0)]

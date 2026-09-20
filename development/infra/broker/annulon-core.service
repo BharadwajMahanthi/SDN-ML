@@ -1,0 +1,51 @@
+[Unit]
+Description=Annulon security core (unprivileged)
+After=annulon-broker.service
+
+[Service]
+Type=exec
+ExecStart=/opt/annulon/bin/annulon-core --config /etc/annulon/core.json
+User=annulon-core
+Group=annulon-core
+
+# The core holds NO privilege. This is the half of the boundary that makes
+# the other half meaningful: if the core could change packet filter rules
+# itself, the broker would be a formality.
+CapabilityBoundingSet=
+AmbientCapabilities=
+NoNewPrivileges=yes
+
+# Except one: reading process events from the kernel requires CAP_NET_ADMIN
+# for the netlink connector. That is a read capability here, and it is worth
+# stating plainly that it is the single exception and why.
+# AmbientCapabilities=CAP_NET_ADMIN   # uncomment where the proc connector is used
+
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/annulon-core
+StateDirectory=annulon-core
+PrivateTmp=yes
+ProtectProc=default       # the core's job is to observe processes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+RestrictAddressFamilies=AF_UNIX AF_NETLINK AF_INET AF_INET6
+SystemCallFilter=@system-service
+SystemCallFilter=~@debug @mount @swap @reboot @raw-io @obsolete
+SystemCallArchitectures=native
+
+LimitNOFILE=1024
+MemoryMax=512M
+TasksMax=64
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

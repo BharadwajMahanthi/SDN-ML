@@ -147,3 +147,93 @@ PYTHON_MIGRATION_MATRIX.md.
 broker process, authenticated local IPC with peer credentials, and a bounded
 durable action journal. The contract and policy exist and refuse a
 compromised core in unit tests; nothing is physically enforced yet.
+
+
+## Owner action — committed lab CA private keys (KF-35)
+
+Three Containerlab CA private keys are in the public history of `main`. They
+are gone from the current tree and are low-impact (ephemeral lab TLS, no
+access to any real system), but they are real private keys in a public
+repository. Removing them requires rewriting published history, which is an
+owner decision.
+
+Option A — accept and move on. Defensible: the keys are worthless outside a
+lab that no longer exists, and the tree is already clean. No action.
+
+Option B — purge from history:
+
+```bash
+# Requires git-filter-repo. Rewrites every commit; all clones must be re-cloned.
+git filter-repo --invert-paths --path-glob '*/.tls/ca/ca.key' --path-glob '*/.tls/ca/ca.pem'
+git push --force origin main legacy/java-topoguard-research
+```
+
+Coordinate before running it: a force-push to a public repository breaks
+every existing clone and fork, and the archive branch must be rewritten in
+the same pass or it will reintroduce the blobs.
+
+## Owner action — publishing is blocked by repository permissions
+
+`git push` to `origin` fails with HTTP 403. The authenticated GitHub account
+is `mbkirusa`; the repository is `BharadwajMahanthi/SDN-ML`, and that account
+has no write access to it.
+
+Consequence: `main` is **25 commits ahead of `origin/main`** locally, and the
+archive branch `legacy/java-topoguard-research` exists only on this machine.
+Until this is resolved, the published repository still shows the Java tree
+and does not contain any Annulon work.
+
+Resolution is owner-level, either:
+
+- authenticate as the repository owner — `gh auth login` as
+  `BharadwajMahanthi`, or add that account with `gh auth switch`; or
+- grant `mbkirusa` write access to the repository.
+
+Then:
+
+```bash
+git push origin legacy/java-topoguard-research   # publish the archive first
+git push origin main
+```
+
+Publishing the archive branch discloses nothing new: its blobs are already in
+`origin/main` (see KF-35).
+
+
+## V2-SAFE-02 — the privileged broker (complete, 2026-09-21)
+
+A separate broker process now owns every privileged action. The core can ask;
+it cannot decide and it cannot act.
+
+**Verified by execution:**
+
+- Caller identity comes from the kernel, over a real Unix socket:
+  `SO_PEERCRED` on Linux, `LOCAL_PEERCRED`/`LOCAL_PEERPID` on Darwin. A uid
+  absent from the broker's own map is `UNKNOWN_CALLER`, which no policy
+  grants. Root is not special-cased into the core.
+- The broker refuses to start where peer credentials are unavailable, rather
+  than trusting the payload.
+- Experiments A–F all pass: unauthorized caller, authorized request, unknown
+  action type, protected target and destination, oversized TTL, and broker
+  unavailable yielding `ENFORCEMENT_UNAVAILABLE` — which is a distinct
+  outcome from `DENIED`, with no fallback path in which the core acts itself.
+- Intent is journalled and fsynced *before* the OS is touched; a test fails
+  the backend mid-apply and asserts the journal already knew.
+- Restart, expiry and reconciliation: the replay cache is rebuilt from the
+  journal, orphaned state is removed, and records whose state is gone are
+  closed so they stop counting against the active-action ceiling.
+- Fuzzing found four defects that produced an **ALLOW**, all now fixed and
+  regression-tested (KF-36). 3,000 seeded randomised cases plus exhaustive
+  per-field hostile values reach the backend zero times, with a positive
+  control proving a valid request still succeeds.
+- **Cross-platform, same code:** 363 response tests pass on macOS natively
+  and on a real Linux kernel (6.12.76-linuxkit, aarch64) via
+  `development/infra/local/lab.sh`.
+
+**Not yet verified:** nothing is physically enforced. The only backends are
+`UnavailableEnforcer`, which refuses, and `RecordingEnforcer`, which is a
+test double reachable from no production entry point. Real `nftables`
+containment is V2-SAFE-03. Until then, no containment claim is supported by
+anything but unit evidence.
+
+Measured: 0.138 ms per denial-path request including the fsync.

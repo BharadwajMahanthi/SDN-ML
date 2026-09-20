@@ -123,6 +123,14 @@ EXPECTED_SECRET_SHAPES = {
     "tools/redact.py": "the redactor's own docstring cites the AWS example",
 }
 
+#: Files permitted to contain a private-key *header* because the body is
+#: fabricated. Each entry is an allowance somebody has to justify, and a
+#: stale one is reported so the list cannot quietly grow.
+EXPECTED_KEY_MATERIAL = {
+    "tests/tools/fixtures.py":
+        "a synthetic PEM body ('NOTAREALKEY') the redactor is tested against",
+}
+
 
 def check_secrets(root: Path) -> Check:
     """Re-scan tracked text for credential shapes. The firewall protects what
@@ -184,6 +192,63 @@ def check_cloud(root: Path) -> list[Check]:
     return checks
 
 
+#: Headers that mean the file *is* key material, whatever it is called. The
+#: extension allowlist in ``check_secrets`` skips binary and unknown types,
+#: which is how three RSA lab CA keys stayed in this repository undetected
+#: until they were about to be published (KF-35). This check has no
+#: extension filter on purpose.
+_KEY_MATERIAL_MARKERS = (
+    "-----BEGIN RSA PRIVATE KEY-----",
+    "-----BEGIN PRIVATE KEY-----",
+    "-----BEGIN EC PRIVATE KEY-----",
+    "-----BEGIN DSA PRIVATE KEY-----",
+    "-----BEGIN OPENSSH PRIVATE KEY-----",
+    "-----BEGIN PGP PRIVATE KEY BLOCK-----",
+    "-----BEGIN ENCRYPTED PRIVATE KEY-----",
+)
+
+
+def check_key_material(root: Path) -> Check:
+    """No tracked file may contain a private key, whatever its name.
+
+    Separate from ``check_secrets`` because that check answers "does this
+    source file mention a secret" and filters to text extensions to stay
+    fast. This one answers "is this file a key", which is a different
+    question and cannot afford a filter: the files that matter most are
+    exactly the ones an extension allowlist drops.
+    """
+    _, listing = _run(["git", "ls-files"], root, 120)
+    offenders: list[str] = []
+    for name in listing.splitlines():
+        path = root / name
+        try:
+            if path.stat().st_size > 4_000_000:
+                continue
+            with open(path, "rb") as handle:
+                head = handle.read(8192)
+        except OSError:
+            continue
+        try:
+            text = head.decode("utf-8", errors="replace")
+        except ValueError:
+            continue
+        if any(marker in text for marker in _KEY_MATERIAL_MARKERS):
+            offenders.append(name)
+    unexpected = [name for name in offenders if name not in EXPECTED_KEY_MATERIAL]
+    if unexpected:
+        # The location is reported; the key body never is.
+        return Check("key_material", FAIL,
+                     f"{len(unexpected)} tracked file(s) contain private key "
+                     f"material: {unexpected[:3]}")
+    stale = [name for name in EXPECTED_KEY_MATERIAL
+             if name not in offenders and (root / name).exists()]
+    if stale:
+        return Check("key_material", WARN,
+                     f"{len(stale)} allowance(s) no longer needed: {stale[:3]}")
+    return Check("key_material", OK,
+                 f"no unexpected key material; {len(offenders)} known fixture(s)")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="verify_all", description=__doc__)
     parser.add_argument("--cloud", action="store_true")
@@ -193,7 +258,7 @@ def main(argv: list[str] | None = None) -> int:
 
     checks = [check_worktree(root), check_branches(root), check_memory(root),
               check_firewall(root), check_boundaries(root), check_secrets(root),
-              check_tests(root)]
+              check_key_material(root), check_tests(root)]
     if args.cloud:
         checks.extend(check_cloud(root))
 

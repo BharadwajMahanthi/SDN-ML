@@ -1,0 +1,85 @@
+[Unit]
+Description=Annulon privileged response broker
+Documentation=file:///opt/annulon/docs/ARCHITECTURE.md
+# The broker must be available before the core starts asking. It is not
+# Requires= in the other direction: the core running without the broker is a
+# supported state that reports ENFORCEMENT_UNAVAILABLE, not a failure.
+Before=annulon-core.service
+
+[Service]
+Type=exec
+ExecStart=/opt/annulon/bin/annulon-broker --config /etc/annulon/broker.json
+User=root
+Group=root
+
+# --- What the broker is allowed to do -------------------------------------
+# The broker needs exactly one privilege: to change packet filter rules. Not
+# to load kernel modules, not to reboot the host, not to change users. A
+# compromised broker with CAP_NET_ADMIN alone can disrupt networking; one
+# running as unrestricted root can do anything, and the gap between those two
+# is the entire value of this unit file.
+CapabilityBoundingSet=CAP_NET_ADMIN
+AmbientCapabilities=CAP_NET_ADMIN
+NoNewPrivileges=yes
+
+# --- Filesystem ------------------------------------------------------------
+ProtectSystem=strict
+ProtectHome=yes
+# The journal and the socket are the only things it writes.
+ReadWritePaths=/var/lib/annulon /run/annulon
+RuntimeDirectory=annulon
+RuntimeDirectoryMode=0750
+StateDirectory=annulon
+StateDirectoryMode=0750
+PrivateTmp=yes
+ProtectProc=invisible
+ProcSubset=pid
+
+# --- Kernel and devices ----------------------------------------------------
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+PrivateDevices=yes
+DevicePolicy=closed
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+RemoveIPC=yes
+
+# --- Network ---------------------------------------------------------------
+# AF_NETLINK is required to change packet filter rules. AF_UNIX is the socket
+# the core connects to. AF_INET is deliberately absent: the broker has no
+# reason to speak to anything off this host, and a broker that cannot open a
+# network connection cannot be used to exfiltrate or to receive instructions.
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+IPAddressDeny=any
+
+# --- System calls ----------------------------------------------------------
+SystemCallFilter=@system-service
+SystemCallFilter=~@debug @mount @swap @reboot @raw-io @obsolete @cpu-emulation
+SystemCallArchitectures=native
+
+# --- Resource bounds -------------------------------------------------------
+# A broker that can be made to exhaust the host is a denial of service on
+# containment.
+LimitNOFILE=256
+LimitNPROC=64
+MemoryMax=128M
+TasksMax=16
+
+Restart=on-failure
+RestartSec=2s
+# If it is failing repeatedly, stop restarting it and leave the failure
+# visible. A broker in a crash loop that systemd keeps hiding is worse than
+# one that is plainly down, because the core reports ENFORCEMENT_UNAVAILABLE
+# either way and only one of them gets noticed.
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Install]
+WantedBy=multi-user.target
