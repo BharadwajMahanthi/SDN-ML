@@ -1,0 +1,11 @@
+{
+  "sensor_disabled": true,
+  "launched": 25,
+  "marker_events_observed": 0,
+  "findings_produced": 0,
+  "agent_state": "degraded_collection",
+  "trustworthy_absence": false,
+  "collection_complete": false,
+  "agent_stats": {},
+  "completion_status": "complete"
+}

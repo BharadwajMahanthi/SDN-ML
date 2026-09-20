@@ -1,0 +1,26 @@
+{
+  "artifact_hashes": {
+    "events.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "findings.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ground_truth.json": "51721fc9b74a5f29040b92eac3a5a09679901d6a32337069293b2d3dc4082eef"
+  },
+  "completion_status": "complete",
+  "ended_utc": "2026-09-20T15:59:21.476303+00:00",
+  "exit_reason": "normal",
+  "notes": [],
+  "producers": {
+    "events": "finalized",
+    "findings": "finalized",
+    "ground_truth": "finalized"
+  },
+  "readiness": {
+    "controller_ready": true,
+    "scenario_completed": true,
+    "scenario_started": true
+  },
+  "run_id": "host-crossover-negative",
+  "scenario_id": "host_process_attribution",
+  "schema_version": 1,
+  "started_utc": "2026-09-20T15:59:19.446462+00:00",
+  "state": "completed"
+}
