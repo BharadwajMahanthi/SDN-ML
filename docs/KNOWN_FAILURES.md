@@ -226,3 +226,32 @@ This is the conversion the owner mandated in place of repairing Java.
   `19 expected, 0 unexpected, 0 inconclusive`, with
   `ec2:CreateSecurityGroup --dry-run` returning `DryRunOperation` in
   ap-south-1 and `UnauthorizedOperation` in us-east-1. Status: VERIFIED.
+
+### KF-21 — two OpenFlow listeners raced for port 6653
+
+- **Found on first real controller start.** The launcher spawned
+  `OpenFlowController()` while `AppManager.instantiate_apps()` had already
+  started os_ken's `OFPHandler`, whose `start()` spawns one. The loser raised
+  inside an eventlet timer.
+- **Why it mattered**: harmless noise on that run, but it would have masked a
+  genuine bind failure, which is exactly the condition KF-22 turned out to be.
+- **Fix**: let the framework own the listener. Regression: the experiment
+  runner asserts exactly one listener and aborts otherwise.
+
+### KF-22 — the controller never terminated, voiding the next experiment
+
+- **Found by the experiment runner's own abort guard.** `--seconds 45` left a
+  controller alive at 231 seconds, still holding port 6653. The next
+  controller's bind failed silently, OVS logged `Connection refused`, and the
+  run produced an **empty** event journal.
+- **Why this is the most serious defect so far**: an empty run is
+  indistinguishable from "nothing was detected". A negative control that
+  silently failed to start would have *passed* -- manufacturing exactly the
+  tautological result this project exists to avoid.
+- **Root cause**: returning from `main()` does not end the process; os_ken
+  leaves greenthreads and a hub running. SIGTERM set the stop flag, the loop
+  broke, and the interpreter stayed up.
+- **Fix**: explicit `manager.close()` then `os._exit(0)`; escalating
+  TERM-then-KILL in the runner; and the runner now waits for a **normalised
+  `switch_connected` event** before running any scenario, aborting if it never
+  arrives. Status: VERIFIED -- the guard caught this defect in practice.

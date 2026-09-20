@@ -1,0 +1,12 @@
+{
+  "algorithm": "sha256",
+  "files": {
+    "controller_events.jsonl": "c021731f818d28e9ee00d06234d3252481ab554639ed3be4cae2246ac584ee01",
+    "flow_state_after.txt": "1d5b0a9b02fa871f966620f9c3019fcc3c2db395da02445c657e6df377913ca3",
+    "flow_state_before.txt": "0c3accbd2c2fb5caba31e8438b8e7365a6bd0e14bb85b1e2e5ab51df56961310",
+    "ground_truth.json": "bff87962bd0101f534df00b5107668814014e4f2747e1653a514fecef391e03e",
+    "health.json": "fa144ed1872a01e408f106bb03d0092fc4baa1c44696024b4ecf5442a2715a10",
+    "port_stats_after.txt": "ca04efc2ecdfc79da785b48b040abefa912a8ab90c50c912eff23b9ef29e49d8",
+    "port_stats_before.txt": "8a981d1b2acfc4cb5a3521ad08d01286d4f96de33998b1c4071827a458dfa343"
+  }
+}

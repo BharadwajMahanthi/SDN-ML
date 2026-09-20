@@ -29,6 +29,7 @@ REPORTED / HYPOTHESIS / NOT_RUN / BLOCKED.
 | P5-OF-06/08/09, real adapter | UNBLOCKED | lab substrate now exists |
 | **P6-LAB-01 Linux/OVS lab** | **VERIFIED ON REAL HARDWARE** | Ubuntu 24.04.4, kernel 7.0.0-1012-aws, OVS 3.3.9, dpid 0000aabbccddeeff |
 | P6-CLOUD-SEC-00 credentials | VERIFIED | scoped role, temporary sessions, 19 checks / 0 unexpected |
+| **P6-OF-01 / LAB-02 / LAB-03** | **VERIFIED ON REAL OVS** | real OpenFlow 1.3 session, real PacketIn -> HostObservation, ground truth matched |
 | Stage 2+ | NOT_RUN | — |
 
 ## Repository layout (ADR-020)

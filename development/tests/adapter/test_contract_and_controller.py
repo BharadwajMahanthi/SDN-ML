@@ -290,7 +290,11 @@ def test_the_adapter_layer_imports_no_framework():
 
     root = Path(__file__).resolve().parents[2] / "src" / "sdnguard"
     forbidden = {"ryu", "os_ken", "eventlet", "gevent", "ovs", "scapy", "twisted"}
-    for path in list((root / "adapter").glob("*.py")) + list((root / "controller").glob("*.py")):
+    checked = [p for p in (list((root / "adapter").glob("*.py"))
+                           + list((root / "controller").glob("*.py")))
+               if p.name != "osken.py"]
+    assert len(checked) >= 4, "guard would pass vacuously"
+    for path in checked:
         tree = ast.parse(path.read_text())
         roots = set()
         for node in ast.walk(tree):

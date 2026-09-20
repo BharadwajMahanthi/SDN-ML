@@ -1,0 +1,15 @@
+{
+  "dropped_events": 0,
+  "enforcement_disabled": false,
+  "enforcements": 0,
+  "findings": 0,
+  "findings_recorded": 0,
+  "hosts_tracked": 2,
+  "movements": 0,
+  "observations": 6,
+  "ports_tracked": 4,
+  "probes_issued": 0,
+  "probes_outstanding": 0,
+  "probes_undeliverable": 0,
+  "switches_connected": 1
+}

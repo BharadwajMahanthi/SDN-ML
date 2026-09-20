@@ -57,7 +57,7 @@ Every row's "Legacy defect" column is the bridge required by the owner:
 | A-03 | Fake fabric | — | test the core with no OVS | nothing equivalent existed | `adapter/fake.py` | models send failures, port flaps, reconnects | UNIT_VERIFIED |
 | A-04 | Controller wiring | L-01 | one place the components meet | wiring spread across listeners | `controller/app.py` | lifecycle, probe delivery, end-to-end | UNIT_VERIFIED |
 | A-05 | Packet normalisation | L-05 | bytes -> domain events | parsing interleaved with security logic; ICMP type/code confusion; BigInteger address conversion | `adapter/normalize.py` | fixtures, the ICMP defect, 3500 fuzz cases | UNIT_VERIFIED |
-| A-06 | Real OS-Ken adapter | L-01 | production transport | — | `adapter/osken.py` | conformance suite vs fake | DEFERRED (needs Linux/OVS, B-1) |
+| A-06 | Real OS-Ken adapter | L-01 | production transport | — | `adapter/osken.py` | real OVS: switch registration, PacketIn, host observation | **INTEGRATION_VERIFIED** |
 
 ## Deferred
 
@@ -102,6 +102,7 @@ Every row's "Legacy defect" column is the bridge required by the owner:
 | P5-OF-01 | `spike/p5-openflow-01-framework-selection` | A-01 (new) | UNDERSTOOD — ADR-016/017 on verified PyPI evidence; conformance NOT_RUN |
 | P5-OF-02/03/07 | `feat/p5-openflow-02-adapter-contract` | A-02, A-03, A-04 (new) | UNIT_VERIFIED — 26 adapter tests, 766 total |
 | P5-OF-04/05/06 | `feat/p5-openflow-04-packet-normalization` | A-05 | UNIT_VERIFIED — 37 parser tests incl. fuzzing, 803 total |
+| P6-OF-01 / LAB-02 / LAB-03 | `feat/p6-openflow-01-osken-adapter` | A-06 | **INTEGRATION_VERIFIED on real OVS** — dpid 0000aabbccddeeff, 4 ports, 6 host observations from real PacketIns, ground truth matched |
 
 Delivered beyond the specified minimum, with reasons:
 
