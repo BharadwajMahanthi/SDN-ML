@@ -1,0 +1,107 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  sdnguard P6 lab: a single Linux host for a real Open vSwitch datapath.
+  The VPC is the host's surroundings only -- the SDN experiment lives inside
+  the instance in Linux namespaces connected to OVS by explicit veth pairs.
+
+Parameters:
+  AmiId:
+    Type: AWS::EC2::Image::Id
+    Description: Pinned Ubuntu LTS x86_64 AMI. Pinned deliberately, not 'latest'.
+  InstanceType:
+    Type: String
+    Default: t3a.large
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  VolumeSizeGiB:
+    Type: Number
+    Default: 20
+
+Resources:
+  # Least privilege for the access path: SSM Run Command only. No SSH key
+  # exists anywhere in this stack, so there is no key to leak or rotate.
+  LabRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: {Service: ec2.amazonaws.com}
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Tags:
+        - {Key: Project, Value: sdnguard}
+        - {Key: Lab, Value: p6}
+
+  LabInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: [!Ref LabRole]
+
+  # No ingress rules at all. Egress is limited to what apt and the SSM
+  # endpoints need; the OpenFlow channel never leaves the instance.
+  LabSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: sdnguard P6 lab - no inbound, egress for apt and SSM only
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - {IpProtocol: tcp, FromPort: 443, ToPort: 443, CidrIp: 0.0.0.0/0,
+           Description: SSM endpoints and HTTPS package sources}
+        - {IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0,
+           Description: apt package sources}
+      Tags:
+        - {Key: Project, Value: sdnguard}
+        - {Key: Lab, Value: p6}
+        - {Key: Name, Value: sdnguard-p6-lab-sg}
+
+  LabInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AmiId
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref LabInstanceProfile
+      SubnetId: !Ref SubnetId
+      SecurityGroupIds: [!Ref LabSecurityGroup]
+      # A public IP provides egress for apt and SSM. There is no inbound rule,
+      # so nothing is reachable from the internet.
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: !Ref VolumeSizeGiB
+            VolumeType: gp3
+            Encrypted: true
+            DeleteOnTermination: true
+      Tags:
+        - {Key: Project, Value: sdnguard}
+        - {Key: Lab, Value: p6}
+        - {Key: Name, Value: sdnguard-p6-lab}
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          set -euxo pipefail
+          exec > >(tee -a /var/log/sdnguard-bootstrap.log) 2>&1
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            openvswitch-switch openvswitch-common \
+            python3-venv python3-pip \
+            iproute2 iputils-ping tcpdump ethtool jq
+          systemctl enable --now openvswitch-switch
+          python3 -m venv /opt/sdnguard/venv
+          /opt/sdnguard/venv/bin/pip install --upgrade pip wheel
+          /opt/sdnguard/venv/bin/pip install os-ken
+          mkdir -p /opt/sdnguard/evidence
+          touch /var/lib/sdnguard-bootstrap-complete
+
+Outputs:
+  InstanceId:
+    Value: !Ref LabInstance
+  SecurityGroupId:
+    Value: !Ref LabSecurityGroup
+  AvailabilityZone:
+    Value: !GetAtt LabInstance.AvailabilityZone
