@@ -1,0 +1,24 @@
+{
+  "artifact_hashes": {
+    "ground_truth.json": "033c3cb1d18dfb1abd2030df207fc87c7729fea42d8ef64a0281d3319c02c5dc",
+    "observed.json": "dea55c2624096555bc3847d228b591e075d5041d85b45ebf4e75924351fbaddd"
+  },
+  "completion_status": "complete",
+  "ended_utc": "2026-09-20T15:36:12.839273+00:00",
+  "exit_reason": "normal",
+  "notes": [],
+  "producers": {
+    "ground_truth": "finalized",
+    "observed": "finalized"
+  },
+  "readiness": {
+    "controller_ready": true,
+    "scenario_completed": true,
+    "scenario_started": true
+  },
+  "run_id": "proc_poll_10ms-500x0ms",
+  "scenario_id": "sensor_evaluation",
+  "schema_version": 1,
+  "started_utc": "2026-09-20T15:36:09.770037+00:00",
+  "state": "completed"
+}

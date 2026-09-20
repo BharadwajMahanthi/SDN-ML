@@ -1,0 +1,88 @@
+{
+  "task": "V2-HOST-01",
+  "environment": {
+    "distribution": "Ubuntu 24.04.4 LTS",
+    "kernel": "7.0.0-1012-aws",
+    "arch": "x86_64",
+    "instance": "t3a.large",
+    "CONFIG_PROC_EVENTS": true,
+    "btf_available": true
+  },
+  "method": "ground truth written only by the launcher; each sensor observed independently; compared afterwards",
+  "results": [
+    {
+      "workload": "longlived",
+      "sensor": "proc_connector",
+      "launched": 100,
+      "matched": 100,
+      "detection_rate": 1.0,
+      "missed": 0,
+      "reported_lossy": false,
+      "requires_root": true,
+      "completion": "complete"
+    },
+    {
+      "workload": "longlived",
+      "sensor": "proc_poll_100ms",
+      "launched": 100,
+      "matched": 100,
+      "detection_rate": 1.0,
+      "missed": 0,
+      "reported_lossy": false,
+      "requires_root": false,
+      "completion": "complete"
+    },
+    {
+      "workload": "longlived",
+      "sensor": "proc_poll_10ms",
+      "launched": 100,
+      "matched": 100,
+      "detection_rate": 1.0,
+      "missed": 0,
+      "reported_lossy": false,
+      "requires_root": false,
+      "completion": "complete"
+    },
+    {
+      "workload": "shortlived",
+      "sensor": "proc_connector",
+      "launched": 500,
+      "matched": 500,
+      "detection_rate": 1.0,
+      "missed": 0,
+      "reported_lossy": false,
+      "requires_root": true,
+      "completion": "complete"
+    },
+    {
+      "workload": "shortlived",
+      "sensor": "proc_poll_100ms",
+      "launched": 500,
+      "matched": 0,
+      "detection_rate": 0.0,
+      "missed": 500,
+      "reported_lossy": false,
+      "requires_root": false,
+      "completion": "complete"
+    },
+    {
+      "workload": "shortlived",
+      "sensor": "proc_poll_10ms",
+      "launched": 500,
+      "matched": 0,
+      "detection_rate": 0.0,
+      "missed": 500,
+      "reported_lossy": false,
+      "requires_root": false,
+      "completion": "complete"
+    }
+  ],
+  "ebpf_probe": {
+    "tool": "bpftrace",
+    "workload": "500 x /bin/true",
+    "exec_events_captured": 507,
+    "target_binary_captured": 500,
+    "provides_filename": true,
+    "note": "measured directly, not via the sensor interface"
+  }
+}

@@ -79,3 +79,20 @@ words it means this, and nothing looser.
 A finding whose supporting evidence shares a source event is one observation
 seen several ways. It is reported as such, in the record and in the
 explanation.
+
+## Measured sensor baseline (V2-HOST-01)
+
+Ubuntu 24.04.4, kernel 7.0.0-1012-aws, t3a.large. Ground truth written only
+by the launcher; each sensor observed independently.
+
+| Workload | proc connector | /proc poll 100 ms | /proc poll 10 ms |
+|---|---|---|---|
+| 500 short-lived (`/bin/true`) | 500/500 | 0/500 | 0/500 |
+| 100 long-lived (250 ms) | 100/100 | 100/100 | 100/100 |
+
+`bpftrace` on `sys_enter_execve` captured all 500 target execs with filenames.
+
+**The result that shaped the design**: both polling sensors reported zero
+loss while missing everything. Detection rate alone is therefore not a
+sufficient sensor metric; every evaluation must also record whether the
+sensor can attest to completeness.

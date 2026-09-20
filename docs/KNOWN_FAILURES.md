@@ -340,3 +340,25 @@ risks the KF-24 regression again.
 - **Fix**: depth-first with an explicit path set; only a node repeating on
   the current path is a cycle. Regression: `test_a_diamond_is_not_a_cycle`
   and `test_a_diamond_ancestry_resolves_to_one_root`. Status: VERIFIED.
+
+### KF-28 — the deployment shipped a hand-kept package list
+
+- **Found when the sensor experiment failed with `No module named 'annulon'`.**
+  `deploy.sh` copied `development/src/sdnguard` by name, so it silently
+  stopped shipping the full source the day a second package appeared.
+- **Fix**: iterate every package under `development/src`. A hand-kept list is
+  a defect waiting for the next addition.
+
+### KF-29 — the payload outgrew the SSM inline limit
+
+- The base64 transfer exceeded SSM's 97 KB cap once `annulon` was included.
+  Rather than add an S3 bucket and its IAM grant, the transfer is chunked and
+  the reassembled tarball is checksum-verified before extraction -- a
+  truncated chunk would otherwise surface later as a confusing import error.
+
+### KF-30 — `cp -R dir/` flattened both packages into one directory
+
+- The trailing slash copies a directory's *contents*. Both packages landed
+  directly in `src/`, so neither was importable. Trivial, and it cost a
+  deployment cycle; noted because the failure mode was a confusing
+  `ModuleNotFoundError` rather than an obvious copy error.

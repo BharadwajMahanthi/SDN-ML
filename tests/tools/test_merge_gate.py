@@ -301,3 +301,26 @@ def test_merge_refuses_when_not_on_main(repo, capsys):
     git(repo, "checkout", "-q", BRANCH)
     assert main(["--root", str(repo), "merge", BRANCH]) != 0
     assert "must run from main" in capsys.readouterr().err
+
+
+def test_a_successful_merge_deletes_the_branch(repo):
+    """Repository hygiene is mechanical, not remembered. The merge commit is
+    the history; a leftover branch ref only hides what is in flight."""
+    write_gate(repo, BRANCH, ALL_GREEN)
+    assert BRANCH in git(repo, "branch")
+    assert main(["--root", str(repo), "merge", BRANCH]) == 0
+    assert BRANCH not in git(repo, "branch")
+    assert "Merge" in git(repo, "log", "-1", "--format=%s")
+
+
+def test_a_refused_merge_leaves_the_branch_alone(repo):
+    """A branch that failed its gate must survive so it can be fixed."""
+    write_gate(repo, BRANCH, dict(ALL_GREEN, full_suite=FAIL))
+    assert main(["--root", str(repo), "merge", BRANCH]) != 0
+    assert BRANCH in git(repo, "branch")
+
+
+def test_keep_branch_retains_the_ref_when_explicitly_asked(repo):
+    write_gate(repo, BRANCH, ALL_GREEN)
+    assert main(["--root", str(repo), "merge", BRANCH, "--keep-branch"]) == 0
+    assert BRANCH in git(repo, "branch")

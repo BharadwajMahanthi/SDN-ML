@@ -1,0 +1,641 @@
+{
+  "result": {
+    "sensor": "proc_poll_100ms",
+    "available": true,
+    "requires_root": false,
+    "capabilities": [
+      "credential_change",
+      "process_ancestry",
+      "process_argv",
+      "process_exec"
+    ],
+    "launched": 100,
+    "observed_events": 102,
+    "matched_pids": 100,
+    "detection_rate": 1.0,
+    "missed": 0,
+    "workload_elapsed_seconds": 25.2174,
+    "sensor_health": {
+      "running": false,
+      "lossy": false,
+      "emitted": 102,
+      "dropped": 0,
+      "decode_errors": 0,
+      "restarts": 0
+    }
+  },
+  "events": [
+    {
+      "event_type": "host.process.exec",
+      "pid": 4796,
+      "sequence": 1,
+      "received": "2026-09-20T15:38:40.528148+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4797,
+      "sequence": 2,
+      "received": "2026-09-20T15:38:40.828843+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4798,
+      "sequence": 3,
+      "received": "2026-09-20T15:38:41.035581+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4799,
+      "sequence": 4,
+      "received": "2026-09-20T15:38:41.354400+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4800,
+      "sequence": 5,
+      "received": "2026-09-20T15:38:41.561157+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4801,
+      "sequence": 6,
+      "received": "2026-09-20T15:38:41.861428+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4802,
+      "sequence": 7,
+      "received": "2026-09-20T15:38:42.068158+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4803,
+      "sequence": 8,
+      "received": "2026-09-20T15:38:42.282979+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4804,
+      "sequence": 9,
+      "received": "2026-09-20T15:38:42.595396+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4805,
+      "sequence": 10,
+      "received": "2026-09-20T15:38:42.801858+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4806,
+      "sequence": 11,
+      "received": "2026-09-20T15:38:43.102057+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4807,
+      "sequence": 12,
+      "received": "2026-09-20T15:38:43.308963+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4808,
+      "sequence": 13,
+      "received": "2026-09-20T15:38:43.628493+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4809,
+      "sequence": 14,
+      "received": "2026-09-20T15:38:43.835335+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4810,
+      "sequence": 15,
+      "received": "2026-09-20T15:38:44.040839+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4811,
+      "sequence": 16,
+      "received": "2026-09-20T15:38:44.341483+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4812,
+      "sequence": 17,
+      "received": "2026-09-20T15:38:44.548564+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4813,
+      "sequence": 18,
+      "received": "2026-09-20T15:38:44.870258+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4814,
+      "sequence": 19,
+      "received": "2026-09-20T15:38:45.074492+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4815,
+      "sequence": 20,
+      "received": "2026-09-20T15:38:45.375459+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4816,
+      "sequence": 21,
+      "received": "2026-09-20T15:38:45.582613+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4817,
+      "sequence": 22,
+      "received": "2026-09-20T15:38:45.901973+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4818,
+      "sequence": 23,
+      "received": "2026-09-20T15:38:46.108605+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4819,
+      "sequence": 24,
+      "received": "2026-09-20T15:38:46.315408+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4820,
+      "sequence": 25,
+      "received": "2026-09-20T15:38:46.615863+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4821,
+      "sequence": 26,
+      "received": "2026-09-20T15:38:46.822668+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4822,
+      "sequence": 27,
+      "received": "2026-09-20T15:38:47.144414+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4823,
+      "sequence": 28,
+      "received": "2026-09-20T15:38:47.144414+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4831,
+      "sequence": 29,
+      "received": "2026-09-20T15:38:47.349347+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4832,
+      "sequence": 30,
+      "received": "2026-09-20T15:38:47.649428+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4833,
+      "sequence": 31,
+      "received": "2026-09-20T15:38:47.855993+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4834,
+      "sequence": 32,
+      "received": "2026-09-20T15:38:48.176343+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4835,
+      "sequence": 33,
+      "received": "2026-09-20T15:38:48.382252+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4836,
+      "sequence": 34,
+      "received": "2026-09-20T15:38:48.588484+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4837,
+      "sequence": 35,
+      "received": "2026-09-20T15:38:48.889181+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4838,
+      "sequence": 36,
+      "received": "2026-09-20T15:38:49.096488+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4839,
+      "sequence": 37,
+      "received": "2026-09-20T15:38:49.416613+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4840,
+      "sequence": 38,
+      "received": "2026-09-20T15:38:49.622590+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4841,
+      "sequence": 39,
+      "received": "2026-09-20T15:38:49.923390+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4842,
+      "sequence": 40,
+      "received": "2026-09-20T15:38:50.130551+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4843,
+      "sequence": 41,
+      "received": "2026-09-20T15:38:50.344272+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4844,
+      "sequence": 42,
+      "received": "2026-09-20T15:38:50.656752+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4845,
+      "sequence": 43,
+      "received": "2026-09-20T15:38:50.863283+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4846,
+      "sequence": 44,
+      "received": "2026-09-20T15:38:51.163661+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4847,
+      "sequence": 45,
+      "received": "2026-09-20T15:38:51.370416+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4848,
+      "sequence": 46,
+      "received": "2026-09-20T15:38:51.692022+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4849,
+      "sequence": 47,
+      "received": "2026-09-20T15:38:51.897285+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4850,
+      "sequence": 48,
+      "received": "2026-09-20T15:38:52.198034+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4851,
+      "sequence": 49,
+      "received": "2026-09-20T15:38:52.405106+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4852,
+      "sequence": 50,
+      "received": "2026-09-20T15:38:52.618768+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4853,
+      "sequence": 51,
+      "received": "2026-09-20T15:38:52.931195+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4854,
+      "sequence": 52,
+      "received": "2026-09-20T15:38:53.137474+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4855,
+      "sequence": 53,
+      "received": "2026-09-20T15:38:53.439110+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4856,
+      "sequence": 54,
+      "received": "2026-09-20T15:38:53.645800+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4857,
+      "sequence": 55,
+      "received": "2026-09-20T15:38:53.966256+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4858,
+      "sequence": 56,
+      "received": "2026-09-20T15:38:54.171892+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4859,
+      "sequence": 57,
+      "received": "2026-09-20T15:38:54.472173+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4860,
+      "sequence": 58,
+      "received": "2026-09-20T15:38:54.678918+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4861,
+      "sequence": 59,
+      "received": "2026-09-20T15:38:54.886076+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4862,
+      "sequence": 60,
+      "received": "2026-09-20T15:38:55.205853+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4863,
+      "sequence": 61,
+      "received": "2026-09-20T15:38:55.413461+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4864,
+      "sequence": 62,
+      "received": "2026-09-20T15:38:55.713845+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4865,
+      "sequence": 63,
+      "received": "2026-09-20T15:38:55.920711+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4866,
+      "sequence": 64,
+      "received": "2026-09-20T15:38:56.241117+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4867,
+      "sequence": 65,
+      "received": "2026-09-20T15:38:56.447455+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4868,
+      "sequence": 66,
+      "received": "2026-09-20T15:38:56.653912+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4869,
+      "sequence": 67,
+      "received": "2026-09-20T15:38:56.954222+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4870,
+      "sequence": 68,
+      "received": "2026-09-20T15:38:57.161067+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4871,
+      "sequence": 69,
+      "received": "2026-09-20T15:38:57.481745+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4872,
+      "sequence": 70,
+      "received": "2026-09-20T15:38:57.687030+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4873,
+      "sequence": 71,
+      "received": "2026-09-20T15:38:57.987845+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4874,
+      "sequence": 72,
+      "received": "2026-09-20T15:38:58.194570+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4875,
+      "sequence": 73,
+      "received": "2026-09-20T15:38:58.514056+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4876,
+      "sequence": 74,
+      "received": "2026-09-20T15:38:58.719985+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4877,
+      "sequence": 75,
+      "received": "2026-09-20T15:38:58.926327+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4878,
+      "sequence": 76,
+      "received": "2026-09-20T15:38:59.227103+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4879,
+      "sequence": 77,
+      "received": "2026-09-20T15:38:59.434053+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4880,
+      "sequence": 78,
+      "received": "2026-09-20T15:38:59.754572+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4881,
+      "sequence": 79,
+      "received": "2026-09-20T15:38:59.960347+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4882,
+      "sequence": 80,
+      "received": "2026-09-20T15:39:00.260986+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4883,
+      "sequence": 81,
+      "received": "2026-09-20T15:39:00.468111+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4884,
+      "sequence": 82,
+      "received": "2026-09-20T15:39:00.788328+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4885,
+      "sequence": 83,
+      "received": "2026-09-20T15:39:00.993874+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4886,
+      "sequence": 84,
+      "received": "2026-09-20T15:39:01.201946+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4887,
+      "sequence": 85,
+      "received": "2026-09-20T15:39:01.501182+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4888,
+      "sequence": 86,
+      "received": "2026-09-20T15:39:01.708508+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4889,
+      "sequence": 87,
+      "received": "2026-09-20T15:39:02.028593+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4890,
+      "sequence": 88,
+      "received": "2026-09-20T15:39:02.234673+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4891,
+      "sequence": 89,
+      "received": "2026-09-20T15:39:02.534825+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4892,
+      "sequence": 90,
+      "received": "2026-09-20T15:39:02.741549+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4893,
+      "sequence": 91,
+      "received": "2026-09-20T15:39:02.955366+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4894,
+      "sequence": 92,
+      "received": "2026-09-20T15:39:03.268477+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4895,
+      "sequence": 93,
+      "received": "2026-09-20T15:39:03.474679+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4896,
+      "sequence": 94,
+      "received": "2026-09-20T15:39:03.775911+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4897,
+      "sequence": 95,
+      "received": "2026-09-20T15:39:03.982597+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4898,
+      "sequence": 96,
+      "received": "2026-09-20T15:39:04.302208+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4899,
+      "sequence": 97,
+      "received": "2026-09-20T15:39:04.508387+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4900,
+      "sequence": 98,
+      "received": "2026-09-20T15:39:04.715708+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4908,
+      "sequence": 99,
+      "received": "2026-09-20T15:39:04.808657+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4909,
+      "sequence": 100,
+      "received": "2026-09-20T15:39:05.015535+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4910,
+      "sequence": 101,
+      "received": "2026-09-20T15:39:05.229790+00:00"
+    },
+    {
+      "event_type": "host.process.exec",
+      "pid": 4911,
+      "sequence": 102,
+      "received": "2026-09-20T15:39:05.544938+00:00"
+    }
+  ]
+}
