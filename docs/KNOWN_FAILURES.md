@@ -328,3 +328,15 @@ risks the KF-24 regression again.
 - **Regression**: `test_a_non_list_entity_refs_field_is_rejected_not_a_crash`
   plus 6000 fuzz cases across random and structurally-valid-but-mutated
   payloads. Status: VERIFIED.
+
+### KF-27 — a diamond ancestry was rejected as a cycle
+
+- **Found by the evidence-model tests.** The cycle check used a single
+  visited set across the whole traversal, so a node reachable by two paths --
+  E4 derived from E2 and E3, both derived from E1 -- was reported as a cycle.
+- **Why it mattered**: that shape is not an edge case, it is the ordinary
+  structure of correlated evidence, and it is precisely the structure this
+  model exists to represent. The check would have rejected the main case.
+- **Fix**: depth-first with an explicit path set; only a node repeating on
+  the current path is a cycle. Regression: `test_a_diamond_is_not_a_cycle`
+  and `test_a_diamond_ancestry_resolves_to_one_root`. Status: VERIFIED.

@@ -137,3 +137,25 @@ Three design rules carried by the code rather than by convention:
   are referenced or hashed, never carried, so minimisation is structural.
 * **`SUPPORTED` never implies `ACTIVE AND HEALTHY`.** A capability is only
   effective when support, configuration and health all line up.
+
+
+## Evidence semantics (V2-CORE-02)
+
+```
+evidence.py   Evidence, MissingEvidence, EvidenceGraph (bounded, cycle-safe)
+finding.py    Severity | Confidence + basis | Assessment | Finding
+```
+
+Four rules the types enforce rather than document:
+
+* **Severity is not confidence.** Critical-but-weak and trivial-but-certain
+  are both representable, and no arithmetic relates the two axes.
+* **A model score is not a probability.** `model_score_uncalibrated` requires
+  a `model_id`, and nothing converts it.
+* **Missing evidence is not negative evidence.** An unanswered probe is
+  absence, never departure.
+* **Corroboration is checked by lineage.** Three detectors on one event share
+  a root, and the explanation says so.
+
+Fusion mathematics is deliberately absent until V2-CORR-01 can evaluate it
+against real experiments.

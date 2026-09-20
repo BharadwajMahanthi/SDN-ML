@@ -56,3 +56,26 @@ No statistical power analysis yet; sample sizes are currently too small for
 false-positive-rate claims. Cross-layer correlation scenarios do not exist.
 No independent qualified security review has occurred; two agents agreeing is
 not independent review.
+
+## Project terminology (V2-CORE-02)
+
+These are the project-wide definitions. Where a document uses one of these
+words it means this, and nothing looser.
+
+| Term | Definition |
+|---|---|
+| **Observation** | What a sensor reported, factual *within the limits of that sensor*. An `Event`. |
+| **Evidence** | An interpretation of, or reference to, one or more observations. Carries its kind, origin and ancestry. |
+| **Finding** | A security hypothesis that evidence supports or challenges. Never the same object as an event. |
+| **Assessment** | One evaluation of a finding at a point in time. Append-only; a new assessment supersedes rather than overwrites. |
+| **Severity** | Potential impact **if the finding is true**. Says nothing about certainty. |
+| **Confidence** | How strongly the available evidence supports the finding. Ordinal, never a probability. |
+| **Confidence basis** | *Why* the confidence is what it is, recorded alongside it. |
+| **Contradictory evidence** | Evidence that argues against the hypothesis. First-class, not a score decrement. |
+| **Missing evidence** | Something expected that did not arrive. A collection gap, never evidence that the thing did not happen. |
+| **Inconclusive** | A legitimate outcome. Insufficient information is an answer, not a failure to decide. |
+| **Independent collection origin** | Material from a different collection source. **Not** a claim of statistical independence. |
+
+A finding whose supporting evidence shares a source event is one observation
+seen several ways. It is reported as such, in the record and in the
+explanation.
