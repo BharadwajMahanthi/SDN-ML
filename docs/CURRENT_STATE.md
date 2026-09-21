@@ -271,3 +271,48 @@ restricted under a v4 rule.
 
 **NOT_RUN:** mutation testing, concurrency, full crash matrix, load, soak,
 packaging, and any containment claim on Ubuntu/EC2.
+
+
+## V2-SAFE-04 — the authorization boundary, attacked (complete, 2026-09-21)
+
+The core is treated as hostile: every request in `test_compromised_core.py`
+is syntactically valid and each one tries to obtain slightly more authority
+than policy grants.
+
+**Mutation testing became a gate (ADR-051).** `tools/mutate.py` flips
+comparisons, swaps `and`/`or`, removes `not` and deletes guard bodies one at
+a time, then asks whether the suite notices. It found that the suite was
+green while every authorization boundary could be moved by one character
+(KF-42). Results after closing the gaps:
+
+| module | killed | survived |
+|---|---|---|
+| `contract.py` | 91 | 0 |
+| `nftables.py` | 72 | 0 |
+| `policy.py` | 47 | 1 (verified equivalent) |
+| `broker.py` | 52 | 0 |
+| `verification.py` | 34 | 0 |
+
+**Defects found and fixed:**
+
+- KF-40 — a target uid had several spellings. Arabic-Indic, Devanagari and
+  fullwidth digits all satisfy `isdigit()` and convert via `int()`, so
+  `١٥٠٠` resolved to uid 1500 and was authorized;
+  `01500` was a second spelling of the same uid. Now canonical ASCII only.
+- KF-41 — the mutation tool corrupted a concurrent test run by rewriting
+  source in place. Now holds an exclusive lock and restores on signal.
+- KF-42 — every limit tested inside and outside its range, never at it.
+
+**`verify_all.py` gained `security_invariants`**, which asserts every
+invariant in `docs/invariants.json` maps to test files that exist. It failed
+on its first run: three invariants pointed at paths that had never existed.
+
+**Physical evidence** (`docs/evidence/v2-safe-04-unauthorized.json`): eight
+unauthorized requests through the live socket to a broker wired to the real
+nftables backend. All denied; the *whole* `nft` ruleset byte-identical before
+and after each one; traffic unchanged; no rule created by any denial. The
+positive control in the same run was applied and contained, so "everything
+was denied" cannot be explained by a broken broker.
+
+**NOT_RUN:** load, soak, packaging, supply chain, reboot semantics, and
+anything on Ubuntu or x86_64.

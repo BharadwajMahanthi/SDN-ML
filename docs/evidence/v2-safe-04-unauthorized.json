@@ -1,0 +1,108 @@
+{
+  "cases": {
+    "metadata_endpoint": {
+      "denied": true,
+      "outcome": "denied",
+      "owned_rules_after": [],
+      "reasons": [
+        "destination_protected"
+      ],
+      "ruleset_unchanged": true,
+      "traffic_unchanged": true
+    },
+    "protected_service_name": {
+      "denied": true,
+      "outcome": "denied",
+      "owned_rules_after": [],
+      "reasons": [
+        "target_protected"
+      ],
+      "ruleset_unchanged": true,
+      "traffic_unchanged": true
+    },
+    "root_uid": {
+      "denied": true,
+      "outcome": "denied",
+      "owned_rules_after": [],
+      "reasons": [
+        "target_protected"
+      ],
+      "ruleset_unchanged": true,
+      "traffic_unchanged": true
+    },
+    "stale_request": {
+      "denied": true,
+      "outcome": "denied",
+      "owned_rules_after": [],
+      "reasons": [
+        "request_expired"
+      ],
+      "ruleset_unchanged": true,
+      "traffic_unchanged": true
+    },
+    "ttl_beyond_policy": {
+      "denied": true,
+      "outcome": "denied",
+      "owned_rules_after": [],
+      "reasons": [
+        "duration_exceeds_policy"
+      ],
+      "ruleset_unchanged": true,
+      "traffic_unchanged": true
+    },
+    "uid_outside_allowlist": {
+      "denied": true,
+      "outcome": "denied",
+      "owned_rules_after": [],
+      "reasons": [
+        "target_not_permitted"
+      ],
+      "ruleset_unchanged": true,
+      "traffic_unchanged": true
+    },
+    "whole_internet": {
+      "denied": true,
+      "outcome": "denied",
+      "owned_rules_after": [],
+      "reasons": [
+        "destination_protected"
+      ],
+      "ruleset_unchanged": true,
+      "traffic_unchanged": true
+    },
+    "wrong_boot": {
+      "denied": true,
+      "outcome": "denied",
+      "owned_rules_after": [],
+      "reasons": [
+        "target_not_current"
+      ],
+      "ruleset_unchanged": true,
+      "traffic_unchanged": true
+    }
+  },
+  "environment": {
+    "enforcement_kernel": "Linux 6.12.76-linuxkit",
+    "machine": "aarch64",
+    "mechanism": "Linux nftables"
+  },
+  "positive_control": {
+    "applied": true,
+    "outcome": "applied",
+    "owned_rules": [
+      "req-aab528d8259dc492bde5e46c"
+    ],
+    "traffic_during": "TimeoutError"
+  },
+  "traffic_before": "OPEN",
+  "verdict": {
+    "all_unauthorized_denied": true,
+    "cases_examined": 8,
+    "completion": "COMPLETE",
+    "no_rule_ever_created_by_a_denial": true,
+    "positive_control_applied": true,
+    "positive_control_contained": true,
+    "ruleset_never_changed": true,
+    "traffic_never_changed": true
+  }
+}

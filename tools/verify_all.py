@@ -249,6 +249,47 @@ def check_key_material(root: Path) -> Check:
                  f"no unexpected key material; {len(offenders)} known fixture(s)")
 
 
+def check_invariants(root: Path) -> Check:
+    """Every declared security invariant must still map to tests that exist.
+
+    `docs/invariants.json` is the list of properties this system claims to
+    hold. An invariant whose tests were renamed or deleted is worse than one
+    that was never written down: the document asserts coverage that is no
+    longer there, and nobody rereads it.
+
+    This checks the mapping, not the outcome -- whether those tests *pass* is
+    the full suite's job. What it catches is silent decoupling.
+    """
+    path = root / "docs" / "invariants.json"
+    if not path.is_file():
+        return Check("security_invariants", FAIL, "docs/invariants.json is missing")
+    try:
+        document = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        return Check("security_invariants", FAIL, f"unreadable: {exc}")
+
+    invariants = document.get("invariants")
+    if not isinstance(invariants, list) or not invariants:
+        return Check("security_invariants", FAIL, "no invariants declared")
+
+    problems: list[str] = []
+    for entry in invariants:
+        identifier = entry.get("id", "<no id>")
+        if not entry.get("statement"):
+            problems.append(f"{identifier}: no statement")
+        tests = entry.get("tests") or []
+        if not tests:
+            problems.append(f"{identifier}: no tests mapped")
+        for relative in tests:
+            if not (root / relative).exists():
+                problems.append(f"{identifier}: missing {relative}")
+    if problems:
+        return Check("security_invariants", FAIL,
+                     f"{len(problems)} problem(s): {problems[:3]}")
+    return Check("security_invariants", OK,
+                 f"{len(invariants)} invariant(s), all mapped to existing tests")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="verify_all", description=__doc__)
     parser.add_argument("--cloud", action="store_true")
@@ -258,7 +299,8 @@ def main(argv: list[str] | None = None) -> int:
 
     checks = [check_worktree(root), check_branches(root), check_memory(root),
               check_firewall(root), check_boundaries(root), check_secrets(root),
-              check_key_material(root), check_tests(root)]
+              check_key_material(root), check_invariants(root),
+              check_tests(root)]
     if args.cloud:
         checks.extend(check_cloud(root))
 

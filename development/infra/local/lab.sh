@@ -6,6 +6,7 @@
 #   ./lab.sh caps           what this kernel can actually verify
 #   ./lab.sh test           run the response suite against a real kernel
 #   ./lab.sh containment    the first real containment experiment
+#   ./lab.sh unauthorized   unauthorized requests against the real kernel
 #   ./lab.sh run <cmd...>   run one command in the lab
 #
 # On macOS this uses Docker Desktop's Linux VM, which is a real kernel. On
@@ -58,6 +59,20 @@ case "$cmd" in
            -e ANNULON_HOST_OS="$(uname | tr '[:upper:]' '[:lower:]')" \
            -v "${REPO_ROOT}:/annulon:ro" "$IMAGE" \
            python3 /annulon/development/infra/local/containment_experiment.py \
+             --destination "${dest}" "$@"
+         ;;
+  unauthorized)
+         require_docker
+         docker network create annulon-lab >/dev/null 2>&1 || true
+         docker rm -f annulon-dest >/dev/null 2>&1 || true
+         docker run -d --name annulon-dest --network annulon-lab "$IMAGE" \
+           python3 -m http.server 8080 >/dev/null
+         trap 'docker rm -f annulon-dest >/dev/null 2>&1 || true' EXIT
+         dest="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' annulon-dest)"
+         echo "destination container: ${dest}" >&2
+         docker run --rm --cap-add=NET_ADMIN --network annulon-lab \
+           -v "${REPO_ROOT}:/annulon:ro" "$IMAGE" \
+           python3 /annulon/development/infra/local/unauthorized_experiment.py \
              --destination "${dest}" "$@"
          ;;
   run)   require_docker

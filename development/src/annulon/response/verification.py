@@ -167,7 +167,12 @@ def assess(evidence: ContainmentEvidence) -> Verdict:
                        SecurityOutcome.INCONCLUSIVE,
                        ("traffic stopped but no provably owned rule exists; "
                         "the cause is unknown",), unmeasured)
-    if not control_plane and not data_plane:
+    if not control_plane:
+        # Only two states reach this line: both true, or both false. The two
+        # disagreement cases returned above. Writing the condition as
+        # `not control_plane and not data_plane` was redundant, and the
+        # redundancy was invisible to tests -- flipping the `and` to `or`
+        # changed nothing, which is how mutation testing pointed at it.
         return Verdict(Completion.COMPLETE, Observability.TRUSTWORTHY,
                        SecurityOutcome.NOT_CONTAINED,
                        ("no rule and no effect",), unmeasured)

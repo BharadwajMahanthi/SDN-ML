@@ -740,3 +740,33 @@ For a dedicated service account that is precise; for a shared account it
 means collateral containment. Per doctrine §36 this is now demonstrated
 physically rather than documented, and cgroup- or unit-based targeting is the
 open question for production.
+
+## ADR-051 — mutation testing gates security-critical predicates
+
+**Status**: accepted, implemented in V2-SAFE-04.
+
+**Problem.** The suite was green while every authorization boundary could be
+moved by one character without a single test failing (KF-42). Line coverage
+did not show it: the lines executed either way. Only asking "if this check
+were weakened, would anything notice?" exposed it.
+
+**Decision.** `tools/mutate.py` applies one AST mutation at a time —
+comparison flips, `and`/`or` swaps, `not` removal, guard-body deletion — and
+runs a nominated test selection against the mutated source. Survivors are
+reported individually and recorded as defects or testing gaps.
+
+Scope is narrow on purpose. Run repository-wide this produces thousands of
+irrelevant survivors in logging and formatting, and the number stops meaning
+anything. It is pointed at authorization predicates, policy, the contract,
+the backend and the verifier, where one inverted comparison is a privilege
+change.
+
+**Not a percentage.** "94% killed" is not a security statement. "The
+protected-target check can be deleted without any test failing" is. Each
+survivor is named, and an equivalent mutation is justified in writing rather
+than counted as a pass.
+
+**Operational note.** The tool rewrites source in place so pytest imports the
+mutated module, which makes concurrent use hazardous — it corrupted a
+concurrent test run before a lock was added (KF-41). It now holds an
+exclusive lock and restores the original source on SIGINT/SIGTERM.

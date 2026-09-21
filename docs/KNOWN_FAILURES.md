@@ -535,3 +535,82 @@ fourth case for an unrelated reason, hiding the property under test.
   is about. This one was measuring a different identity entirely, and it
   failed in the direction that invents a defect rather than hiding one —
   which is the safer direction, but still a defect in the evidence chain.
+
+### KF-41 — the mutation tester corrupted a concurrent test run
+
+- **Found while running mutation testing in the background.** Four unrelated
+  `test_nftables_backend.py` tests failed in a full-suite run and passed in
+  isolation. The cause was not in the tests: a mutation run was holding
+  `verification.py` rewritten on disk at that moment, so the suite imported
+  mutated source.
+- **Why it is a real defect, not a usage mistake.** A tool that rewrites
+  source in place while other processes may import it produces failures that
+  point at the wrong code. The cost is paid by whoever debugs the next
+  mysterious failure — and under this project's own doctrine, a flaky
+  security test blocks its claim, so a tool that manufactures flakiness
+  attacks the evidence chain directly.
+- **Fix**: an exclusive lock file refuses a second concurrent run with an
+  explanation; `atexit` and SIGINT/SIGTERM handlers restore the original
+  source even when the run is killed. Previously, interrupting a run left
+  mutated source on disk indefinitely.
+- **Generalised** (doctrine §51): the family is *test infrastructure that
+  mutates shared state other processes depend on*. Also applies to the lab
+  scripts, which now use their own nftables table and their own container
+  network for the same reason.
+
+### KF-40 — a target uid had several spellings, including non-ASCII digits
+
+- **Found by the compromised-core suite**, in the policy-confusion cases the
+  doctrine requires (§25).
+- **The defect**: a `service_uid` identifier was validated with
+  `str.isdigit()` and converted with `int()`. Both accept Arabic-Indic
+  (`١٥٠٠`), Devanagari (`१५००`) and fullwidth
+  (`１５００`) digits, so those strings resolved to uid 1500 and were
+  authorized. Leading zeros (`01500`) gave the same uid a second spelling.
+- **Was it exploitable?** Not directly, and the suite says so rather than
+  overstating it. Both the permitted-uid check and the protected-uid check
+  go through `.uid`, so they agreed with each other: a protected uid written
+  in confusables was still protected. The danger is structural — one
+  identity with several representations is how a future check that compares
+  *strings* comes to disagree with one that compares *numbers*, and the
+  journal recorded a spelling that the installed rule did not use.
+- **Fix**: a `service_uid` identifier must match `^(0|[1-9][0-9]{0,9})$` —
+  canonical ASCII decimal, no sign, no padding, no Unicode digit variants —
+  and must be within the kernel's uid range. `Target.uid` no longer
+  re-derives a number from anything that merely looks like one.
+- **The test proves the threat is real** before asserting the fix: it
+  verifies that those confusable strings genuinely satisfy `isdigit()` and
+  convert to 1500. Without that, refusing them would be trivially safe and
+  the test would be theatre.
+- **Generalised** (doctrine §51): the family is *validating a value with one
+  function and using it with another*. `isdigit`/`int`, `strip`/`==`,
+  `lower`/`in` and normalisation before comparison are all the same shape.
+
+### KF-42 — every authorization limit was tested inside its range, never at it
+
+- **Found by mutation testing**, which is the only reason it was found at
+  all: the suite was green, and stayed green with the checks altered.
+- **The pattern**: `request age`, `clock skew`, `rate limit`, `active-action
+  ceiling`, `TTL`, `policy max_ttl`, `replay-cache size` and the `rate
+  window` were each exercised well inside their range and well outside it,
+  and never *at* the boundary. Flipping `>` to `>=` — the classic off-by-one
+  that turns "exceeds the limit" into "is at the limit" — changed
+  authorization semantics in every one of those places with no test failing.
+- **The worst instance**: `if ttl > MAX_TTL` in `BrokerPolicy.load`. Mutated
+  to `>=`, a policy at exactly the contract ceiling becomes unloadable — and
+  an unloadable policy denies everything, so this is a silent, total
+  containment outage. Nothing detected it.
+- **A second pattern**: guards that never fired. Deleting the
+  `permitted_target_kinds` check survived because only one `TargetKind`
+  exists and it is permitted by default, so the guard was never exercised.
+  The same was true of most of `contract.py`'s type guards, which the JSON
+  decode path can never reach — they exist for programmatic misuse, and
+  nothing constructed those objects wrongly on purpose.
+- **Fix**: `test_authorization_boundaries.py` and `test_contract_guards.py`
+  cover before / exact / after for every limit, and construct every type
+  incorrectly on purpose. Results: `contract.py` 0 survivors of 91,
+  `nftables.py` 0 of 72, `policy.py` 1 of 48 (verified equivalent —
+  `ip_network(None)` raises, so the `except` returns the same value).
+- **Generalised** (doctrine §51): the family is *a limit whose boundary is
+  never the test input*, and *a guard that no test can reach*. Both are
+  invisible to coverage tools, because the line executes either way.
