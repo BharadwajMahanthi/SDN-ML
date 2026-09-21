@@ -461,3 +461,57 @@ miss it — the KF-38 mistake one layer up.
 **NOT_RUN / not covered**: UDP, pre-existing connections (post-start activity
 only), PID-reuse under physical forcing, container namespace attribution,
 AWS/Ubuntu, and in-kernel process-instance identity (`NETWORK_TELEMETRY_EBPF`).
+
+
+## V2-HOST-04D — network sensor liveness (complete, 2026-09-21)
+
+**Security property established**: Annulon can actively demonstrate that the
+selected network observation path is *currently* able to observe a kernel
+network event, and refuses to treat silence as meaningful when it cannot.
+
+**Tested environment**: Docker Desktop Linux VM, kernel `6.12.76-linuxkit`,
+aarch64, host PID namespace, `NETWORK_TELEMETRY_TRACEFS`. Evidence:
+`docs/evidence/v2-host-04d-network-liveness.json`, all twelve checks COMPLETE.
+
+| case | result |
+|---|---|
+| positive control | connection opened **and** observed, latency 0.0013 s, `HEALTHY` |
+| primary tracepoint disabled | reader thread **alive**, fd open, probe `FAILED`, absence untrusted |
+| false silence | 30 connections made, 30 accepted, **0 observed**, `attests_completeness` false |
+| recovery | later clean probe `HEALTHY`, earlier failure still on record |
+| cancellation | 0.002 s |
+| shutdown with probe history | 0.204 s, no KF-44 recurrence |
+
+**What the disabled-tracepoint case shows** is the whole point of the branch:
+a liveness check based on `thread.is_alive()` would have reported healthy
+while the sensor was completely blind and real traffic was flowing.
+
+**Design points** (ADR-054): the receipt is taken *after* the bounded queue
+and the normaliser, so a saturated userspace path cannot be reported healthy
+because parsing still works; the fresh ephemeral port is the nonce and the
+match also requires our own pid, loopback, the selected `TCP_SYN_SENT`
+semantic, transport, family and window; `consider()` reads and returns
+without consuming, so self-checking cannot destroy evidence; and internal
+traffic is recognised from the ports this monitor actually bound, never from
+a field on the event.
+
+**Health semantics reuse the existing model.** `network_collection_health`
+returns `SensorHealth`, so detectors keep asking `trustworthy_absence`
+(ADR-039). A failed probe removes the right to treat silence as meaningful
+and never becomes evidence that something happened.
+
+**Claims NOT supported by 04D**: external connectivity, DNS, or reachability
+of any remote host — the probe is loopback and proves only that a kernel
+network event reaches an Annulon observation. Forced kernel ring-buffer
+overrun was not induced physically in this run; the degraded-on-loss path is
+covered by unit tests over `LossCounters`, not by a physical overrun.
+
+**Mutation coverage**: `liveness.py` 81 killed of 83, 2 survivors both
+proven equivalent (`<` vs `<=` on monotonic floats; a history trim whose
+final length is identical either way — demonstrated, not asserted). The first
+pass left 22 survivors, every one in a predicate this branch relies on.
+
+**Still NOT_RUN**: `NETWORK_TELEMETRY_EBPF`, UDP, pre-existing connections,
+physically forced PID reuse, container namespace attribution, IPv6 liveness
+on a v6-capable network, physically forced ring-buffer overrun, and
+everything on Ubuntu / x86_64.

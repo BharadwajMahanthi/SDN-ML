@@ -256,6 +256,46 @@
       ],
       "evidence": "docs/evidence/v2-host-04c-network-sensor.json false_silence_control",
       "status": "covered"
+    },
+    {
+      "id": "INV-026",
+      "statement": "The network sensor is never healthy on the strength of a live thread or an open descriptor.",
+      "rationale": "Measured: with the primary tracepoint disabled the reader thread stayed alive, the fd stayed open, 30 real connections were made and accepted, and Annulon observed none. Health requires an actively demonstrated observation of a probe it caused.",
+      "tests": [
+        "development/tests/network/test_network_liveness.py"
+      ],
+      "evidence": "docs/evidence/v2-host-04d-network-liveness.json primary_tracepoint_disabled",
+      "status": "covered"
+    },
+    {
+      "id": "INV-027",
+      "statement": "A liveness probe is satisfied only by an observation that probe caused.",
+      "rationale": "The fresh ephemeral port is the nonce, and the match also requires our own pid, loopback, the selected operation and transport, the family and the current window. A health check any local process can satisfy is one an attacker can satisfy.",
+      "tests": [
+        "development/tests/network/test_network_liveness.py"
+      ],
+      "evidence": "ADR-054",
+      "status": "covered"
+    },
+    {
+      "id": "INV-028",
+      "statement": "Annulon's own health traffic is recognised from in-process state, never from a field on the event.",
+      "rationale": "An observation that could declare itself internal would be a bypass any workload could use by choosing a port. There is deliberately no blanket loopback exemption.",
+      "tests": [
+        "development/tests/network/test_network_liveness.py"
+      ],
+      "evidence": "ADR-054",
+      "status": "covered"
+    },
+    {
+      "id": "INV-029",
+      "statement": "Recovery of a sensor is prospective: a later clean probe never erases an earlier missing-evidence interval.",
+      "rationale": "A gap that can be rewritten is a gap that gets rewritten. The failed receipt stays in history and ever_succeeded is retained separately from current health.",
+      "tests": [
+        "development/tests/network/test_network_liveness.py"
+      ],
+      "evidence": "docs/evidence/v2-host-04d-network-liveness.json recovery",
+      "status": "covered"
     }
   ]
 }

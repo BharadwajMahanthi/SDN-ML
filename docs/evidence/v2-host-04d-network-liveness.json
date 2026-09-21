@@ -1,0 +1,72 @@
+{
+  "cancellation": {
+    "bounded": true,
+    "elapsed_seconds": 0.002,
+    "observed": false
+  },
+  "environment": {
+    "capability": "NETWORK_TELEMETRY_TRACEFS",
+    "kernel": "6.12.76-linuxkit",
+    "machine": "aarch64",
+    "sensor_pid": 10071
+  },
+  "false_silence": {
+    "annulon_observations_of_that_traffic": 0,
+    "attests_completeness": false,
+    "correct": true,
+    "ground_truth_connections_made": 30,
+    "ground_truth_server_accepted": 30,
+    "liveness_status": "FAILED",
+    "note": "traffic demonstrably occurred and Annulon observed none of it. Silence must not read as a clean result.",
+    "trustworthy_absence": false
+  },
+  "positive_control": {
+    "annulon_observed_it": true,
+    "connection_actually_opened": true,
+    "latency_seconds": 0.0008,
+    "liveness_status": "HEALTHY",
+    "loss_delta": 0,
+    "note": "the connection is established independently by the probe's own listener; whether Annulon saw it is a separate fact and the two are compared, never derived from one another",
+    "probe_marked_internal": true,
+    "trustworthy_absence": true,
+    "unrelated_observations_still_delivered": true
+  },
+  "primary_tracepoint_disabled": {
+    "annulon_observed_it": false,
+    "blind_spot": "the most recent liveness probe was not observed",
+    "connection_actually_opened": true,
+    "disabled": true,
+    "liveness_status": "FAILED",
+    "note": "the thread is alive, the descriptor is open, and the sensor can see nothing. This is the case a liveness check based on thread state would have called healthy.",
+    "reader_thread_still_alive": true,
+    "trustworthy_absence": false
+  },
+  "recovery": {
+    "annulon_observed_it": true,
+    "correct": true,
+    "earlier_failures_still_on_record": 1,
+    "liveness_status": "HEALTHY",
+    "note": "a later clean probe says the path works now. It does not say anything about the interval that failed, and the record keeps both.",
+    "trustworthy_absence_now": true
+  },
+  "shutdown": {
+    "bounded": true,
+    "elapsed_seconds": 0.201,
+    "note": "KF-44: a blocking buffered read made close() hang forever. This must stay bounded."
+  },
+  "verdict": {
+    "blind_sensor_is_not_trustworthy": true,
+    "cancellation_bounded": true,
+    "clean_probe_allows_trustworthy_absence": true,
+    "completion": "COMPLETE",
+    "disabled_tracepoint_fails_liveness": true,
+    "false_silence_handled": true,
+    "healthy_only_after_a_real_probe": true,
+    "probe_connection_really_happened": true,
+    "probe_recognised_as_internal": true,
+    "probe_was_observed": true,
+    "recovery_is_prospective": true,
+    "shutdown_bounded": true,
+    "thread_alive_while_blind": true
+  }
+}
