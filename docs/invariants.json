@@ -162,10 +162,10 @@
       "statement": "A restart never extends a temporary action.",
       "rationale": "The deadline lives in the durable journal, not in a process timer, so a new broker reads the same expiry.",
       "tests": [
-        "development/tests/response/test_broker_ipc.py"
+        "development/tests/response/test_crash_and_concurrency.py"
       ],
-      "evidence": "crash matrix",
-      "status": "partially covered; full crash matrix in V2-SAFE-05"
+      "evidence": "docs/evidence/v2-safe-05-recovery.json",
+      "status": "covered"
     },
     {
       "id": "INV-017",
@@ -175,6 +175,26 @@
         "development/tests/response/test_authorization_boundaries.py"
       ],
       "evidence": "ADR-049 mutation results",
+      "status": "covered"
+    },
+    {
+      "id": "INV-018",
+      "statement": "A rule Annulon cannot prove it created is reported, never removed.",
+      "rationale": "Deleting unprovable firewall state during an incident is how a security tool becomes the outage. Demonstrated against a real kernel with a rule shaped like ours but carrying an unknown format version.",
+      "tests": [
+        "development/tests/response/test_nftables_backend.py"
+      ],
+      "evidence": "docs/evidence/v2-safe-05-recovery.json foreign_rule_in_our_table",
+      "status": "covered"
+    },
+    {
+      "id": "INV-019",
+      "statement": "Containment does not survive a reboot, and the records for it do not either.",
+      "rationale": "Deliberate: a restriction outliving the process that understood it is one nobody can explain or remove. Records must be closed on restart or the active-action ceiling fills with rules that no longer exist.",
+      "tests": [
+        "development/tests/response/test_crash_and_concurrency.py"
+      ],
+      "evidence": "ADR-052",
       "status": "covered"
     }
   ]
