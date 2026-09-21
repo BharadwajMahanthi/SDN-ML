@@ -44,6 +44,12 @@ TCP_STATES = {
     "TCP_CLOSE": 7, "TCP_CLOSE_WAIT": 8, "TCP_LAST_ACK": 9,
     "TCP_LISTEN": 10, "TCP_CLOSING": 11,
 }
+#: A port in canonical ASCII decimal. `str.isdigit()` is true for
+#: Arabic-Indic, Devanagari and fullwidth digit families and `int()` converts
+#: them, so `\u0661\u0665\u0660\u0660` parsed as port 1500 — the KF-40
+#: defect reappearing in a new parser, which is exactly what the doctrine's
+#: bug-family rule predicts (KF-46).
+_CANONICAL_PORT = re.compile(r"\A(0|[1-9][0-9]{0,4})\Z")
 _FAMILIES = {"AF_INET": AddressFamily.IPV4, "AF_INET6": AddressFamily.IPV6}
 _PROTOCOLS = {"IPPROTO_TCP": Transport.TCP, "IPPROTO_UDP": Transport.UDP}
 #: tracefs prints an unset v6 address as this.
@@ -161,7 +167,12 @@ class NetworkNormalizer:
         new_state = fields.get("newstate", "")
         old_state = fields.get("oldstate", "")
 
-        if new_state == "TCP_SYN_SENT":
+        if new_state == "TCP_SYN_SENT" and old_state == "TCP_CLOSE":
+            # The declared primary semantic is the *transition*
+            # `TCP_CLOSE -> TCP_SYN_SENT` (ADR-053), not "any event whose new
+            # state is SYN_SENT". Checking only the destination state meant a
+            # line with no `oldstate` field at all still produced a
+            # confident connect attempt.
             operation = NetworkOperation.CONNECT_ATTEMPT
             outcome = ConnectionOutcome.UNKNOWN
         elif new_state == "TCP_ESTABLISHED":
@@ -233,7 +244,7 @@ class NetworkNormalizer:
         parses but is not what the socket used.
         """
         raw_port = fields.get(port_key)
-        if raw_port is None or not raw_port.isdigit():
+        if raw_port is None or not _CANONICAL_PORT.match(raw_port):
             return None
         port = int(raw_port)
         if family is AddressFamily.IPV4:
@@ -294,8 +305,11 @@ class NetworkNormalizer:
         # Kernel returns are printed unsigned; fold to a signed errno.
         if value >= 1 << 63:
             value -= 1 << 64
-        if value > 0:
-            value = 0                    # a success return, not an errno
+        # A positive return is left exactly as read. `connect()` returns 0
+        # or a negative errno and never a positive value, so an anomalous
+        # positive maps to OTHER_ERROR through the ordinary path below:
+        # unexplained, which is what it is. It was previously coerced to 0
+        # and thereby classified ESTABLISHED (KF-48).
         return NetworkObservation(
             observation_id=self._next_id(),
             operation=NetworkOperation.CONNECT_RESULT,

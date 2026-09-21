@@ -515,3 +515,127 @@ pass left 22 survivors, every one in a predicate this branch relies on.
 physically forced PID reuse, container namespace attribution, IPv6 liveness
 on a v6-capable network, physically forced ring-buffer overrun, and
 everything on Ubuntu / x86_64.
+
+
+## The V2-HOST-04E / 04F boundary (owner-set, strict)
+
+**04E establishes that the network evidence itself is hard to fool within its
+declared capability. It does not close SAFE-FULLCHAIN-01.**
+
+04F is where a trusted network event participates in the ordinary-host
+vertical slice on the reference profile:
+
+    real prohibited network attempt
+      -> healthy real network sensor
+      -> correct process/workload attribution
+      -> detector independently produces a finding
+      -> policy proposes a bounded response
+      -> broker independently authorizes
+      -> real nftables backend
+      -> real traffic effect verified independently
+      -> benign service remains available
+      -> expiry / restart / recovery
+
+Two conditions bind 04F, and neither is satisfiable by 04E:
+
+- **SAFE-AWS-REF-01 requires the intended reference profile**, Ubuntu on
+  x86_64. Reproducing the linuxkit/aarch64 result again is not independent
+  validation of a different kernel build, architecture or host type.
+- **SAFE-FULLCHAIN-01 requires the detector's finding and the verifier's
+  traffic result to be independently produced.** A harness that requests
+  containment directly proves only the response half of the chain — the half
+  V2-SAFE-03 already proved. The detector has to reach the finding on its own
+  from sensor evidence, and the traffic verifier has to measure the effect
+  without consulting Annulon.
+
+**Documentation debt for 04F, not 04E**: `docs/ACCEPTANCE_CRITERIA.md` still
+states that host criteria are undefined and that no host release evidence
+exists. That was stale before 04D and is more so now. 04F should carry a
+scoped host/reference-profile acceptance update so the project has one
+authoritative statement of what the AWS reference run actually closes.
+Redesigning all acceptance targets is out of scope for both branches.
+
+
+## V2-HOST-04E — adversarial verification of network telemetry (complete, 2026-09-22)
+
+**Security property tested**: for `NETWORK_TELEMETRY_TRACEFS` on the tested
+environment, Annulon does not convert ambiguous, stale, reordered,
+cross-process, cross-namespace, degraded, malformed or adversarial telemetry
+into a stronger statement than the evidence supports.
+
+**Physical environment**: Docker Desktop Linux VM, kernel
+`6.12.76-linuxkit`, aarch64, host PID namespace. Evidence:
+`docs/evidence/v2-host-04e-adversarial.json`, fifteen checks COMPLETE.
+
+| scenario | measured |
+|---|---|
+| 6 concurrent processes, one uid, one destination | 150 connections, 150 accepted, **150 observed, 6 distinct pids, 0 unlaunched pids attributed** |
+| connect result semantics | 152 `pending`, 3 `established`, 0 pending misread as established; no result invented a destination |
+| softirq attribution | 304 completions, **0 named a process** |
+| 20 short-lived processes | all exited before scoring; 40/40 observed; **all attribution weak, none claimed instance binding** |
+| bounded burst, 800 connections | 800 observed, queue drained to 0, loss counted and consistent with health |
+| false silence | 40 made, 40 accepted, **0 observed**, thread alive, `trustworthy_absence` false |
+| recovery | `HEALTHY` again, failed interval still recorded |
+
+**Defects found and fixed:**
+
+- **Flow identity was structurally inert.** `flow_key` used
+  `network_namespace or 0` while the normaliser hardcodes `None`, so every
+  observation shared namespace `0` and `None == 0`. The contract advertised
+  namespace-aware flow identity that production never had. Unknown now
+  renders `ns:unknown` and never equals a known namespace, and
+  `flow_key_is_namespace_qualified` tells a consumer whether equality means
+  anything. The tracefs tier cannot determine an observed socket's namespace,
+  and stamping the sensor's own would be fabrication.
+- **KF-46** — `dport=\u0661\u0665\u0660\u0660` parsed as port 1500.
+  KF-40's family reappearing in a parser written after the rule was
+  generalised. Now canonical ASCII decimal only.
+- **KF-47** — a connect attempt was recognised from `newstate` alone, so a
+  line with no `oldstate` produced a confident attempt. Both halves of the
+  declared `TCP_CLOSE -> TCP_SYN_SENT` transition are now required.
+- **KF-48** — an anomalous *positive* connect return was coerced to zero and
+  classified `ESTABLISHED`. `connect()` never returns a positive value, so
+  the coercion turned an unexplained reading into the strongest possible
+  claim. Found by mutation testing, not by a hand-written case. It now maps
+  to `OTHER_ERROR`.
+
+**Claims supported**: within `NETWORK_TELEMETRY_TRACEFS` on this environment,
+process-attributed IP connection observation separates same-uid processes
+under concurrency, survives process exit without upgrading attribution,
+refuses interrupt-context process context, keeps attempt / syscall result /
+established state as distinct facts, and makes loss and blindness visible.
+
+**Claims explicitly NOT supported**: `NETWORK_TELEMETRY_EBPF`; UDP;
+physically forced PID reuse; container namespace attribution; pre-existing
+connection discovery; IPv6 external behaviour; Ubuntu / x86_64; production
+load limits; reconnaissance or exfiltration detection; network containment;
+and **SAFE-FULLCHAIN-01, which 04E does not close**.
+
+**Not induced**: kernel ring-buffer overrun. The 800-connection burst
+produced zero loss, so the degraded-on-loss path remains covered by unit
+tests over `LossCounters` rather than by a physical overrun.
+
+### Mutation results, with every survivor accounted for
+
+`contract.py` **0 survivors of 96**, from 17. `normalize.py` from 12
+survivors down to the set below. Each remaining one is demonstrated
+equivalent by execution, not labelled:
+
+| site | why it is equivalent |
+|---|---|
+| `local.family is IPV6 and remote.family is IPV6` | `_endpoint()` is called with the *same* `family` for both ends, so they can never differ; `and` and `or` select identically |
+| `if not address` | an empty address reaches `ip_address("")`, which raises `ValueError` and is caught by the same `except` that the guard's early return feeds |
+| `parsed.version != family.version` | without it, `Endpoint` raises `NetworkContractError` for the mismatch and is caught by the same handler |
+| `if mapped is None` in `_unmap` | without it, `Endpoint(str(None), ...)` raises `NetworkContractError` and is caught identically |
+
+Two survivors were **real gaps** and are now covered: `_read_boot_time` had
+no test at all (trace timestamps are seconds since boot and unanchorable
+without it), and the partial v4-mapping case — a dual-stack socket with a
+v4-mapped local address talking to a genuine IPv6 peer — would have been
+half-unmapped into a mixed-family record the contract then rejects, silently
+losing a real observation.
+
+One survivor was **redundant code** rather than a missing test: after the
+KF-48 fix the positive-return branch returned exactly what the fall-through
+returns. It was removed. Redundant code in a security path is a place for a
+future edit to diverge unnoticed.

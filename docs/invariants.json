@@ -296,6 +296,37 @@
       ],
       "evidence": "docs/evidence/v2-host-04d-network-liveness.json recovery",
       "status": "covered"
+    },
+    {
+      "id": "INV-030",
+      "statement": "Observations from different network namespaces never share flow identity because their address tuples match, and an unknown namespace is never equal to a known one.",
+      "rationale": "flow_key used `network_namespace or 0`, collapsing unknown into namespace zero \u2014 and the tracefs tier never populates the field, so every production observation landed in that bucket while the contract advertised namespace-aware identity.",
+      "tests": [
+        "development/tests/network/test_network_adversarial.py"
+      ],
+      "evidence": "04E finding; flow_key_is_namespace_qualified",
+      "status": "covered"
+    },
+    {
+      "id": "INV-031",
+      "statement": "No observation is attributed more strongly than the collection context supports, and attribution is never upgraded by enrichment that did not happen.",
+      "rationale": "A process that exits before /proc can be read leaves a real observation with weak attribution. Measured: 20 short-lived processes, all exited before scoring, all observed, none claiming instance binding.",
+      "tests": [
+        "development/tests/network/test_network_adversarial.py"
+      ],
+      "evidence": "docs/evidence/v2-host-04e-adversarial.json short_lived_processes",
+      "status": "covered"
+    },
+    {
+      "id": "INV-032",
+      "statement": "A port, address or identifier is accepted only in canonical ASCII form.",
+      "rationale": "str.isdigit() plus int() accepts Arabic-Indic, Devanagari and fullwidth digits. This defeated a uid check (KF-40) and then a port check written afterwards (KF-46); the rule now lives in tests rather than only in a document.",
+      "tests": [
+        "development/tests/network/test_network_adversarial.py",
+        "development/tests/response/test_action_contract.py"
+      ],
+      "evidence": "KF-46",
+      "status": "covered"
     }
   ]
 }

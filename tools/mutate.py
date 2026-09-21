@@ -191,7 +191,11 @@ def run(module: Path, tests: list[str], *, limit: int | None = None,
             result = subprocess.run(
                 [sys.executable, "-m", "pytest", *tests, "-x", "-q",
                  "-p", "no:cacheprovider", "--no-header"],
-                capture_output=True, text=True, cwd=REPO, timeout=600)
+                capture_output=True, text=True, cwd=REPO, timeout=600,
+                # These are the only pytest runs that are supposed to see
+                # mutated source; the repository conftest refuses every
+                # other one while the lock is held.
+                env={**os.environ, "ANNULON_MUTATION_RUN": "1"})
             if result.returncode == 0:
                 # Nothing noticed. This is the finding.
                 survivors.append({"index": index,
