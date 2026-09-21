@@ -423,3 +423,41 @@ identifier heuristic — where the failure direction was *under*-redaction. All
 converted to `\A...\Z`, with `tests/tools/test_validation_anchors.py`
 enforcing it repository-wide and proving the hazard is real before forbidding
 it.
+
+
+## V2-HOST-04C — the network collector (complete, 2026-09-21)
+
+Process-attributed IP connection observation against a real kernel.
+Evidence: `docs/evidence/v2-host-04c-network-sensor.json`, all twelve checks
+COMPLETE.
+
+| measurement | result |
+|---|---|
+| short-lived burst captured | **500 / 500**, workload already exited |
+| ground truth agreement | server accepted 500 |
+| destinations resolved | 500 |
+| **process attribution accuracy** | **1.0** (500 of 500 correct PID) |
+| kernel + queue loss | 0 |
+| softirq events naming a process | **0** |
+| same-uid processes distinguishable | yes |
+| false-silence control | 50 connections occurred, 0 observed, health degraded |
+
+**The design inverted during this task (KF-45).** `sys_enter_connect` looks
+like the natural source and is not: tracefs renders its argument as a
+pointer, so it cannot supply a destination, port or address family, and it
+fires for AF_UNIX — which made the interpreter's own startup look like four
+network connections. The primary event is now the `TCP_CLOSE -> TCP_SYN_SENT`
+transition, which is IP-only by construction, carries full addressing, and
+was measured correct in 35 of 35 task-context events.
+
+**KF-44**: the reader deadlocked on shutdown because `close()` from another
+thread waits on the lock a blocked buffered `read()` holds. Rewritten on a
+non-blocking descriptor with `select`.
+
+**A v4-mapped address on a dual-stack socket is reported as IPv4**, because
+the packet on the wire is IPv4. Recording it as IPv6 would let an IPv4 policy
+miss it — the KF-38 mistake one layer up.
+
+**NOT_RUN / not covered**: UDP, pre-existing connections (post-start activity
+only), PID-reuse under physical forcing, container namespace attribution,
+AWS/Ubuntu, and in-kernel process-instance identity (`NETWORK_TELEMETRY_EBPF`).

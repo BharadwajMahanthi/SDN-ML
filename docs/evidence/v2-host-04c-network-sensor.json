@@ -1,0 +1,96 @@
+{
+  "environment": {
+    "kernel": "6.12.76-linuxkit",
+    "machine": "aarch64",
+    "sensor": "NETWORK_TELEMETRY_TRACEFS"
+  },
+  "false_silence_control": {
+    "attests_completeness": false,
+    "correct": true,
+    "degraded_reasons": [
+      "the reader thread is not running"
+    ],
+    "ground_truth_connections_made": 50,
+    "ground_truth_server_accepted": 50,
+    "health_running": false,
+    "meaning": "traffic demonstrably occurred and the sensor saw none of it. Health must say degraded, never HEALTHY with zero events.",
+    "sensor_observations": 0,
+    "sensor_stopped": true
+  },
+  "normalised_attribution": {
+    "attempts_to_the_ground_truth_server": 500,
+    "attempts_with_the_correct_pid": 500,
+    "attribution_accuracy": 1.0,
+    "connect_attempts": 500,
+    "destination_sample": "127.0.0.1:44869",
+    "established_attributed_from_task_context": 500,
+    "established_observations": 1011,
+    "normalizer_stats": {
+      "dropped": 0,
+      "ignored_non_ip": 0,
+      "ignored_other_states": 2537,
+      "malformed_address": 0,
+      "produced": 0,
+      "unattributable_discarded_pid": 1022,
+      "unusable_fields": 0
+    },
+    "note": "an ESTABLISHED transition in softirq has the context of whatever task was scheduled, so its pid is discarded. One in task context is attributable and is kept. The property under test is that no softirq event ever names a process.",
+    "softirq_events_that_named_a_process": 0,
+    "softirq_events_whose_pid_was_discarded": 1022
+  },
+  "same_uid_processes": {
+    "distinguishable": true,
+    "first": {
+      "made": 5,
+      "pid": 86774,
+      "sensor_attempts": 9
+    },
+    "meaning": "detection separates these two workloads; containment by meta skuid cannot. Detection precision exceeds current enforcement precision, and that is recorded rather than smoothed over.",
+    "second": {
+      "made": 7,
+      "pid": 86775,
+      "sensor_attempts": 11
+    },
+    "server_accepted": 12,
+    "uid": 1500
+  },
+  "short_lived_burst": {
+    "attests_completeness": true,
+    "capture_rate": 1.0,
+    "connect_return_values": {
+      "0xffffffffffffff8d": 500
+    },
+    "connections_per_second": 15457.8,
+    "elapsed_seconds": 0.032,
+    "ground_truth_connections_made": 500,
+    "ground_truth_server_accepted": 500,
+    "loss": {
+      "commit_overrun": 0,
+      "dropped": 0,
+      "lossless": true,
+      "overrun": 0,
+      "queue_dropped": 0,
+      "total": 0
+    },
+    "note": "the workload process has exited by the time this is scored",
+    "sensor_attempts_for_that_pid": 500,
+    "sensor_results_for_that_pid": 500,
+    "total_events_seen": 6099,
+    "unparsed_lines": 0,
+    "workload_pid": 86699
+  },
+  "verdict": {
+    "attribution_accurate": true,
+    "burst_fully_captured": true,
+    "completion": "COMPLETE",
+    "destinations_resolved": true,
+    "false_silence_became_degraded": true,
+    "ground_truth_agrees": true,
+    "no_loss_reported": true,
+    "no_softirq_event_named_a_process": true,
+    "same_uid_both_observed": true,
+    "same_uid_processes_distinguishable": true,
+    "sensor_attested_completeness": true,
+    "softirq_pids_were_actually_discarded": true
+  }
+}
