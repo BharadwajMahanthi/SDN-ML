@@ -179,3 +179,72 @@ Two runs on one Docker VM are one platform validation, not two.
 - UDP, DNS and loopback paths untested under a scoped rule.
 - Ownership comments are forgeable by root.
 - No mutation testing yet on authorization predicates.
+
+## Verification matrix — V2-SAFE-04 / V2-SAFE-05, the authorization boundary
+
+### REQUIREMENT → THREAT → CONTROL → TEST → EVIDENCE → LIMITATION
+
+**Property: a compromised core cannot expand its own authority (INV-014).**
+- Threat: an attacker holding the core, with full knowledge of the protocol,
+  sending syntactically valid requests.
+- Control: policy is broker-owned; no request field carries permission; an
+  unknown field is refused rather than ignored; caller identity comes from
+  the kernel.
+- Tests: `test_compromised_core.py` — protected uids, uids outside the
+  allowlist, management service names, the metadata endpoint, `0.0.0.0/0`,
+  TTL beyond policy, invented action types and target kinds, eleven
+  permission-shaped extra fields, claimed component names, replay, stale and
+  future timestamps, claimed policy version.
+- Physical evidence: `docs/evidence/v2-safe-04-unauthorized.json`.
+- Limitation: a caller that can already run as the core's uid *is* the core;
+  this bounds what it can do, not whether it can ask.
+
+**Property: a denied request changes no OS state (INV-015).**
+- Threat: a denial that nevertheless perturbs the ruleset — a chain created,
+  a half-built rule left behind — meaning the attacker achieved something by
+  asking.
+- Test: the physical run captures `nft -j list ruleset` (the *whole*
+  ruleset, not just Annulon's table) before and after each unauthorized
+  request and compares byte for byte, plus a traffic probe each time.
+
+**Property: every limit is enforced at its exact boundary (INV-017).**
+- Threat: an off-by-one introduced by a refactor.
+- Control: mutation testing as a gate (ADR-051).
+- Tests: `test_authorization_boundaries.py` — before / exact / after for
+  request age, clock skew, rate, active-action ceiling, TTL, policy ceiling.
+
+**Property: a restart never extends a temporary action (INV-016).**
+- Threat: an attacker crashing the broker to make a restriction permanent —
+  or, inversely, to drop one early.
+- Control: the deadline is in the durable journal, and expiry runs in the
+  privileged process.
+- Tests: `test_crash_and_concurrency.py` — nine crash points, clock rollback
+  and forward jump, journal write failure, truncated journal tail.
+
+### Assurance classes after SAFE-04/05
+
+| Class | State |
+|---|---|
+| UNIT | response suite, boundary and guard suites |
+| PROPERTY | pairwise verifier failure sweep; per-field acceptance sweep |
+| FUZZ | 3,000 seeded randomised cases + exhaustive per-field hostile values |
+| MUTATION | `contract.py` 0 survivors/91, `nftables.py` 0/72, `policy.py` 1/48 (equivalent), `broker.py` see below |
+| SECURITY BOUNDARY | compromised-core suite; peer-credential authentication |
+| FAULT INJECTION | nft false success/failure, vanishing rule, malformed JSON, timeout, journal write failure |
+| CRASH/RECOVERY | nine-point crash matrix + seven reconciliation cases |
+| CONCURRENCY | duplicate-request race, expiry-vs-release race, ceiling under race, reconcile-vs-request |
+| PHYSICAL E2E | containment, bypass, unauthorized — Docker Desktop Linux VM only |
+| NEGATIVE CONTROL | no-action run; false-pass control; positive control in every adversarial suite |
+| LOAD / SOAK | **NOT_RUN** |
+| PACKAGING / SUPPLY CHAIN | **NOT_RUN** |
+| REBOOT SEMANTICS | **NOT_RUN** — containment does not survive reboot by design (nftables rules are not persisted), but this is not yet physically demonstrated |
+
+### Claims NOT supported after SAFE-04/05
+
+- Anything on Ubuntu, x86_64, or a non-container host. See
+  `development/infra/local/PLATFORM_MATRIX.md`.
+- IPv6 egress restriction (KF-38).
+- Per-workload targeting — `skuid` contains every process under the uid.
+- Behaviour under sustained load or over hours.
+- The full DETECT→DECIDE→CONTAIN→VERIFY→RECOVER chain, which needs the proc
+  connector and therefore a kernel Docker Desktop does not provide.

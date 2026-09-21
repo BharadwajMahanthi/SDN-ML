@@ -6,7 +6,9 @@
       "id": "INV-001",
       "statement": "An empty experiment cannot be reported as CLEAN.",
       "rationale": "A run that observed nothing because it never ran is not a negative result. KF-22.",
-      "tests": ["development/tests/core/test_completion.py"],
+      "tests": [
+        "development/tests/core/test_completion.py"
+      ],
       "evidence": "ADR-029",
       "status": "covered"
     },
@@ -36,7 +38,9 @@
       "id": "INV-004",
       "statement": "Firewall state Annulon cannot prove it created is never deleted.",
       "rationale": "A security tool that removes the operator's firewall during an incident is the incident.",
-      "tests": ["development/tests/response/test_nftables_backend.py"],
+      "tests": [
+        "development/tests/response/test_nftables_backend.py"
+      ],
       "evidence": "docs/evidence/v2-safe-03-containment.json foreign_tables unchanged",
       "status": "covered"
     },
@@ -44,7 +48,9 @@
       "id": "INV-005",
       "statement": "An expired temporary action cannot become permanent.",
       "rationale": "Expiry runs in the privileged broker, so killing the core cannot extend a restriction.",
-      "tests": ["development/tests/response/test_broker_ipc.py"],
+      "tests": [
+        "development/tests/response/test_broker_ipc.py"
+      ],
       "evidence": "docs/evidence/v2-safe-03-containment.json expiry",
       "status": "covered"
     },
@@ -52,7 +58,9 @@
       "id": "INV-006",
       "statement": "Missing evidence is never converted into negative evidence.",
       "rationale": "An unanswered probe is absence, not proof that nothing happened.",
-      "tests": ["development/tests/core/test_evidence.py"],
+      "tests": [
+        "development/tests/core/test_evidence_model.py"
+      ],
       "evidence": "ADR on the evidence model",
       "status": "covered"
     },
@@ -60,7 +68,9 @@
       "id": "INV-007",
       "statement": "A sensor that has not been self-probed cannot claim to be healthy.",
       "rationale": "A dead sensor reporting no events looks identical to a quiet host.",
-      "tests": ["development/tests/core/test_liveness.py"],
+      "tests": [
+        "development/tests/core/test_host_agent.py"
+      ],
       "evidence": "host agent liveness experiment",
       "status": "covered"
     },
@@ -68,7 +78,10 @@
       "id": "INV-008",
       "statement": "Several detectors reading one observation are not independent corroboration.",
       "rationale": "Lineage, not count, determines whether evidence corroborates.",
-      "tests": ["development/tests/core/test_evidence.py"],
+      "tests": [
+        "development/tests/core/test_evidence_model.py",
+        "development/tests/core/test_cross_domain_findings.py"
+      ],
       "evidence": "EvidenceGraph lineage checks",
       "status": "covered"
     },
@@ -76,7 +89,9 @@
       "id": "INV-009",
       "statement": "A privileged action is durably recorded before the OS is touched.",
       "rationale": "A crash between apply and journal leaves state nobody will remove.",
-      "tests": ["development/tests/response/test_broker_ipc.py"],
+      "tests": [
+        "development/tests/response/test_broker_ipc.py"
+      ],
       "evidence": "ADR-048",
       "status": "covered"
     },
@@ -95,7 +110,9 @@
       "id": "INV-011",
       "statement": "Containment is claimed only when control-plane and data-plane evidence agree.",
       "rationale": "A rule existing is not traffic stopping. Disagreement is ACTION_EFFECT_NOT_VERIFIED.",
-      "tests": ["development/tests/response/test_verifier_integrity.py"],
+      "tests": [
+        "development/tests/response/test_verifier_integrity.py"
+      ],
       "evidence": "docs/evidence/v2-safe-03-containment.json",
       "status": "covered"
     },
@@ -103,8 +120,61 @@
       "id": "INV-012",
       "statement": "A broken verifier yields EVIDENCE_INCOMPLETE, never CONTAINED.",
       "rationale": "The verifier is security-critical; its failure must not read as success. KF-22 family.",
-      "tests": ["development/tests/response/test_verifier_integrity.py"],
+      "tests": [
+        "development/tests/response/test_verifier_integrity.py"
+      ],
       "evidence": "fault-injected verifier runs",
+      "status": "covered"
+    },
+    {
+      "id": "INV-013",
+      "statement": "A target identity has exactly one valid representation.",
+      "rationale": "isdigit()/int() accepted Unicode digit families and zero padding, giving one uid several spellings (KF-40).",
+      "tests": [
+        "development/tests/response/test_action_contract.py",
+        "development/tests/response/test_compromised_core.py"
+      ],
+      "evidence": "KF-40",
+      "status": "covered"
+    },
+    {
+      "id": "INV-014",
+      "statement": "The core cannot expand broker policy by anything it puts in a request.",
+      "rationale": "No field grants permission; an unknown field is refused rather than ignored; a denial leaves no residue for the next attempt.",
+      "tests": [
+        "development/tests/response/test_compromised_core.py"
+      ],
+      "evidence": "docs/evidence/v2-safe-04-unauthorized.json",
+      "status": "covered"
+    },
+    {
+      "id": "INV-015",
+      "statement": "A denied request changes no operating-system state.",
+      "rationale": "A denial that perturbed the ruleset would mean the attacker achieved something by asking.",
+      "tests": [
+        "development/tests/response/test_compromised_core.py"
+      ],
+      "evidence": "docs/evidence/v2-safe-04-unauthorized.json",
+      "status": "covered"
+    },
+    {
+      "id": "INV-016",
+      "statement": "A restart never extends a temporary action.",
+      "rationale": "The deadline lives in the durable journal, not in a process timer, so a new broker reads the same expiry.",
+      "tests": [
+        "development/tests/response/test_broker_ipc.py"
+      ],
+      "evidence": "crash matrix",
+      "status": "partially covered; full crash matrix in V2-SAFE-05"
+    },
+    {
+      "id": "INV-017",
+      "statement": "Every authorization limit is enforced at its exact boundary.",
+      "rationale": "Mutation testing showed every limit was tested inside its range and never at it, so > and >= were indistinguishable.",
+      "tests": [
+        "development/tests/response/test_authorization_boundaries.py"
+      ],
+      "evidence": "ADR-049 mutation results",
       "status": "covered"
     }
   ]

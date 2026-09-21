@@ -100,6 +100,35 @@ Use exactly one of: `VERIFIED` (executed evidence), `SUPPORTED_BY_STATIC_ANALYSI
 expected/planned/assumed into measured/verified/proven. Never call the system
 impenetrable, provably secure, or production-ready without scoped evidence.
 
+## Verification is adversarial, not confirmatory
+
+The full doctrine is in `docs/PROJECT_CONTRACT.md` (ADR-049). The short form:
+
+    DO NOT TEST THAT THE CODE CAN PASS.
+    TRY TO MAKE THE SECURITY PROPERTY FAIL.
+
+- **A test count is never a security metric.** Report assurance *classes*
+  (unit, property, fuzz, mutation, integration, physical E2E, negative
+  control, fault injection, crash/recovery, concurrency, load, soak,
+  packaging, supply chain) and say which are `NOT_RUN`. Never render
+  `NOT_RUN` as `PASS`.
+- **Authorization suites explore denial harder than permission.**
+- **Mutation testing covers security-critical predicates.** Any mutation that
+  weakens ALLOW/DENY semantics must be killed; survivors are recorded as
+  defects or gaps, never averaged into a percentage. Run it with
+  `python tools/mutate.py --module <m> --tests <t>` — it rewrites source in
+  place and holds a lock, so never run tests alongside it.
+- **Security invariants live in `docs/invariants.json`** and each maps to
+  tests and evidence.
+- **Never lower a requirement to pass.** Work out whether the test, the
+  implementation, the architectural assumption or the environment is wrong,
+  then fix that layer.
+- **A flaky security test blocks its claim** until the nondeterminism is
+  understood. Retries are diagnostic, never a way to manufacture a pass.
+- **Every KF is generalised to its bug family**, and the family is tested.
+- **Capability maturity is per-capability** (L0…L6). The product never
+  inherits the level of its strongest component.
+
 ## Real systems only — no fakes in the delivery path
 
 We are building real security infrastructure. A simulation is never evidence

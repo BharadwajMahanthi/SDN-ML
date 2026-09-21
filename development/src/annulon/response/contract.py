@@ -31,6 +31,7 @@ __all__ = [
     "SCHEMA_VERSION", "ActionType", "TargetKind", "Target", "ActionRequest",
     "Decision", "DenyReason", "AuthorizationDecision", "ActionState",
     "ContractError", "MAX_REASON_CHARS", "MAX_POLICY_VERSION_CHARS", "MAX_TTL",
+    "MAX_UID",
 ]
 
 SCHEMA_VERSION = 1
@@ -39,6 +40,17 @@ MAX_POLICY_VERSION_CHARS = 64
 MAX_TTL = timedelta(hours=1)
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{7,63}$")
 _NAME = re.compile(r"^[a-z][a-z0-9_-]{1,63}$")
+#: A uid in canonical decimal form: ASCII digits, no sign, no padding.
+#: `str.isdigit()` is true for Arabic-Indic, Devanagari and fullwidth digit
+#: families, and `int()` converts them, so `\u0661\u0665\u0660\u0660` became uid 1500.
+#: Leading zeros gave the same uid a second spelling. Neither was an
+#: escalation on its own -- policy and enforcement both go through `int()`,
+#: so they agreed -- but one identity with several representations is how a
+#: future check that compares strings disagrees with one that compares
+#: numbers. Found by the compromised-core suite (KF-40).
+_CANONICAL_UID = re.compile(r"^(0|[1-9][0-9]{0,9})$")
+#: Linux uid_t is 32-bit, but a uid above this is not a real account.
+MAX_UID = 4_294_967_294
 
 
 def _require_str(raw: dict, field: str, *, default: str | None = None) -> str:
@@ -136,12 +148,26 @@ class Target:
             # that will be compared against OS state.
             if any(c in value for c in "/\\;|&$`\n\r\0'\" "):
                 raise ContractError(f"{name} contains a forbidden character")
-        if self.kind is TargetKind.SERVICE_UID and not self.identifier.isdigit():
-            raise ContractError("a service_uid target identifier must be numeric")
+        if self.kind is TargetKind.SERVICE_UID:
+            if not _CANONICAL_UID.match(self.identifier):
+                raise ContractError(
+                    "a service_uid identifier must be a canonical decimal "
+                    "uid: ASCII digits, no sign, no padding, no Unicode "
+                    "digit variants")
+            if int(self.identifier) > MAX_UID:
+                raise ContractError("uid out of range")
 
     @property
     def uid(self) -> int | None:
-        return int(self.identifier) if self.identifier.isdigit() else None
+        """The numeric uid, or ``None`` for a kind that has none.
+
+        Safe to call because ``__post_init__`` has already established that
+        the identifier is canonical ASCII decimal; this never re-derives a
+        number from something that merely looks like one.
+        """
+        if self.kind is not TargetKind.SERVICE_UID:
+            return None
+        return int(self.identifier)
 
     def same_boot(self, host_id: str, boot_id: str) -> bool:
         """A target authorized in a previous boot is not this target.

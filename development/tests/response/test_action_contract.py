@@ -120,9 +120,37 @@ def test_identities_reject_path_and_shell_metacharacters(bad):
         Target(TargetKind.SERVICE_UID, "h1", "b7", bad)
 
 
-def test_a_service_uid_target_must_be_numeric():
-    with pytest.raises(ContractError, match="numeric"):
-        Target(TargetKind.SERVICE_UID, "h1", "b7", "not-a-uid")
+@pytest.mark.parametrize("identifier", [
+    "not-a-uid", "", "-1", "+1500", "01500", "1500.0", "1_500", "1e3",
+    " 1500", "1500 ", "0x5dc",
+    "\u06f1\u06f5\u06f0\u06f0",   # Arabic-Indic digits: isdigit() is True
+    "\uff11\uff15\uff10\uff10",   # fullwidth digits: int() converts these
+    "\u0967\u096b\u0966\u0966",   # Devanagari digits
+])
+def test_a_service_uid_target_must_be_a_canonical_decimal_uid(identifier):
+    """Stricter than "numeric", because "numeric" was not enough.
+
+    `str.isdigit()` is true for several non-ASCII digit families and `int()`
+    converts them, so `\u0661\u0665\u0660\u0660` resolved to uid 1500 and was
+    authorized. Leading zeros gave one uid a second spelling. Neither was an
+    escalation by itself -- policy and enforcement both go through `int()` --
+    but one identity with several representations is how a future check that
+    compares strings disagrees with one that compares numbers (KF-40).
+    """
+    with pytest.raises(ContractError):
+        Target(TargetKind.SERVICE_UID, "h1", "b7", identifier)
+
+
+def test_a_canonical_uid_is_accepted():
+    """The positive control: the strictness must not refuse real uids."""
+    for identifier in ["0", "1", "1500", "65534", "4294967294"]:
+        target = Target(TargetKind.SERVICE_UID, "h1", "b7", identifier)
+        assert target.uid == int(identifier)
+
+
+def test_a_uid_beyond_the_kernel_range_is_refused():
+    with pytest.raises(ContractError, match="out of range"):
+        Target(TargetKind.SERVICE_UID, "h1", "b7", "4294967295")
 
 
 def test_a_target_from_another_boot_is_not_this_target():
