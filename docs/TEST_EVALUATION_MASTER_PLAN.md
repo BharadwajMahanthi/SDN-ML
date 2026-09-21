@@ -96,3 +96,86 @@ by the launcher; each sensor observed independently.
 loss while missing everything. Detection rate alone is therefore not a
 sufficient sensor metric; every evaluation must also record whether the
 sensor can attest to completeness.
+
+## Verification matrix — V2-SAFE-03, Linux egress containment
+
+Per ADR-049 this records assurance *classes* and what is not covered, not a
+test total.
+
+### REQUIREMENT → THREAT → CONTROL → TEST → EVIDENCE → LIMITATION
+
+**Property: the core cannot execute privileged containment.**
+- Threat: compromised core.
+- Control: separate broker; backend behind a typed interface; broker holds no
+  execution primitive.
+- Tests: `test_privileged_action_invariant.py` (AST guard incl. the broker
+  itself), `test_broker_ipc.py` (Experiments A–F), `test_broker_fuzz.py`.
+- Physical evidence: `docs/evidence/v2-safe-03-containment.json`.
+- Limitation: kernel or root compromise is outside the claim.
+
+**Property: Annulon never deletes firewall state it cannot prove it created.**
+- Threat: a security tool removing the operator's firewall during an incident.
+- Control: own table only; ownership read from rule metadata; unprovable rules
+  reported, never removed.
+- Tests: forged comments, version-mismatched comments, rules in other chains,
+  table removal refused, release of a rule bearing our id but unprovable.
+- Physical evidence: `foreign_tables` identical before and after (`ip nat`).
+- Limitation: ownership rests on a rule comment; a root attacker can write one.
+
+**Property: containment is claimed only when control plane and data plane agree.**
+- Threat: reporting containment while traffic still flows.
+- Control: `annulon.response.verification.assess`.
+- Tests: `test_verifier_integrity.py` — 8 harness-failure modes, every field
+  unmeasured, every single-field failure, every *pair* of failures.
+- Physical evidence: false-pass control (destination server never started) →
+  `EVIDENCE_INCOMPLETE`.
+
+### Assurance classes
+
+| Class | State |
+|---|---|
+| UNIT | 431 response tests |
+| PROPERTY | single- and pairwise-failure sweeps over the verifier; coverage sweep |
+| FUZZ | IPC decoder + broker: 3,000 seeded randomised cases, exhaustive per-field hostile values |
+| INTEGRATION | broker over a real Unix socket with kernel peer credentials |
+| PHYSICAL E2E | real nftables, real packets, Docker Desktop Linux VM |
+| NEGATIVE CONTROL | no-action run; false-pass control |
+| FAULT INJECTION | nft false success, false failure, vanishing rule, malformed JSON, timeout |
+| BYPASS | shared uid, IPv6, established connections, fork, exec, setuid, alternate destination |
+| MUTATION | **NOT_RUN** — scheduled for V2-SAFE-04 |
+| CONCURRENCY | **NOT_RUN** — scheduled for V2-SAFE-05 |
+| CRASH/RECOVERY | partial (restart, reconciliation); full matrix in V2-SAFE-05 |
+| LOAD / SOAK | **NOT_RUN** |
+| PACKAGING / SUPPLY CHAIN | **NOT_RUN** |
+
+### Platform matrix
+
+| Environment | Status |
+|---|---|
+| macOS native (arm64) | unit/property/fuzz/integration SUPPORTED; no kernel enforcement |
+| Docker Desktop Linux VM (6.12.76-linuxkit aarch64) | nftables containment VALIDATED; proc connector absent |
+| Ubuntu AWS x86_64 | **NOT_RUN** for containment — required independent reference |
+
+Two runs on one Docker VM are one platform validation, not two.
+
+### Claims supported
+
+- A uid-scoped IPv4 egress restriction is installed, blocks the target's new
+  *and* established connections, blocks forked children and execed binaries,
+  leaves an unrelated uid unaffected, leaves foreign tables unchanged, and is
+  removed on the broker's own deadline with traffic restored.
+
+### Claims NOT supported
+
+- "Egress restricted" without qualification — IPv6 is not covered by a
+  v4-scoped rule (KF-38).
+- Any containment claim on Ubuntu/EC2 — not yet run there.
+- Per-workload targeting — `skuid` contains every process under the uid,
+  demonstrated physically.
+- Behaviour under concurrency, load, or the full crash matrix.
+
+### Known blind spots
+
+- UDP, DNS and loopback paths untested under a scoped rule.
+- Ownership comments are forgeable by root.
+- No mutation testing yet on authorization predicates.

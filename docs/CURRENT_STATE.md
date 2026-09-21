@@ -237,3 +237,37 @@ containment is V2-SAFE-03. Until then, no containment claim is supported by
 anything but unit evidence.
 
 Measured: 0.138 ms per denial-path request including the fsync.
+
+
+## V2-SAFE-03 — first physical containment (complete, 2026-09-21)
+
+**FIRST ANNULON PHYSICAL CONTAINMENT**, on a real Linux kernel.
+
+    HOST:               macOS (arm64)
+    ENFORCEMENT KERNEL: Docker Desktop Linux VM, Linux 6.12.76-linuxkit
+    MECHANISM:          Linux nftables, meta skuid
+
+Verdict from `annulon.response.verification`, not from the harness:
+`COMPLETE / TRUSTWORTHY / CONTAINED`, zero unmeasured fields.
+
+Target: dedicated synthetic uid 1500. Traffic before OPEN, during
+TimeoutError, after OPEN; unrelated uid 1600 OPEN throughout; negative control
+OPEN; foreign tables unchanged; expiry driven by the broker's own sweeper.
+
+**Adversarial results that changed the product:**
+
+- KF-38: an IPv4-scoped rule leaves IPv6 open. The capability is now named
+  *IPv4 egress restriction*, and every result carries a `Coverage` value.
+- KF-37: `nft` text output is forgeable by the comment it describes;
+  ownership is read from JSON only.
+- KF-39: the bypass harness measured root's socket rather than the target
+  uid's and nearly reported a false "established connections survive"
+  finding. Corrected: established connections are blocked.
+
+**Measured mechanism semantics** (published by `inspect_state()`): new
+connections blocked, established blocked, fork blocked, exec blocked, uid
+escape not possible without privilege, shared uid also contained, IPv6 not
+restricted under a v4 rule.
+
+**NOT_RUN:** mutation testing, concurrency, full crash matrix, load, soak,
+packaging, and any containment claim on Ubuntu/EC2.

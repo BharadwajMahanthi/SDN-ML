@@ -84,3 +84,63 @@ Every important claim carries a status. Numerical targets are proposed until
 approved and are never reported as measurements. Independent qualified review
 of security-critical assumptions is required before production and is
 currently NOT PERFORMED.
+
+## Verification doctrine (permanent)
+
+> **Annulon QA is adversarial verification, not confirmation testing. A
+> security claim requires appropriate independent end-to-end evidence,
+> negative controls, failure testing, and trust-boundary testing. Test count,
+> line coverage, mocked behavior, command success, or absence of alerts are
+> never sufficient by themselves. Every critical control must be tested
+> against realistic bypasses and failure modes, and incomplete observation
+> must never be interpreted as security success.**
+
+The objective is not a passing suite. It is enough independent, adversarial,
+reproducible evidence that a security property survives realistic failure,
+hostile input, integration and deployment mistakes, concurrency, restart,
+resource pressure and incorrect assumptions.
+
+    DO NOT TEST THAT THE CODE CAN PASS.
+    TRY TO MAKE THE SECURITY PROPERTY FAIL.
+
+### Consequences that bind every campaign
+
+- **A test count is never a security metric.** Report the *classes* of
+  assurance a suite provides, and what remains untested. `1,513 tests passed`
+  on its own is a statement about effort, not about security.
+- **Unit tests cannot close a security requirement.** Every important
+  property is attacked from several directions — unit, property, fuzz,
+  mutation, contract, integration, fault injection, physical end-to-end.
+- **Authorization suites must explore denial far harder than permission.**
+  `valid request -> ALLOW` is one case; `almost-valid request -> DENY` is the
+  work.
+- **Do not mock what the claim is about.** If the claim is that nftables
+  blocks real traffic, the closing evidence needs a real kernel and real
+  packets.
+- **The harness may never manufacture a result.** It establishes ground truth
+  and measures externally; it never writes a finding, marks an action
+  successful, or infers containment from broker output. Ground truth, system
+  output and verification result stay structurally separate.
+- **Negative controls are mandatory.** A positive experiment without one is
+  incomplete evidence.
+- **Completion is not success.** Experiment completion, observability
+  completeness and security outcome are reported separately (ADR-029).
+  "Nothing observed" is never "safe".
+- **Never lower a requirement to pass.** Establish whether the test, the
+  implementation, the architectural assumption or the environment is wrong,
+  then fix that layer.
+- **A flaky security test blocks its claim** until the nondeterminism is
+  understood. Retries are diagnostic, never a way to manufacture a pass.
+- **QA may reject architecture.** If an experiment shows an assumption is
+  unreliable, the ADR changes — not the test.
+- **Capability maturity is per-capability** (L0 code exists … L6 independent
+  review). The product never inherits the level of its strongest component.
+
+### Test lanes
+
+    FAST      seconds/minutes   required every merge
+    DEEP      fuzz/mutation     required before campaign close
+    PHYSICAL  real kernel       required for any physical claim
+    SOAK      hours             required before release maturity
+
+`NOT_RUN` is never rendered as `PASS`.
