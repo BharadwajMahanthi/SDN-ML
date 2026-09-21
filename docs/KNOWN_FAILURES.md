@@ -636,3 +636,52 @@ fourth case for an unrelated reason, hiding the property under test.
   what it appears to mean*. KF-01 was `\b` failing after an underscore; this
   is `$` admitting a newline. Every validation regex in the repository is now
   suspect until checked, and `fullmatch` or `\A...\Z` is the standard.
+
+### KF-44 — closing the trace pipe from another thread deadlocked the sensor
+
+- **Found by the sensor hanging** in its first live run: the container sat
+  for minutes producing nothing, with the main thread parked in
+  `futex_wait_queue`.
+- **Cause**: the reader iterated a buffered file object over `trace_pipe`,
+  which blocks until an event arrives. `stop()` then called `close()` from
+  another thread. In CPython, `io.BufferedReader.close()` acquires the same
+  internal lock the blocked `read()` is holding, so shutdown waited forever
+  for a read that was waiting for traffic that had stopped.
+- **Why it matters beyond a hang**: a sensor that cannot be stopped cannot be
+  restarted, and the shutdown path runs during exactly the incident where
+  restarting matters. It also silently defeats liveness checks, which would
+  see a thread that is alive and conclude health.
+- **Fix**: a raw non-blocking descriptor with `select` and a 0.2 s timeout,
+  so the reader wakes on its own and observes the stop flag. `stop()` joins
+  the thread *before* closing, because the reader owns the descriptor while
+  it runs. Partial reads are buffered, since a read can land mid-line and
+  parsing the fragment would discard a real event while counting it unparsed.
+- **Generalised** (doctrine §51): the family is *closing or mutating a
+  blocking resource from a thread that does not own it*. KF-41 was the
+  mutation tool rewriting source another process was importing; this is the
+  same shape at a smaller scale.
+
+### KF-45 — the connect syscall tracepoint cannot say what was connected to
+
+- **Found while explaining a discrepancy**: the sensor counted 9 connect
+  attempts where the workload had made 5. Consistently four extra, every run.
+- **Cause**: `sys_enter_connect` fires for *every* address family. The four
+  extras were AF_UNIX connects made by the Python interpreter during startup.
+  Worse, tracefs renders the syscall's argument as a pointer
+  (`uservaddr: ffffda4bd498`), not as an address — so the entry event cannot
+  supply the destination, the port, or even the address family. A sensor
+  built on it alone would report "a connection to somewhere" and count local
+  socket activity as network activity.
+- **Root cause**, stated plainly: the syscall tracepoint has the right
+  *process* context and the wrong *content*; the socket tracepoint has the
+  right content and, at ESTABLISHED, the wrong process context.
+- **Fix — the design inverted.** The primary process-attributed event is now
+  `inet_sock_set_state` on the `TCP_CLOSE -> TCP_SYN_SENT` transition, which
+  is IP-only by construction, carries `saddr`, `daddr`, `sport`, `dport`,
+  `family`, `protocol` and the v6 forms, and runs in task context. Measured:
+  **35 of 35 task-context transitions carried the correct PID.** The syscall
+  pair is kept for the outcome errno and for attempts that never reach
+  SYN_SENT, correlated by pid and time rather than treated as authoritative.
+- **What this changes about the claim**: the capability is
+  process-attributed *IP* connection observation. Local socket activity is
+  not counted as network activity, which it would have been.

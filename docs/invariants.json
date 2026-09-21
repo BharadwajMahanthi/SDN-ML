@@ -226,6 +226,36 @@
       ],
       "evidence": "ADR-053",
       "status": "covered"
+    },
+    {
+      "id": "INV-023",
+      "statement": "A network observation whose process context ran in interrupt context never names a process.",
+      "rationale": "The completing ACK is handled while an unrelated task is current, so swapper/0 would otherwise be recorded as having made the connection. A confidently wrong attribution is worse than none.",
+      "tests": [
+        "development/tests/network/test_normalize.py"
+      ],
+      "evidence": "docs/evidence/v2-host-04c-network-sensor.json",
+      "status": "covered"
+    },
+    {
+      "id": "INV-024",
+      "statement": "Local socket activity is never counted as network activity.",
+      "rationale": "sys_enter_connect fires for AF_UNIX too, and tracefs gives only a pointer rather than an address, so a sensor built on it reported interpreter startup as four network connections (KF-45).",
+      "tests": [
+        "development/tests/network/test_normalize.py"
+      ],
+      "evidence": "KF-45",
+      "status": "covered"
+    },
+    {
+      "id": "INV-025",
+      "statement": "Network telemetry that loses events says so, and traffic occurring while the sensor is down never reads as a clean result.",
+      "rationale": "The false-silence control: ground truth shows connections happened, the sensor reports zero, and health must be degraded.",
+      "tests": [
+        "development/tests/network/test_tracefs_sensor.py"
+      ],
+      "evidence": "docs/evidence/v2-host-04c-network-sensor.json false_silence_control",
+      "status": "covered"
     }
   ]
 }
