@@ -614,3 +614,25 @@ fourth case for an unrelated reason, hiding the property under test.
 - **Generalised** (doctrine §51): the family is *a limit whose boundary is
   never the test input*, and *a guard that no test can reach*. Both are
   invisible to coverage tools, because the line executes either way.
+
+### KF-43 — `$` in a validation regex accepted a trailing newline
+
+- **Found by the network contract's own adversarial suite**, before shipping,
+  which is the first time in this project a defect of this family has been
+  caught at that stage rather than after.
+- **The defect**: `re.compile(r"^[\x20-\x7e]{1,64}$")` looks like it forbids
+  control characters, and does — except that Python's `$` also matches
+  immediately *before* a trailing newline. `"worker\n"` passed validation.
+  The same pattern let `"obs-1\n"` through as an observation id.
+- **Why it matters**: both fields reach logs and audit records. A newline in
+  an identity field is a log-forging primitive, which is exactly the hazard
+  `reason` and `policy_version` were hardened against in KF-36. The guard was
+  present and looked correct.
+- **Fix**: `\A...\Z` throughout, which has no newline exemption. Both fields
+  are also type-checked before the regex, because `re.match(None)` raises
+  `TypeError` rather than the contract's own error, and the decoder above
+  catches only the contract error.
+- **Generalised** (doctrine §51): the family is *an anchor that does not mean
+  what it appears to mean*. KF-01 was `\b` failing after an underscore; this
+  is `$` admitting a newline. Every validation regex in the repository is now
+  suspect until checked, and `fullmatch` or `\A...\Z` is the standard.

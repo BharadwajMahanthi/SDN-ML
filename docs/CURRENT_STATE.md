@@ -394,3 +394,32 @@ Headline measurements:
   NOT_RUN.
 - The sensor sees host PIDs: the workload was PID 20 in its container and
   84658 to the sensor.
+
+
+## V2-HOST-04B — the network observation contract (complete, 2026-09-21)
+
+Strictly typed from the start, because KF-36 showed coercion is how a wrong
+type becomes a valid value.
+
+- `NetworkOperation` declares only what the selected sensor can truthfully
+  distinguish: attempt, result, established, closed. `SEND` and `ACCEPT` are
+  deliberately absent until a mechanism is measured that reports them.
+- `ConnectionOutcome.PENDING` exists because `EINPROGRESS` is neither success
+  nor failure, and is the *common* case for any socket with a timeout.
+- `AttributionConfidence` makes a PID-only attribution visible as such.
+  `instance_key` combines tgid with a start time, so PID reuse produces two
+  different identities.
+- `SocketSemantic` forbids the unqualified word "owner": the process that
+  creates a socket, connects it and writes to it can all differ.
+- `flow_key` includes the network namespace, because one address pair can
+  exist in several namespaces at once.
+- IPv6 is first-class here, unlike containment where it is a stated gap.
+
+**KF-43, found before shipping**: `re.compile(r"^...$")` admits a trailing
+newline in Python, so a "printable ASCII only" guard accepted `"worker\n"`.
+Fourteen patterns repo-wide had the same shape, including `identity.py`'s
+control-byte check, the privileged action contract, and the redactor's
+identifier heuristic — where the failure direction was *under*-redaction. All
+converted to `\A...\Z`, with `tests/tools/test_validation_anchors.py`
+enforcing it repository-wide and proving the hazard is real before forbidding
+it.

@@ -43,7 +43,7 @@ MAX_SOURCE_EVENTS = 32
 MAX_LINEAGE_DEPTH = 8
 MAX_FANOUT = 64
 MAX_SUMMARY_CHARS = 512
-_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{3,63}$")
+_ID = re.compile(r"\A[A-Za-z0-9][A-Za-z0-9._:-]{3,63}\Z")
 
 
 class EvidenceKind(enum.Enum):

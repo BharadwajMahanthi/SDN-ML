@@ -38,8 +38,8 @@ SCHEMA_VERSION = 1
 MAX_REASON_CHARS = 256
 MAX_POLICY_VERSION_CHARS = 64
 MAX_TTL = timedelta(hours=1)
-_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{7,63}$")
-_NAME = re.compile(r"^[a-z][a-z0-9_-]{1,63}$")
+_ID = re.compile(r"\A[A-Za-z0-9][A-Za-z0-9._:-]{7,63}\Z")
+_NAME = re.compile(r"\A[a-z][a-z0-9_-]{1,63}\Z")
 #: A uid in canonical decimal form: ASCII digits, no sign, no padding.
 #: `str.isdigit()` is true for Arabic-Indic, Devanagari and fullwidth digit
 #: families, and `int()` converts them, so `\u0661\u0665\u0660\u0660` became uid 1500.
@@ -48,7 +48,7 @@ _NAME = re.compile(r"^[a-z][a-z0-9_-]{1,63}$")
 #: so they agreed -- but one identity with several representations is how a
 #: future check that compares strings disagrees with one that compares
 #: numbers. Found by the compromised-core suite (KF-40).
-_CANONICAL_UID = re.compile(r"^(0|[1-9][0-9]{0,9})$")
+_CANONICAL_UID = re.compile(r"\A(0|[1-9][0-9]{0,9})\Z")
 #: Linux uid_t is 32-bit, but a uid above this is not a real account.
 MAX_UID = 4_294_967_294
 

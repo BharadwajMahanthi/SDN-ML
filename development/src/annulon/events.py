@@ -55,7 +55,7 @@ __all__ = [
 ]
 
 SCHEMA_VERSION = 1
-_TYPE = re.compile(r"^[a-z][a-z0-9_]{0,63}(\.[a-z][a-z0-9_]{0,63}){0,4}$")
+_TYPE = re.compile(r"\A[a-z][a-z0-9_]{0,63}(\.[a-z][a-z0-9_]{0,63}){0,4}\Z")
 
 
 @dataclass(frozen=True)

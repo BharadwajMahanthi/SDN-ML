@@ -99,9 +99,12 @@ _SECRET_NAME = re.compile(
 )
 
 # Bare values that are references or placeholders, not literals.
+# \A/\Z, not ^/$. Matching this pattern means "not a literal", so a value is
+# left UNREDACTED -- the dangerous direction. With `$`, a trailing newline
+# would let `hunter2\n` masquerade as a placeholder (KF-43).
 _NOT_A_LITERAL = re.compile(
-    r"^(None|True|False|null|nil|undefined|\"\"|''|\$\{?[A-Za-z_][A-Za-z0-9_]*\}?|"
-    r"[A-Za-z_][A-Za-z0-9_]*[.(][A-Za-z0-9_.()\[\]'\"]*)$"
+    r"\A(None|True|False|null|nil|undefined|\"\"|''|\$\{?[A-Za-z_][A-Za-z0-9_]*\}?|"
+    r"[A-Za-z_][A-Za-z0-9_]*[.(][A-Za-z0-9_.()\[\]'\"]*)\Z"
 )
 
 # '/' and '.' are deliberately excluded: including them made this rule match
@@ -120,10 +123,13 @@ _ENTROPY_CANDIDATE = re.compile(r"[A-Za-z0-9+_-]{32,}={0,2}")
 # must NOT be treated as an identifier. Widening this rule to accept mixed
 # case once let that exact string through (KF-24).
 _IDENTIFIERISH = re.compile(
-    r"^[a-z0-9]+(?:[_-][a-z0-9]+)+$"     # lower kebab/snake slug
-    r"|^[A-Z0-9]+(?:[_-][A-Z0-9]+)+$"    # UPPER_SNAKE constant
-    r"|^[A-Z][a-z]+(?:_[A-Z][a-z]+)+$"   # Title_Snake_Case, e.g. a doc anchor
-    r"|^[A-Za-z]+$"                       # a plain word
+    # \A/\Z rather than ^/$: a trailing newline would make a secret look
+    # identifier-ish and leave it UNREDACTED, which is the dangerous
+    # direction of this rule (KF-43).
+    r"\A[a-z0-9]+(?:[_-][a-z0-9]+)+\Z"     # lower kebab/snake slug
+    r"|\A[A-Z0-9]+(?:[_-][A-Z0-9]+)+\Z"    # UPPER_SNAKE constant
+    r"|\A[A-Z][a-z]+(?:_[A-Z][a-z]+)+\Z"   # Title_Snake_Case, e.g. a doc anchor
+    r"|\A[A-Za-z]+\Z"                      # a plain word
 )
 
 # The discriminator against a mixed-case secret is that each Title_Snake
@@ -149,7 +155,7 @@ def _shannon(text: str) -> float:
 # A plain, short, alphabetic word. `credential auth`, `token for`, `secret of`
 # -- prose, not assignments. Long alphabetic strings stay suspicious, because a
 # real passphrase can be all letters.
-_PROSE_WORD = re.compile(r"^[A-Za-z]{1,15}$")
+_PROSE_WORD = re.compile(r"\A[A-Za-z]{1,15}\Z")
 
 
 def _is_prose_after_whitespace(value: str) -> bool:
