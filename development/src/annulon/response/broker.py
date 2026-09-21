@@ -464,12 +464,16 @@ class BrokerServer:
     there is no session state for anything to confuse.
     """
 
-    def __init__(self, broker: Broker, config: BrokerConfig) -> None:
+    def __init__(self, broker: Broker, config: BrokerConfig, *,
+                 sweep_interval: float = 1.0) -> None:
         self._broker = broker
         self._config = config
         self._listener: socket.socket | None = None
         self._stop = threading.Event()
+        self._sweeper: threading.Thread | None = None
+        self._sweep_interval = sweep_interval
         self.rejected_peers: list[str] = []
+        self.expired: list[str] = []
 
     def start(self) -> None:
         if self._config.require_privilege and os.geteuid() != 0:
@@ -485,6 +489,22 @@ class BrokerServer:
         self._listener = ipc.bind_listener(self._config.socket_path,
                                            backlog=MAX_CONCURRENT_CONNECTIONS)
         self._listener.settimeout(0.5)
+        # Expiry runs inside the privileged process, on its own clock. If it
+        # lived in the core, killing the core would make every "temporary"
+        # restriction permanent -- which is precisely the failure an attacker
+        # who has already compromised the core would reach for.
+        self._sweeper = threading.Thread(target=self._sweep_loop, daemon=True,
+                                         name="annulon-broker-expiry")
+        self._sweeper.start()
+
+    def _sweep_loop(self) -> None:
+        while not self._stop.wait(self._sweep_interval):
+            try:
+                self.expired.extend(self._broker.expire_due())
+            except Exception:                   # noqa: BLE001
+                # A sweep that raises must not kill the thread; the next tick
+                # tries again. A dead sweeper is a silent expiry outage.
+                continue
 
     def serve_forever(self) -> None:
         while not self._stop.is_set():
@@ -544,6 +564,9 @@ class BrokerServer:
         # The event is set first, so a thread that wakes between the two
         # statements sees a deliberate shutdown rather than a fault.
         self._stop.set()
+        if self._sweeper is not None:
+            self._sweeper.join(timeout=5)
+            self._sweeper = None
         if self._listener is not None:
             self._listener.close()
             self._listener = None

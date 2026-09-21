@@ -1,0 +1,91 @@
+{
+  "authorization": {
+    "expires_at": "2026-09-21T04:20:54.354493+00:00",
+    "outcome": "applied",
+    "reasons": [],
+    "request_id": "req-de8cf162d5532068fcca971b"
+  },
+  "baseline": {
+    "control": "OPEN",
+    "target": "OPEN"
+  },
+  "completion": "COMPLETE",
+  "effect": "CONTAINED",
+  "environment": {
+    "destination": "172.22.0.2",
+    "enforcement_kernel": "Linux 6.12.76-linuxkit",
+    "host": "macOS",
+    "machine": "aarch64",
+    "mechanism": "Linux nftables",
+    "port": 8080,
+    "ttl_seconds": 15
+  },
+  "expiry": {
+    "evidence": "rule state and real traffic inspected after the deadline",
+    "expired_by_broker": true,
+    "rule_removed": true,
+    "traffic_restored": true
+  },
+  "foreign_tables_after": [
+    "ip nat"
+  ],
+  "foreign_tables_before": [
+    "ip nat"
+  ],
+  "inspect_state": {
+    "backend": "nftables",
+    "measured_semantics": {
+      "established_connections": "blocked (measured: a connection opened by the target uid before the rule stopped working)",
+      "execed_binaries": "blocked",
+      "forked_children": "blocked",
+      "ipv6_under_an_ipv4_scoped_rule": "NOT restricted -- see KF-38",
+      "new_connections": "blocked",
+      "uid_escape": "not possible without privilege (PermissionError)"
+    },
+    "owned": [],
+    "scoping": "meta skuid -- the uid owning the sending socket. Precise for a dedicated service account; meaningless for a uid shared by several workloads. Measured: an unrelated process under the same uid is also contained.",
+    "table": "inet annulon",
+    "unknown": []
+  },
+  "management_safety": {
+    "active_actions": 1,
+    "broker_answers": true,
+    "foreign_tables_unchanged": true,
+    "loopback_reachable": true
+  },
+  "negative_control": {
+    "control": "OPEN",
+    "target": "OPEN"
+  },
+  "no_unrelated_state_changed": true,
+  "non_target_control": {
+    "observed": "OPEN",
+    "unaffected": true
+  },
+  "rule_evidence": {
+    "action_id": "req-de8cf162d5532068fcca971b",
+    "comment": "annulon;v=1;a=req-de8cf162d5532068fcca971b;u=1500;x=1789964454",
+    "expires_at": "2026-09-21T04:20:54+00:00",
+    "handle": 2,
+    "ownership": "owned",
+    "uid": 1500
+  },
+  "traffic_after": {
+    "control": "OPEN",
+    "target": "OPEN"
+  },
+  "traffic_during": {
+    "control": "OPEN",
+    "target": "TimeoutError"
+  },
+  "verdict": {
+    "completion": "COMPLETE",
+    "observability": "TRUSTWORTHY",
+    "reasons": [
+      "control plane and data plane agree; controls, scope, management safety and expiry all held"
+    ],
+    "security_outcome": "CONTAINED",
+    "supports_containment_claim": true,
+    "unmeasured": []
+  }
+}

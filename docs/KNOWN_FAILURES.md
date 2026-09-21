@@ -486,3 +486,52 @@ because the send was not on its own thread; reusing one `request_id` across
 fuzz cases made replay protection look like a contract failure; and low
 active-action ceilings in the fuzz fixture denied everything after the
 fourth case for an unrelated reason, hiding the property under test.
+
+### KF-37 — `nft` text output can be forged by the data it describes
+
+- **Found while choosing how to read rule ownership.** A rule comment
+  containing a double quote makes `nft -a list` render ambiguously:
+  `comment "annulon;a=a-1;evil" ; rm -rf /"`. Anything parsing that text
+  could be steered by the comment it is trying to classify — a crafted
+  comment could make a foreign rule look Annulon-owned, or hide an owned one.
+- **Fix**: ownership is read exclusively from `nft -j list`, where the
+  comment is a JSON string field and round-trips verbatim. Commands are
+  likewise written through `nft -j -f -` from a structure built of typed
+  values, so nft's own grammar never sees Annulon data. Verified: the same
+  hostile comment round-trips through JSON unchanged.
+- **Generalised** (doctrine §51): the bug family is *a tool's human-readable
+  output being used as a machine interface*. Any other place that parses CLI
+  text where a structured mode exists is now suspect.
+
+### KF-38 — an IPv4-scoped rule does not restrict IPv6
+
+- **Found by the bypass experiment**, not by reasoning about the code. Under
+  a rule matching `meta skuid 1500` and an IPv4 destination, an IPv6
+  connection from the same uid stayed `OPEN`.
+- **Why it matters**: "egress restricted" would have been a false claim. An
+  attacker reaching a dual-stack destination is unaffected by the v4 rule.
+- **Measured contrast**: an *unscoped* rule (no destination match) in the
+  `inet` family does cover both families — the same v6 probe timed out.
+- **Fix**: `Coverage` (`ipv4_only` / `ipv6_only` / `all_families`) is computed
+  per action and reported on every enforcement result, with
+  `is_complete_egress` false for a single-family rule. The capability is now
+  named *IPv4 egress restriction* where that is what it is. Full dual-family
+  destination scoping is not yet implemented and is `NOT_RUN`.
+
+### KF-39 — the bypass harness measured the wrong process's socket
+
+- **Nearly produced a false finding.** The "established connection" probe
+  opened its socket in the experiment's own root process, which
+  `meta skuid 1500` never matches. It reported that a pre-existing
+  connection survived containment — which would have been a serious gap, and
+  was entirely an artefact of the harness.
+- **Corrected**: the connection is now opened and resumed by a subprocess
+  running as the target uid. Re-measured, the established connection is
+  **blocked** (`TimeoutError`), so the drop does apply to existing flows.
+- **Also fixed in the same pass**: the forked-child probe's output was lost
+  because `os._exit` skips flushing, so a measured path silently reported
+  nothing. Both `fork` and `exec` are now observed blocked.
+- **Doctrine §11 in practice**: the harness must measure the thing the claim
+  is about. This one was measuring a different identity entirely, and it
+  failed in the direction that invents a defect rather than hiding one —
+  which is the safer direction, but still a defect in the evidence chain.

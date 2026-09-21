@@ -676,3 +676,67 @@ rule that might exist is the unsafe direction.
 **Cost.** Two synchronous writes per action, measured at 0.138 ms per
 denial-path request including fsync. Acceptable for an operation that is rare
 by design and rate-limited.
+
+## ADR-049 — adversarial verification doctrine
+
+**Status**: accepted, permanent, applies retroactively to every campaign.
+
+**Problem.** The suite had grown to 1,513 tests, and that number was starting
+to function as an argument. It is not one. A suite that confirms expected
+examples says nothing about whether a security property survives hostile
+input, partial failure, restart or an incorrect assumption — and Annulon's
+own history is mostly defects that passing tests did not catch: KF-22 (a
+hung controller produced an empty run that looked clean), KF-23 (a branch
+merged with a red guard), KF-36 (four ALLOW-producing defects in code that
+had full unit coverage).
+
+**Decision.** QA is adversarial verification. The full doctrine is recorded
+in `docs/PROJECT_CONTRACT.md` and the verification matrix in
+`docs/TEST_EVALUATION_MASTER_PLAN.md`. Security invariants are machine-readable
+in `docs/invariants.json` and each maps to tests and evidence.
+
+**Consequences.**
+
+- Campaign reports state assurance classes, defects found, surviving
+  mutations, flaky tests, inconclusive results, claims *not* supported and
+  known blind spots — not a test total.
+- Mutation testing covers security-critical predicates; any mutation that
+  materially weakens ALLOW/DENY semantics must be killed, and survivors are
+  recorded as defects or gaps rather than averaged into a percentage.
+- Established frameworks (NIST SSDF, OWASP ASVS, NIST SP 800-115, MITRE
+  ATT&CK, MITRE ATLAS) are used as requirement sources and threat taxonomies.
+  Mapping a control is never claimed as certification, and a framework
+  version is never asserted without checking an authoritative source.
+- Defect-seeded testing: every KF is generalised to its bug *family*, and the
+  family is tested.
+- Defect density is information. Four defects at one boundary means that
+  boundary had a weak model, so scrutiny there increases rather than closing.
+
+**Cost.** Campaigns take longer and report more uncomfortable results. That
+is the intended effect.
+
+## ADR-050 — enforcement coverage is named, never implied
+
+**Status**: accepted, implemented in V2-SAFE-03.
+
+**Problem.** A `meta skuid` + `ip daddr` rule restricts one address family.
+Measured in the lab: with such a rule in force, the contained uid still
+reached an IPv6 destination. Describing that as "egress restriction" is
+false, and the falseness is invisible in the code.
+
+**Decision.** Every enforcement result carries a `Coverage` value —
+`ipv4_only`, `ipv6_only` or `all_families` — with `is_complete_egress` true
+only for the last. A partial restriction cannot be described as complete
+egress containment without contradicting the record the backend produced.
+
+**Also recorded**: the measured semantics of the mechanism, published by
+`inspect_state()` rather than only in prose — new connections blocked,
+established connections blocked, forked children and execed binaries blocked,
+uid escape not possible without privilege, IPv6 not restricted under a v4
+rule, and an unrelated process sharing the target uid also contained.
+
+**Limitation accepted for now.** `meta skuid` scopes by uid, not by workload.
+For a dedicated service account that is precise; for a shared account it
+means collateral containment. Per doctrine §36 this is now demonstrated
+physically rather than documented, and cgroup- or unit-based targeting is the
+open question for production.

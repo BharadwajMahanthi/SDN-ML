@@ -1,0 +1,111 @@
+{
+  "$comment": "Security invariants. Each maps to tests and, where the claim is physical, to executed evidence. Machine-readable so tools/verify_all.py can assert every invariant is still covered. Adding an invariant without tests is a merge blocker.",
+  "schema_version": 1,
+  "invariants": [
+    {
+      "id": "INV-001",
+      "statement": "An empty experiment cannot be reported as CLEAN.",
+      "rationale": "A run that observed nothing because it never ran is not a negative result. KF-22.",
+      "tests": ["development/tests/core/test_completion.py"],
+      "evidence": "ADR-029",
+      "status": "covered"
+    },
+    {
+      "id": "INV-002",
+      "statement": "The core cannot execute privileged actions.",
+      "rationale": "The load-bearing safety property of the whole system.",
+      "tests": [
+        "development/tests/response/test_privileged_action_invariant.py",
+        "development/tests/response/test_broker_ipc.py"
+      ],
+      "evidence": "docs/evidence/v2-safe-03-containment.json",
+      "status": "covered"
+    },
+    {
+      "id": "INV-003",
+      "statement": "The broker never trusts an authorization claim made by the core.",
+      "rationale": "There is no field in ActionRequest in which permission can be asserted; caller identity comes from the kernel.",
+      "tests": [
+        "development/tests/response/test_action_contract.py",
+        "development/tests/response/test_broker_ipc.py"
+      ],
+      "evidence": "ADR-047",
+      "status": "covered"
+    },
+    {
+      "id": "INV-004",
+      "statement": "Firewall state Annulon cannot prove it created is never deleted.",
+      "rationale": "A security tool that removes the operator's firewall during an incident is the incident.",
+      "tests": ["development/tests/response/test_nftables_backend.py"],
+      "evidence": "docs/evidence/v2-safe-03-containment.json foreign_tables unchanged",
+      "status": "covered"
+    },
+    {
+      "id": "INV-005",
+      "statement": "An expired temporary action cannot become permanent.",
+      "rationale": "Expiry runs in the privileged broker, so killing the core cannot extend a restriction.",
+      "tests": ["development/tests/response/test_broker_ipc.py"],
+      "evidence": "docs/evidence/v2-safe-03-containment.json expiry",
+      "status": "covered"
+    },
+    {
+      "id": "INV-006",
+      "statement": "Missing evidence is never converted into negative evidence.",
+      "rationale": "An unanswered probe is absence, not proof that nothing happened.",
+      "tests": ["development/tests/core/test_evidence.py"],
+      "evidence": "ADR on the evidence model",
+      "status": "covered"
+    },
+    {
+      "id": "INV-007",
+      "statement": "A sensor that has not been self-probed cannot claim to be healthy.",
+      "rationale": "A dead sensor reporting no events looks identical to a quiet host.",
+      "tests": ["development/tests/core/test_liveness.py"],
+      "evidence": "host agent liveness experiment",
+      "status": "covered"
+    },
+    {
+      "id": "INV-008",
+      "statement": "Several detectors reading one observation are not independent corroboration.",
+      "rationale": "Lineage, not count, determines whether evidence corroborates.",
+      "tests": ["development/tests/core/test_evidence.py"],
+      "evidence": "EvidenceGraph lineage checks",
+      "status": "covered"
+    },
+    {
+      "id": "INV-009",
+      "statement": "A privileged action is durably recorded before the OS is touched.",
+      "rationale": "A crash between apply and journal leaves state nobody will remove.",
+      "tests": ["development/tests/response/test_broker_ipc.py"],
+      "evidence": "ADR-048",
+      "status": "covered"
+    },
+    {
+      "id": "INV-010",
+      "statement": "No value from a request can alter the structure of a privileged command.",
+      "rationale": "nft is driven through JSON built from typed values; no text is ever concatenated into a parser.",
+      "tests": [
+        "development/tests/response/test_broker_fuzz.py",
+        "development/tests/response/test_nftables_backend.py"
+      ],
+      "evidence": "hostile comment stored verbatim as data, KF-37",
+      "status": "covered"
+    },
+    {
+      "id": "INV-011",
+      "statement": "Containment is claimed only when control-plane and data-plane evidence agree.",
+      "rationale": "A rule existing is not traffic stopping. Disagreement is ACTION_EFFECT_NOT_VERIFIED.",
+      "tests": ["development/tests/response/test_verifier_integrity.py"],
+      "evidence": "docs/evidence/v2-safe-03-containment.json",
+      "status": "covered"
+    },
+    {
+      "id": "INV-012",
+      "statement": "A broken verifier yields EVIDENCE_INCOMPLETE, never CONTAINED.",
+      "rationale": "The verifier is security-critical; its failure must not read as success. KF-22 family.",
+      "tests": ["development/tests/response/test_verifier_integrity.py"],
+      "evidence": "fault-injected verifier runs",
+      "status": "covered"
+    }
+  ]
+}
