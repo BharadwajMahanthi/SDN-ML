@@ -356,3 +356,41 @@ than hidden.
 
 **NOT_RUN:** load, soak, packaging, supply chain, and anything on Ubuntu or
 x86_64.
+
+
+## Status correction — SAFE implementation vs SAFE assurance
+
+    V2-SAFE-01..05   IMPLEMENTATION COMPLETE
+    SAFETY ASSURANCE PARTIAL
+
+Carried as explicit assurance obligations, not reopened branches:
+
+| id | obligation | state |
+|---|---|---|
+| SAFE-AWS-REF-01 | Ubuntu / x86_64 independent validation | OPEN |
+| SAFE-IPV6-01 | IPv6 containment | OPEN (KF-38) |
+| SAFE-PACKAGE-01 | clean package / install validation | OPEN |
+| SAFE-LOAD-01 | load and stress | OPEN |
+| SAFE-SOAK-01 | long-running lifecycle | OPEN |
+| SAFE-FULLCHAIN-01 | DETECT → DECIDE → CONTAIN → VERIFY → RECOVER | OPEN |
+
+## V2-HOST-04A — network sensor evaluation (complete, 2026-09-21)
+
+Four mechanisms measured on one kernel against one independent ground truth.
+Selected: a **private tracefs instance** with three tracepoints (ADR-053).
+Evidence: `docs/evidence/v2-host-04a-sensor-evaluation.json`.
+
+Headline measurements:
+
+- `/proc/net/tcp` polling **rejected on evidence**: 1 ESTABLISHED sighting
+  against 44,389 TIME_WAIT sightings for 500 connections. Its 93.8 % capture
+  rate counts connections that had already closed.
+- Tracepoints captured **500 of 500** attempts, and `ESTABLISHED` transitions
+  matched the server's accept count exactly.
+- **Every successful connection returned `-115` (EINPROGRESS)**, so the
+  connect return value cannot be used to decide success.
+- eBPF alone reads `start_boottime` in-kernel (match to 0.26 ms), which would
+  solve PID reuse and the exit race at source. Named `NETWORK_TELEMETRY_EBPF`,
+  NOT_RUN.
+- The sensor sees host PIDs: the workload was PID 20 in its container and
+  84658 to the sensor.
