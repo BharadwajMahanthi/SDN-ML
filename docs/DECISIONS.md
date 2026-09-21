@@ -801,3 +801,69 @@ containment. Tested.
 deliberate reboot during an incident. That needs a persistence mechanism with
 its own expiry evaluated at boot, which is a larger design than a systemd
 unit that replays rules.
+
+## ADR-053 — network telemetry rides a private tracefs instance, with eBPF named as the stronger tier
+
+**Status**: accepted, V2-HOST-04. Evidence:
+`docs/evidence/v2-host-04a-sensor-evaluation.json`.
+
+**Problem.** Annulon needs to observe outbound connections and attribute them
+to the correct process instance. Four mechanisms were measured on one kernel
+against one independent ground truth — a controlled server that counts what
+it actually accepted.
+
+**Rejected: `/proc/net/tcp` polling.** Not because it is crude, but on
+evidence. At a 10 ms interval it recorded **1 ESTABLISHED sighting against
+44,389 TIME_WAIT sightings** for 500 connections. Its apparent 93.8 % capture
+rate counts the residue of connections that had already closed. It also
+carries an inode, not a process, so attribution needs a second race-prone
+scan of `/proc/*/fd`. It is retained only as a named *inventory* capability,
+never as event telemetry.
+
+**Selected: a private tracefs instance.** Creating
+`/sys/kernel/tracing/instances/annulon` yields a ring buffer no other tool
+shares, and three tracepoints are enabled inside it. It needs no eBPF, no
+compiler, no libbpf and no BCC — which makes the packaging story a directory
+and two writes. Crucially, `per_cpu/cpuN/stats` reports `overrun` and
+`dropped events`, so **loss is measured rather than assumed**. That matters
+more than raw capture rate: a sensor that loses events and says so is usable;
+one that loses events silently is the failure mode this project keeps finding.
+
+**Three probes, because none of them can tell the whole truth.**
+
+| probe | gives | cannot give |
+|---|---|---|
+| `sys_enter_connect` | process context, application-requested destination | outcome |
+| `sys_exit_connect` | the errno | whether the connection established |
+| `sock/inet_sock_set_state` | actual `SYN_SENT` → `ESTABLISHED` | reliable process context |
+
+The middle row is the one that would have caused a wrong product.
+**Every one of 500 successful connections returned `-115` (`EINPROGRESS`)**,
+because Python's `settimeout()` puts the socket in non-blocking mode. A
+sensor equating `sys_exit_connect == 0` with success would have reported all
+500 as failures. `ESTABLISHED` transitions matched the server's accept count
+exactly, 500 to 500.
+
+**eBPF is the stronger tier, and is named separately.** It alone can read
+`task_struct->start_boottime` in-kernel — measured at 53304640255814 ns
+against a ground truth of 5330464 ticks at 100 Hz, a match to 0.26 ms. That
+captures process-instance identity *at the moment of the event*, which solves
+PID reuse and the process-exit race at source rather than by correlation. It
+costs a build-time compiler and BTF, or ~100 MB of LLVM at runtime. It is
+recorded as `NETWORK_TELEMETRY_EBPF` and is not implemented yet.
+
+**Capabilities are named separately (doctrine §41), never merged:**
+
+    NETWORK_TELEMETRY_TRACEFS   selected; attribution by correlation
+    NETWORK_TELEMETRY_EBPF      stronger; in-kernel instance identity; NOT_RUN
+    NETWORK_SNAPSHOT_FALLBACK   inventory only; explicitly not event telemetry
+
+**Two findings that constrain the design.**
+
+- **PID namespace.** The sensor sees PIDs in its own namespace. The workload
+  was PID 20 inside its container and PID 84658 to the sensor. Attribution
+  that ignores this is confidently wrong, which is worse than absent.
+- **softirq context.** The `ESTABLISHED` transition carries the `..s1.` flag.
+  Its `comm` matched only because this was loopback; on a real network the
+  completing ACK is processed while an unrelated task is current. Process
+  context from that probe is therefore not trusted.

@@ -1,0 +1,90 @@
+{
+  "candidates": {
+    "ebpf_tracepoint_connect": {
+      "available": true,
+      "capture_rate": 1.0,
+      "carries_process_start_time": true,
+      "connect_results_paired": 500,
+      "distinct_process_instances_seen": 1,
+      "host_pids_seen": [
+        85048
+      ],
+      "namespace_note": "PIDs are from the sensor's PID namespace, not the workload's -- see the ground truth pid",
+      "observations_attributable_to_the_workload": 500,
+      "observations_total": 548,
+      "result_codes": {
+        "-115": 500
+      },
+      "state_transitions": {
+        "attempts_syn_sent": 500,
+        "comm_at_established": {
+          "python3": 500
+        },
+        "comm_at_syn_sent": {
+          "python3": 500
+        },
+        "established": 500,
+        "families_seen": [
+          2
+        ],
+        "note": "family 2 = AF_INET, 10 = AF_INET6. The established count is the only source that knows a connection succeeded; the connect() return value does not.",
+        "transitions_to_target_port": 2462
+      }
+    },
+    "proc_net_tcp_poll": {
+      "attributes_to_a_process": false,
+      "available": true,
+      "capture_rate": 0.988,
+      "caveat": "most sightings are TIME_WAIT -- the residue of a connection that already closed, not an observation of it happening. The capture rate here flatters polling badly.",
+      "distinct_sockets_observed": 494,
+      "established_sightings": 3,
+      "note": "a socket seen in /proc/net/tcp carries an inode, not a process; attribution needs a second scan of /proc/*/fd, which is slower again and races the same way",
+      "samples_taken": 138,
+      "sightings_by_tcp_state": {
+        "ESTABLISHED": 3,
+        "FIN_WAIT1": 3,
+        "FIN_WAIT2": 62,
+        "SYN_SENT": 1,
+        "TIME_WAIT": 48490
+      },
+      "time_wait_sightings": 48490
+    }
+  },
+  "connections_requested": 500,
+  "decision_inputs": {
+    "ebpf_cost": "a compiler and BTF at build time, or bpftrace (~100 MB with LLVM) at runtime; output parsed from text in the bpftrace case, which is fragile",
+    "ebpf_unique_advantage": "reads task_struct->start_boottime in-kernel, measured at 53304640255814 ns against a ground truth of 5330464 ticks at 100 Hz -- a match to 0.26 ms. This solves PID reuse and the process-exit race at source.",
+    "namespace_finding": "the sensor observes PIDs in its own namespace. The workload was PID 20 in its container and PID 84658 to the sensor. Attribution that ignores this is confidently wrong.",
+    "proc_poll_verdict": "rejected on evidence: 1 ESTABLISHED sighting against 44389 TIME_WAIT sightings. Its 93.8 percent capture rate counts the residue of connections that already closed, and it cannot attribute a socket to a process at all."
+  },
+  "ground_truth": {
+    "connections_per_second": 5212.5,
+    "connections_the_server_actually_accepted": 500,
+    "connections_the_workload_believes_it_made": 500,
+    "elapsed_seconds": 0.096,
+    "workload_pid_in_this_namespace": 24,
+    "workload_start_ticks": 5345312
+  },
+  "kernel": "6.12.76-linuxkit",
+  "machine": "aarch64",
+  "poll_interval_seconds": 0.01,
+  "tracefs_instance_candidate": {
+    "available": true,
+    "cannot_do": {
+      "in_kernel_process_start_time": "task_struct->start_boottime is not a tracepoint field, so process-instance identity must be bound by correlation rather than captured at source"
+    },
+    "measured": {
+      "connect_return_observed": "0xffffffffffffff8d = -115 EINPROGRESS",
+      "dependencies": "none: no eBPF, no compiler, no libbpf, no BCC",
+      "events_captured": [
+        "syscalls/sys_enter_connect",
+        "syscalls/sys_exit_connect",
+        "sock/inet_sock_set_state"
+      ],
+      "loss_accounting": "per_cpu/cpuN/stats reports overrun, commit overrun and dropped events -- loss is visible rather than inferred",
+      "private_buffer": "creating /sys/kernel/tracing/instances/<name> gives a buffer no other tool shares, so Annulon cannot be starved or corrupted by another tracer",
+      "softirq_flag_observed": "..s1. on the ESTABLISHED transition, so the process context there is not reliable in general -- it matched only because this was loopback"
+    },
+    "name": "tracefs_private_instance"
+  }
+}
