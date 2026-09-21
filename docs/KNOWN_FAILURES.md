@@ -557,6 +557,16 @@ fourth case for an unrelated reason, hiding the property under test.
   mutates shared state other processes depend on*. Also applies to the lab
   scripts, which now use their own nftables table and their own container
   network for the same reason.
+- **Recurrence in V2-HOST-04E, and the real fix.** The lock stopped a second
+  *mutation* run but nothing stopped an ordinary `pytest` invocation, and a
+  full-suite run started while a mutation was applied reported **21 unrelated
+  failures** that passed on a re-run. The advisory rule in `AGENTS.md` did
+  not prevent it — the same shape as KF-46, where a generalised rule lived in
+  a document while the defect lived in new code. A repository `conftest.py`
+  now refuses any test run while the lock is held, unless it carries the
+  environment marker `tools/mutate.py` sets for its own pytest subprocesses.
+  Silent corruption became a loud refusal, which is what the rule should have
+  been in the first place.
 
 ### KF-40 — a target uid had several spellings, including non-ASCII digits
 
@@ -685,3 +695,63 @@ fourth case for an unrelated reason, hiding the property under test.
 - **What this changes about the claim**: the capability is
   process-attributed *IP* connection observation. Local socket activity is
   not counted as network activity, which it would have been.
+
+### KF-46 — the network parser converted non-ASCII digits into a real port
+
+- **Found by the 04E adversarial suite**, in the family the doctrine's §51
+  rule said to look for: KF-40 was `str.isdigit()` plus `int()` accepting
+  Arabic-Indic, Devanagari and fullwidth digits in a *uid*, and the same pair
+  was used for a *port* in a parser written afterwards.
+- **The defect**: `raw_port.isdigit()` then `int(raw_port)` turned
+  `dport=١٥٠٠` into port 1500. A destination expressible in several
+  spellings defeats any policy that compares ports as text, and lets one
+  logical destination present as two observations or two as one.
+- **Fix**: `\A(0|[1-9][0-9]{0,4})\Z` — canonical ASCII decimal, no padding,
+  no sign, in range by construction. The test proves the confusables really
+  do convert to 1500 before asserting they are refused, so it is not
+  theatre.
+- **The lesson is about process, not about digits.** Generalising KF-40 into
+  a rule was correct and still did not prevent the recurrence, because the
+  rule lived in a document while the defect lived in a new parser. The
+  durable fix is that a *test* now encodes the family, in both the privileged
+  contract and the network contract.
+
+### KF-47 — a connect attempt was recognised from the destination state alone
+
+- **Found by the same suite**, by deleting the `oldstate` field.
+- **The defect**: the normaliser matched `newstate == "TCP_SYN_SENT"` and
+  ignored `oldstate`. ADR-053 declares the primary semantic to be the
+  *transition* `TCP_CLOSE -> TCP_SYN_SENT`; the implementation accepted any
+  event whose destination state was SYN_SENT, including a line carrying no
+  `oldstate` at all. A malformed or partial line therefore produced a
+  confident connect attempt.
+- **Fix**: both halves of the transition are required, so the code now means
+  what the ADR says. Events that do not match are counted as ignored rather
+  than silently dropped.
+- **Severity**: low in practice — SYN_SENT is reached from CLOSE in normal
+  operation — but it is precisely the "stronger statement than the evidence
+  supports" shape 04E exists to find, and it made a missing field
+  indistinguishable from a complete one.
+
+### KF-48 — an anomalous positive connect return was upgraded to ESTABLISHED
+
+- **Found by mutation testing in 04E**, not by any hand-written case.
+- **The defect**: tracefs prints syscall returns unsigned, so the normaliser
+  folded large values to a signed errno and then did
+  `if value > 0: value = 0  # a success return, not an errno`. But
+  `connect()` returns 0 or a negative errno and **never** a positive value.
+  A small positive return — which the kernel is not supposed to produce —
+  was therefore rewritten to zero and classified `ESTABLISHED`.
+- **Why it matters**: this is the exact shape 04E exists to find. An
+  unexplained value was converted into the strongest possible claim, rather
+  than the weakest. Anything that could make the field anomalous — a parser
+  change, a different tracefs format, a truncated line reassembled wrongly —
+  would have produced confident "connection established" records.
+- **Fix**: a positive return is left alone and maps to `OTHER_ERROR`:
+  unexplained, which is what it is. Zero still means established, and that
+  positive control is tested so the fix cannot degrade into refusing
+  everything.
+- **Generalised** (doctrine §51): the family is *a normalisation step that
+  rewrites an out-of-range value into an in-range one*. Coercion upward is
+  always the dangerous direction; the same shape produced KF-36's
+  `str(None) -> "None"` and KF-46's non-ASCII digits.

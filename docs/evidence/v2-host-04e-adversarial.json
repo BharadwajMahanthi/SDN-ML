@@ -1,0 +1,117 @@
+{
+  "bounded_burst": {
+    "ground_truth_connections": 800,
+    "health_reflects_loss": true,
+    "listener_accepted": 800,
+    "loss_after": {
+      "commit_overrun": 0,
+      "dropped": 0,
+      "lossless": true,
+      "overrun": 0,
+      "queue_dropped": 0,
+      "total": 0
+    },
+    "loss_before": {
+      "commit_overrun": 0,
+      "dropped": 0,
+      "lossless": true,
+      "overrun": 0,
+      "queue_dropped": 0,
+      "total": 0
+    },
+    "loss_is_counted_not_silent": true,
+    "meaning": "not a throughput measurement. The property is that the queue stays bounded and any loss is counted rather than disappearing.",
+    "observed_attempts": 800,
+    "queue_pending_after_drain": 0
+  },
+  "concurrent_same_uid": {
+    "all_same_uid": true,
+    "distinct_pids_observed": 6,
+    "every_launched_pid_observed": true,
+    "ground_truth_connections": 150,
+    "listener_accepted": 150,
+    "meaning": "six processes, one uid, one destination. Attribution must separate them and must not name a process that was never launched.",
+    "no_unlaunched_pid_attributed": true,
+    "observed_attempts": 150,
+    "per_pid_counts_match_ground_truth": true,
+    "processes_launched": 6,
+    "unexpected_pids": []
+  },
+  "connect_result_semantics": {
+    "established_observations": 304,
+    "ground_truth": {
+      "blocking_to_open_port": "connected",
+      "nonblocking_to_open_port": "connected",
+      "to_closed_port": "ConnectionRefusedError"
+    },
+    "meaning": "a successful non-blocking connect returns EINPROGRESS. Annulon must not read that as failure, nor read a zero return as an established socket.",
+    "no_connect_result_carries_a_destination": true,
+    "observed_result_outcomes": {
+      "established": 3,
+      "other_error": 24,
+      "pending": 152
+    },
+    "pending_never_counted_as_established": true
+  },
+  "environment": {
+    "capability": "NETWORK_TELEMETRY_TRACEFS",
+    "harness_pid": 31182,
+    "kernel": "6.12.76-linuxkit",
+    "machine": "aarch64"
+  },
+  "false_silence": {
+    "attests_completeness": false,
+    "correct": true,
+    "ground_truth_connections": 40,
+    "listener_accepted": 40,
+    "liveness_status": "FAILED",
+    "meaning": "traffic demonstrably occurred while the sensor was blind. Zero observations must not read as zero network activity.",
+    "observed_attempts": 0,
+    "reader_thread_alive": true,
+    "trustworthy_absence": false
+  },
+  "recovery": {
+    "failed_intervals_still_recorded": 1,
+    "observed": true,
+    "status": "HEALTHY"
+  },
+  "short_lived_processes": {
+    "all_attribution_is_weak": true,
+    "all_exited_before_scoring": true,
+    "attributed_to_launched_pids_only": true,
+    "ground_truth_connections": 40,
+    "listener_accepted": 40,
+    "meaning": "the process is gone before anything could read /proc. The observation survives, and its attribution stays weak rather than being upgraded by enrichment that could not happen.",
+    "none_claim_instance_binding": true,
+    "observations_survived_process_exit": true,
+    "observed_attempts": 40,
+    "processes_launched": 20
+  },
+  "shutdown": {
+    "elapsed_seconds": 0.207
+  },
+  "softirq_attribution": {
+    "meaning": "interrupt-context completions may contribute socket state and must never become process attribution.",
+    "normalizer_discarded_pids": 304,
+    "observations_with_discarded_process": 304,
+    "softirq_events_that_named_a_process": 0
+  },
+  "verdict": {
+    "burst_health_consistent_with_loss": true,
+    "burst_loss_counted": true,
+    "completion": "COMPLETE",
+    "connect_results_invent_no_destination": true,
+    "every_launched_process_observed": true,
+    "false_silence_handled": true,
+    "no_instance_binding_was_fabricated": true,
+    "no_process_attributed_that_was_never_launched": true,
+    "no_softirq_event_named_a_process": true,
+    "pending_never_established": true,
+    "recovery_prospective": true,
+    "same_uid_processes_separated": true,
+    "short_lived_attributed_only_to_real_pids": true,
+    "short_lived_attribution_stayed_weak": true,
+    "short_lived_observations_survived": true,
+    "shutdown_bounded": true
+  }
+}

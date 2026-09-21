@@ -393,11 +393,40 @@ class NetworkObservation:
         Includes the network namespace, because an address pair does not
         uniquely identify a flow on a host running containers: the same
         tuple can exist in several namespaces simultaneously.
+
+        An unknown namespace renders as ``ns:unknown`` and is **never equal
+        to any known namespace**, including zero. The previous form,
+        ``self.network_namespace or 0``, collapsed "unknown" and "namespace
+        0" into one key — and since the tracefs tier never populates the
+        field, every observation in production landed in that bucket. A
+        namespace component that is documented as the reason a tuple is
+        insufficient, and then silently inert, is worse than none: it
+        invites a consumer to trust an identity that was never qualified.
+        Ask :attr:`flow_key_is_namespace_qualified` before relying on it.
         """
         if self.local is None or self.remote is None:
             return None
-        return (f"{self.network_namespace or 0}/{self.transport.value}/"
+        namespace = ("ns:unknown" if self.network_namespace is None
+                     else f"ns:{self.network_namespace}")
+        return (f"{namespace}/{self.transport.value}/"
                 f"{self.local}/{self.remote}")
+
+    @property
+    def flow_key_is_namespace_qualified(self) -> bool:
+        """Whether :attr:`flow_key` identifies a flow host-wide.
+
+        False under the tracefs tier, which observes socket state transitions
+        for every namespace on the host but is given no field naming the one
+        an event came from. Stamping the sensor's own namespace would be
+        fabrication: the sensor is not necessarily in the namespace it is
+        observing.
+
+        When this is false, two observations sharing a `flow_key` *may* be
+        different flows in different namespaces. Equality is a hint, not
+        proof of identity, and a consumer that deduplicates on it is
+        discarding evidence it cannot prove is redundant.
+        """
+        return self.network_namespace is not None
 
     @property
     def supports_workload_attribution(self) -> bool:
