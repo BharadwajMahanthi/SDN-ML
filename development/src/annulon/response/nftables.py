@@ -64,7 +64,7 @@ _COMMAND_TIMEOUT = 15.0
 _MAX_OUTPUT_BYTES = 4 * 1024 * 1024
 #: Everything that may appear in a comment we write. Anything else means the
 #: value never came from a validated contract field.
-_COMMENT_SAFE = re.compile(r"^[A-Za-z0-9._:=;-]+$")
+_COMMENT_SAFE = re.compile(r"\A[A-Za-z0-9._:=;-]+\Z")
 
 
 class NftablesUnavailable(EnforcementError):

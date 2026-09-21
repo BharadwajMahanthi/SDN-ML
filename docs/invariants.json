@@ -196,6 +196,36 @@
       ],
       "evidence": "ADR-052",
       "status": "covered"
+    },
+    {
+      "id": "INV-020",
+      "statement": "A whole-token validation regex never admits a trailing newline.",
+      "rationale": "Python's `$` also matches before a final newline, so `^...$` accepted control characters in identity fields that reach logs and audit records (KF-43). Fourteen such patterns existed, including the redactor heuristic where the failure direction was under-redaction.",
+      "tests": [
+        "tests/tools/test_validation_anchors.py"
+      ],
+      "evidence": "KF-43",
+      "status": "covered"
+    },
+    {
+      "id": "INV-021",
+      "statement": "A network observation never claims a connection was established unless the kernel said so.",
+      "rationale": "Every successful connect in the sensor evaluation returned EINPROGRESS. Equating a non-zero connect return with failure, or a zero return with success, misreports the common case.",
+      "tests": [
+        "development/tests/network/test_network_contract.py"
+      ],
+      "evidence": "docs/evidence/v2-host-04a-sensor-evaluation.json",
+      "status": "covered"
+    },
+    {
+      "id": "INV-022",
+      "statement": "An observation that cannot identify a process instance says so rather than presenting a PID as an identity.",
+      "rationale": "A network event attributed to the wrong process is worse than no event. PID-only attribution is visible through AttributionConfidence.",
+      "tests": [
+        "development/tests/network/test_network_contract.py"
+      ],
+      "evidence": "ADR-053",
+      "status": "covered"
     }
   ]
 }

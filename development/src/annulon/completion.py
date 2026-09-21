@@ -46,7 +46,7 @@ __all__ = [
 ]
 
 SCHEMA_VERSION = 1
-_RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+_RUN_ID = re.compile(r"\A[A-Za-z0-9][A-Za-z0-9._-]{0,63}\Z")
 MAX_MANIFEST_BYTES = 64 * 1024
 
 

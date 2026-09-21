@@ -112,7 +112,7 @@ class Policy:
         return d
 
 
-_VERSIONED = re.compile(r"^(?P<stem>python|pypy|pytest|ruff|mypy|java|javac|node)[0-9]*(?:\.[0-9]+)*$")
+_VERSIONED = re.compile(r"\A(?P<stem>python|pypy|pytest|ruff|mypy|java|javac|node)[0-9]*(?:\.[0-9]+)*\Z")
 
 
 def normalize_command(name: str) -> str:

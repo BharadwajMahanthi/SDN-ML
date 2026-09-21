@@ -46,7 +46,7 @@ MAX_EVIDENCE_PER_FINDING = 64
 MAX_MISSING_PER_FINDING = 32
 MAX_ASSESSMENTS = 32
 MAX_RATIONALE_CHARS = 4096
-_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{3,63}$")
+_ID = re.compile(r"\A[A-Za-z0-9][A-Za-z0-9._:-]{3,63}\Z")
 
 
 class Severity(enum.Enum):

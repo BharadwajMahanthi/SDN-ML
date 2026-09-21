@@ -35,7 +35,7 @@ __all__ = [
 ]
 
 _MAC_SEPARATORS: Final = re.compile(r"[:\-.\s]")
-_MAC_HEX: Final = re.compile(r"^[0-9a-f]{12}$")
+_MAC_HEX: Final = re.compile(r"\A[0-9a-f]{12}\Z")
 _MAC_MAX: Final = 2**48 - 1
 
 

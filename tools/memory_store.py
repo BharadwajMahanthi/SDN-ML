@@ -36,7 +36,7 @@ if __package__ in (None, ""):
 from tools.redact import redact
 
 SCHEMA_VERSION = 1
-BUCKET_RE = re.compile(r"^bucket_(?P<start>\d{6})_(?P<end>\d{6})\.jsonl$")
+BUCKET_RE = re.compile(r"\Abucket_(?P<start>\d{6})_(?P<end>\d{6})\.jsonl\Z")
 STAGED_SUFFIX = ".gc-staged"
 
 

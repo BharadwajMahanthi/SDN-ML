@@ -27,7 +27,7 @@ __all__ = ["EntityKind", "EntityRef", "MAX_NAMESPACE", "MAX_IDENTIFIER"]
 
 MAX_NAMESPACE = 128
 MAX_IDENTIFIER = 256
-_SAFE = re.compile(r"^[\x20-\x7e]*$")      # printable ASCII; no control bytes
+_SAFE = re.compile(r"\A[\x20-\x7e]*\Z")      # printable ASCII; no control bytes
 
 
 class EntityKind(enum.Enum):

@@ -1,0 +1,1 @@
+"""Process-attributed network observation."""
