@@ -1,0 +1,59 @@
+{
+  "cases": {
+    "deadline_survives_restart": {
+      "expired_by_new_broker": true,
+      "note": "the deadline lives in the journal, not in a process timer, so a restart cannot extend the action",
+      "rule_removed": true,
+      "traffic_after": "OPEN"
+    },
+    "foreign_rule_in_our_table": {
+      "classified_unknown": true,
+      "installed": true,
+      "meaning": "a rule Annulon cannot prove it created is reported as UNKNOWN_FOREIGN_STATE and left in place",
+      "notes": [],
+      "reported_not_deleted": true,
+      "survived_reconciliation": true,
+      "table_removal_refused": true
+    },
+    "journal_active_rule_missing": {
+      "active_after": 0,
+      "active_before": 1,
+      "notes": [
+        "closed stale record req-recovery-stale-01"
+      ],
+      "record_closed": true
+    },
+    "journal_active_rule_present": {
+      "applied": true,
+      "notes": [],
+      "reconciliation_kept_it": true,
+      "rule_survived_broker_death": true,
+      "traffic_during": "TimeoutError"
+    },
+    "rule_present_no_journal": {
+      "notes": [
+        "removed orphan inet/annulon/egress/req-recovery-orphan-1"
+      ],
+      "removed_as_orphan": true,
+      "rule_existed": true
+    }
+  },
+  "environment": {
+    "enforcement_kernel": "Linux 6.12.76-linuxkit",
+    "machine": "aarch64",
+    "mechanism": "Linux nftables"
+  },
+  "verdict": {
+    "completion": "COMPLETE",
+    "containment_survived_broker_death": true,
+    "deadline_survived_restart": true,
+    "foreign_rule_reported": true,
+    "foreign_rule_untouched": true,
+    "orphan_removed": true,
+    "rule_removed_at_deadline": true,
+    "stale_record_closed": true,
+    "table_removal_refused_while_foreign_present": true,
+    "traffic_restored": true,
+    "traffic_was_actually_blocked": true
+  }
+}

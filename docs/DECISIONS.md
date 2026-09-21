@@ -770,3 +770,34 @@ than counted as a pass.
 mutated module, which makes concurrent use hazardous — it corrupted a
 concurrent test run before a lock was added (KF-41). It now holds an
 exclusive lock and restores the original source on SIGINT/SIGTERM.
+
+## ADR-052 — containment does not survive a reboot
+
+**Status**: accepted, documented in V2-SAFE-05.
+
+**Problem.** nftables rules live in kernel memory. Annulon installs no
+persistence unit, so a reboot clears every restriction it created. That had
+never been decided — it was simply what happened.
+
+**Decision.** Keep it, and say so. A temporary restriction that outlived the
+process which understood why it existed would be a restriction nobody can
+explain and nobody will remove, and the deadline that made it temporary would
+be gone with the journal's owner.
+
+**Consequence, stated rather than hidden.** A genuinely dangerous workload is
+unrestricted between boot and the core re-detecting it. That window is real,
+and closing it is a detection problem, not a persistence one: the correct fix
+is for the core to re-evaluate on startup, never for a rule to survive the
+component that justified it.
+
+**What the broker actually observes.** It cannot detect a reboot. It sees a
+journal claiming active actions and a kernel holding none — the same shape as
+a stale record, resolved the same way. The important part is that those
+records are *closed*, because otherwise the active-action ceiling fills with
+entries for rules that no longer exist and the broker refuses all new
+containment. Tested.
+
+**Revisit when** the agent is expected to hold containment across a
+deliberate reboot during an incident. That needs a persistence mechanism with
+its own expiry evaluated at boot, which is a larger design than a systemd
+unit that replays rules.

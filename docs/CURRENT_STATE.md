@@ -316,3 +316,43 @@ was denied" cannot be explained by a broken broker.
 
 **NOT_RUN:** load, soak, packaging, supply chain, reboot semantics, and
 anything on Ubuntu or x86_64.
+
+
+## V2-SAFE-05 — crash, restart and reconciliation (complete, 2026-09-21)
+
+The broker is killed at every meaningful point in an action's life, and the
+only question asked after each restart is whether the durable record agrees
+with what the host actually holds.
+
+**Physical evidence** (`docs/evidence/v2-safe-05-recovery.json`) — all
+against a real kernel, with a rule genuinely installed and the broker
+genuinely discarded:
+
+| case | result |
+|---|---|
+| containment survived broker death | yes, traffic still blocked |
+| deadline survived the restart | new broker expired it, rule removed, traffic restored |
+| rule present with no journal entry | removed as an orphan |
+| journal active with rule missing | record closed |
+| foreign rule inside Annulon's own table | **left untouched**, classified UNKNOWN |
+| table removal while a foreign rule is present | refused |
+
+The foreign-rule case is the one worth the effort. A rule shaped like ours
+but carrying an unknown format version was installed directly with `nft`;
+reconciliation left it in place, reported it as unknown, and refused to
+remove the table it sits in.
+
+**Unit crash matrix**: crash before authorization, during apply, after apply
+before journal, during TTL, during release; journal write failure; truncated
+journal tail; clock rollback and forward jump. Plus four concurrency races —
+duplicate request, expiry versus release, the active ceiling under a race,
+and reconciliation running against live requests.
+
+**Reboot semantics (ADR-052)**: containment deliberately does *not* survive a
+reboot, and the records for it are closed on restart so the active-action
+ceiling does not fill with entries for rules that no longer exist. The
+resulting exposure window between boot and re-detection is recorded rather
+than hidden.
+
+**NOT_RUN:** load, soak, packaging, supply chain, and anything on Ubuntu or
+x86_64.
