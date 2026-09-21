@@ -867,3 +867,88 @@ recorded as `NETWORK_TELEMETRY_EBPF` and is not implemented yet.
   Its `comm` matched only because this was loopback; on a real network the
   completing ACK is processed while an unrelated task is current. Process
   context from that probe is therefore not trusted.
+
+## ADR-054 — network liveness is proved after the queue, and a probe alone is not health
+
+**Status**: accepted, V2-HOST-04D. Extends ADR-041 to the network sensor;
+does not supersede it. Evidence:
+`docs/evidence/v2-host-04d-network-liveness.json`.
+
+**Problem.** ADR-041 established that an open descriptor and a live thread
+assert almost nothing for the process sensor. The tracefs network sensor has
+further ways to go quiet that no counter reports: a tracepoint disabled
+underneath it, its private instance removed, or a reader that stopped
+consuming while the ring buffer wraps. Measured in this branch: with
+`sock/inet_sock_set_state` disabled, the reader thread stayed alive, the
+descriptor stayed open, 30 real connections were made and accepted, and
+Annulon observed **none of them**. A liveness check based on thread state
+would have called that healthy.
+
+**Decision, in three parts.**
+
+*The probe exercises the selected path.* A fresh loopback listener is bound,
+the sensor process connects to it once, and the check is satisfied only by
+the primary semantic 04C selected — the `TCP_CLOSE -> TCP_SYN_SENT`
+transition. Not `trace_marker`, not a different tracepoint, not the presence
+of `per_cpu/stats`.
+
+*The receipt is taken after the bounded queue and the normaliser.* Satisfying
+the probe at the parser would report healthy while the queue was saturated
+and every real observation was being dropped — the state an operator most
+needs to hear about. The monitor never drains: observations are offered to it
+by the ordinary consumer through `consider()`, which reads and returns, so
+self-checking still cannot destroy evidence (ADR-041).
+
+*A successful probe is necessary, not sufficient.* If the kernel ring buffer
+or the userspace queue lost anything across the probe interval, the path
+demonstrably works **and** something was missed. That epoch is `DEGRADED` and
+its silence is not trustworthy.
+
+**Identity.** The fresh ephemeral port is the nonce, and a match additionally
+requires our own process identity, a loopback destination, the expected
+operation, transport and direction, the address family, the network namespace
+where known, and arrival inside the current window. Dropping any one clause
+lets something else satisfy the probe; the one that matters most is the pid,
+because a health check any local process can satisfy is one an attacker can
+satisfy.
+
+**Clock tolerance, stated plainly.** `observed_at` is reconstructed from
+`/proc/stat` btime, which has one-second resolution, so the window is widened
+by three seconds. That is tolerance for *our own arithmetic*, not a grace
+period for stale events: the fresh port and the pid still have to match, so
+widening it cannot admit an event from a different probe.
+
+**Internal traffic is recognised from in-process state, never from the
+event.** `is_internal` consults the set of ports this monitor actually bound.
+Deciding it from a field on the observation would let any workload claim
+exemption by choosing a port, and there is deliberately no blanket "ignore
+loopback" rule.
+
+**Health integrates with the existing model rather than paralleling it.**
+`network_collection_health` returns `SensorHealth`, so detectors keep asking
+the one question they already ask — `trustworthy_absence` — and there is no
+second notion of health to keep in step (ADR-039). A failed probe removes the
+right to treat silence as meaningful; it never becomes evidence that
+something bad happened, because a blind sensor tells you nothing in either
+direction.
+
+**Recovery is prospective.** A later clean probe says the path works now. The
+failed interval stays on the record, and `ever_succeeded` and the history are
+both retained so a gap cannot be rewritten as if it had not happened.
+
+**Not decided here.** `NETWORK_TELEMETRY_EBPF` remains a separate NOT_RUN
+capability, and no latency figure in this branch is a product target — the
+deadline is a small deterministic value for tests, not an owner-approved SLO.
+
+**Mutation coverage of the 04D predicates.** The first pass over
+`liveness.py` left 22 survivors, every one in a predicate this ADR relies on:
+the unarmed-probe guard (`or` weakened to `and`), the deadline fallback, the
+`remote is None` check, the `consider` type guard, the history bound, the
+four branches of the failure explanation, and the `cancel is not None`
+conjunction — whose mutation would have dereferenced `None` on the default
+path where no cancel event is passed. Each now has a test that fails without
+it. One duplicate was removed rather than tested twice: the socket-family
+ternary appeared in both `open()` and `fire()`, could not be tested in
+isolation, and behaved differently on Linux and macOS when mutated, so the
+defect was invisible on whichever platform happened to be forgiving. It is
+now a single `socket_family` property.
