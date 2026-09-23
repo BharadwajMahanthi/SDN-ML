@@ -1,0 +1,154 @@
+{
+  "completion": "COMPLETE",
+  "environment": {
+    "kernel": "6.12.76-linuxkit",
+    "machine": "aarch64"
+  },
+  "load": {
+    "attempts_observed": 25,
+    "attests_completeness": false,
+    "connections_made": 4000,
+    "connections_per_second": 1275.6,
+    "connections_requested": 4000,
+    "coverage": 0.0063,
+    "elapsed_seconds": 3.136,
+    "fds_after": 6,
+    "fds_before": 6,
+    "honest_under_load": true,
+    "loss": {
+      "commit_overrun": 0,
+      "dropped": 0,
+      "lossless": false,
+      "overrun": 0,
+      "queue_dropped": 47965,
+      "total": 47965
+    },
+    "loss_was_counted_when_coverage_dropped": true,
+    "note": "not a throughput measurement and not a product target. The property is that loss is counted and health tracks it.",
+    "queue_limit": 200,
+    "rss_kb_after": 16716,
+    "rss_kb_before": 15948,
+    "sink_accepted": 4000,
+    "trustworthy_absence": false
+  },
+  "soak": {
+    "cycles": 402,
+    "duration_seconds": 100,
+    "fd_growth": 0,
+    "fds_first": 6,
+    "fds_last": 6,
+    "liveness_history_bounded": true,
+    "note": "a short soak. Hours-long runs remain NOT_RUN; this bounds the obvious leaks rather than proving their absence.",
+    "queue_drained_each_cycle": true,
+    "rss_growth_kb": 4360,
+    "rss_growth_second_half_kb": 2048,
+    "rss_kb_first": 21592,
+    "rss_kb_last": 25952,
+    "samples": [
+      {
+        "fds": 6,
+        "liveness_history": 1,
+        "queue_pending": 7,
+        "rss_kb": 21592,
+        "t": 0.3,
+        "unparsed": 0
+      },
+      {
+        "fds": 6,
+        "liveness_history": 7,
+        "queue_pending": 0,
+        "rss_kb": 22880,
+        "t": 8.4,
+        "unparsed": 0
+      },
+      {
+        "fds": 6,
+        "liveness_history": 14,
+        "queue_pending": 0,
+        "rss_kb": 23264,
+        "t": 16.6,
+        "unparsed": 0
+      },
+      {
+        "fds": 6,
+        "liveness_history": 20,
+        "queue_pending": 0,
+        "rss_kb": 23520,
+        "t": 24.8,
+        "unparsed": 0
+      },
+      {
+        "fds": 6,
+        "liveness_history": 20,
+        "queue_pending": 0,
+        "rss_kb": 23648,
+        "t": 33.0,
+        "unparsed": 0
+      },
+      {
+        "fds": 6,
+        "liveness_history": 20,
+        "queue_pending": 1,
+        "rss_kb": 23776,
+        "t": 41.1,
+        "unparsed": 0
+      },
+      {
+        "fds": 6,
+        "liveness_history": 20,
+        "queue_pending": 0,
+        "rss_kb": 23904,
+        "t": 49.3,
+        "unparsed": 0
+      },
+      {
+        "fds": 6,
+        "liveness_history": 20,
+        "queue_pending": 0,
+        "rss_kb": 24032,
+        "t": 57.5,
+        "unparsed": 0
+      },
+      {
+        "fds": 6,
+        "liveness_history": 20,
+        "queue_pending": 0,
+        "rss_kb": 24160,
+        "t": 65.6,
+        "unparsed": 0
+      },
+      {
+        "fds": 6,
+        "liveness_history": 20,
+        "queue_pending": 0,
+        "rss_kb": 24544,
+        "t": 73.8,
+        "unparsed": 0
+      },
+      {
+        "fds": 6,
+        "liveness_history": 20,
+        "queue_pending": 7,
+        "rss_kb": 25824,
+        "t": 82.4,
+        "unparsed": 0
+      },
+      {
+        "fds": 6,
+        "liveness_history": 20,
+        "queue_pending": 0,
+        "rss_kb": 25824,
+        "t": 90.7,
+        "unparsed": 0
+      },
+      {
+        "fds": 6,
+        "liveness_history": 20,
+        "queue_pending": 0,
+        "rss_kb": 25952,
+        "t": 98.9,
+        "unparsed": 0
+      }
+    ]
+  }
+}

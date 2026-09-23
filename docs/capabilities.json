@@ -10,22 +10,30 @@
       "id": "HOST_PROCESS_TELEMETRY",
       "pack": "host",
       "status": "SUPPORTED",
-      "profiles": ["REF-HOST"],
+      "profiles": [
+        "REF-HOST"
+      ],
       "evidence": "netlink proc connector experiments; 500/500 short-lived execs with a passing negative control",
-      "limitations": ["requires CONFIG_CONNECTOR; absent on REF-DEV, where the sensor refuses to start rather than degrading"]
+      "limitations": [
+        "requires CONFIG_CONNECTOR; absent on REF-DEV, where the sensor refuses to start rather than degrading"
+      ]
     },
     {
       "id": "NETWORK_TELEMETRY_TRACEFS",
       "pack": "host",
       "status": "SUPPORTED",
-      "profiles": ["REF-DEV", "REF-HOST"],
+      "profiles": [
+        "REF-DEV",
+        "REF-HOST"
+      ],
       "evidence": "docs/evidence/v2-host-04c-network-sensor.json, v2-host-04e-adversarial.json",
       "limitations": [
         "TCP connect semantics only; UDP is not covered",
         "post-start activity only; not a connection inventory",
         "observes host-namespace pids; container attribution NOT_RUN",
         "flow identity is not namespace-qualified on this tier",
-        "about half of short-lived connections cannot be bound to a workload"
+        "about half of short-lived connections cannot be bound to a workload",
+        "under saturation coverage collapses -- measured 25 of 4000 connections observed with a 200-event queue -- and the sensor reports the loss rather than attesting completeness"
       ]
     },
     {
@@ -34,29 +42,44 @@
       "status": "NOT_RUN",
       "profiles": [],
       "evidence": null,
-      "limitations": ["would capture process-instance identity in-kernel and remove the attribution race at source; not implemented"]
+      "limitations": [
+        "would capture process-instance identity in-kernel and remove the attribution race at source; not implemented"
+      ]
     },
     {
       "id": "NETWORK_SENSOR_LIVENESS",
       "pack": "host",
       "status": "SUPPORTED",
-      "profiles": ["REF-DEV", "REF-HOST"],
+      "profiles": [
+        "REF-DEV",
+        "REF-HOST"
+      ],
       "evidence": "docs/evidence/v2-host-04d-network-liveness.json",
-      "limitations": ["the probe is loopback; it proves the observation path, not external connectivity"]
+      "limitations": [
+        "the probe is loopback; it proves the observation path, not external connectivity"
+      ]
     },
     {
       "id": "EGRESS_POLICY_DETECTION",
       "pack": "host",
       "status": "SUPPORTED",
-      "profiles": ["REF-DEV", "REF-HOST"],
+      "profiles": [
+        "REF-DEV",
+        "REF-HOST"
+      ],
       "evidence": "docs/evidence/v2-host-04g-fullchain-ubuntu-x86_64.json",
-      "limitations": ["a deterministic allowlist only; no behavioural or statistical detection"]
+      "limitations": [
+        "a deterministic allowlist only; no behavioural or statistical detection"
+      ]
     },
     {
       "id": "IPV4_EGRESS_CONTAINMENT",
       "pack": "response",
       "status": "SUPPORTED",
-      "profiles": ["REF-DEV", "REF-HOST"],
+      "profiles": [
+        "REF-DEV",
+        "REF-HOST"
+      ],
       "evidence": "docs/evidence/v2-safe-03-containment.json, v2-host-04g-fullchain-ubuntu-x86_64.json",
       "limitations": [
         "IPv4 only; an IPv4-scoped rule does not restrict IPv6 (KF-38)",
@@ -70,13 +93,17 @@
       "status": "NOT_RUN",
       "profiles": [],
       "evidence": null,
-      "limitations": ["SAFE-IPV6-01 remains open"]
+      "limitations": [
+        "SAFE-IPV6-01 remains open"
+      ]
     },
     {
       "id": "SDN_TOPOLOGY_DETECTION",
       "pack": "sdn",
       "status": "SUPPORTED",
-      "profiles": ["REF-DEV"],
+      "profiles": [
+        "REF-DEV"
+      ],
       "evidence": "OVS datapath and OpenFlow experiments; host crossover with a passing negative control",
       "limitations": [
         "detection only; the SDN pack has no enforcement path and its findings offer no containment response",
@@ -89,7 +116,9 @@
       "status": "NOT_RUN",
       "profiles": [],
       "evidence": null,
-      "limitations": ["no flow-rule enforcement path exists; SDN findings deliberately do not offer TEMPORARY_CONTAINMENT"]
+      "limitations": [
+        "no flow-rule enforcement path exists; SDN findings deliberately do not offer TEMPORARY_CONTAINMENT"
+      ]
     },
     {
       "id": "FLEET_MANAGEMENT",
@@ -97,7 +126,9 @@
       "status": "NOT_IMPLEMENTED",
       "profiles": [],
       "evidence": null,
-      "limitations": ["no multi-host enrolment, identity or aggregation exists. The single-host agent is the whole product today."]
+      "limitations": [
+        "no multi-host enrolment, identity or aggregation exists. The single-host agent is the whole product today."
+      ]
     },
     {
       "id": "CLOUD_CONTROL_PLANE_TELEMETRY",
@@ -105,7 +136,9 @@
       "status": "NOT_IMPLEMENTED",
       "profiles": [],
       "evidence": null,
-      "limitations": ["AWS is used to host the reference lab. No cloud audit-log ingestion or cloud-side detection exists."]
+      "limitations": [
+        "AWS is used to host the reference lab. No cloud audit-log ingestion or cloud-side detection exists."
+      ]
     },
     {
       "id": "AI_TOOL_AUTHORIZATION",
@@ -113,7 +146,37 @@
       "status": "NOT_IMPLEMENTED",
       "profiles": [],
       "evidence": null,
-      "limitations": ["the identity model reserves AI_TASK, AI_MODEL and AI_TOOL entity kinds; no AI integration exists, and none may bypass the deterministic broker when it does"]
+      "limitations": [
+        "the identity model reserves AI_TASK, AI_MODEL and AI_TOOL entity kinds; no AI integration exists, and none may bypass the deterministic broker when it does"
+      ]
+    },
+    {
+      "id": "PACKAGED_DISTRIBUTION",
+      "pack": "platform",
+      "status": "SUPPORTED",
+      "profiles": [
+        "REF-DEV"
+      ],
+      "evidence": "docs/evidence/v2-pkg-01-clean-install.json",
+      "limitations": [
+        "installation onto REF-HOST from the wheel is NOT_RUN; the reference run used the SSM source transfer",
+        "upgrade, rollback and uninstall paths are NOT_RUN",
+        "artifacts are neither signed nor provenance-attested"
+      ]
+    },
+    {
+      "id": "TRUTHFUL_DEGRADATION_UNDER_LOAD",
+      "pack": "host",
+      "status": "SUPPORTED",
+      "profiles": [
+        "REF-DEV"
+      ],
+      "evidence": "docs/evidence/v2-load-soak.json",
+      "limitations": [
+        "a 100-second soak only; hours-long runs are NOT_RUN",
+        "RSS grew 2 MB across the second half of the soak, which is recorded rather than explained away",
+        "no throughput target is claimed or approved"
+      ]
     }
   ]
 }
