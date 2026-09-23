@@ -952,3 +952,38 @@ ternary appeared in both `open()` and `fire()`, could not be tested in
 isolation, and behaved differently on Linux and macOS when mutated, so the
 defect was invisible on whichever platform happened to be forgiving. It is
 now a single `socket_family` property.
+
+## ADR-055 — two named reference profiles, and results do not transfer between them
+
+**Status**: accepted, V2-HOST-04G.
+
+**Problem.** Every physical result so far came from one kernel, one
+architecture and one container. Treating that as evidence about "Linux" was
+never justified, and the project had already been caught out three times by
+platform difference: `CONFIG_CONNECTOR` absent on linuxkit, the PID namespace
+mismatch between a container and the tracefs it reads, and `AF_INET6` to a v4
+loopback behaving differently on Darwin and Linux.
+
+**Decision.** Two named profiles, recorded in `docs/ACCEPTANCE_CRITERIA.md`:
+
+    REF-DEV    Docker Desktop Linux VM, linuxkit, aarch64, container
+               -> development and integration evidence
+    REF-HOST   Ubuntu LTS x86_64 on EC2, pinned AMI, SSM only, no inbound
+               -> the reference profile
+
+A capability is `SUPPORTED` only on a profile where it was physically
+demonstrated. A `REF-DEV` result never promotes a capability on `REF-HOST`.
+
+**The profile is measured, not declared.** An artifact that names its own
+platform in a source literal produced a reference run labelled as a
+development run (KF-52). It is now derived from the kernel release and
+hypervisor presence at run time.
+
+**Credential posture for the reference run.** AWS refuses to let a root
+account assume a role, so scoped credentials required minting a key for the
+near-powerless `sdnguard-operator` entry user, assuming
+`sdnguard-lab-role`, and deleting the key afterwards. The lab itself ran
+entirely on 1-hour STS credentials that verified as 19 expected / 0
+unexpected, including ten denials — among them `iam:CreateAccessKey`, so the
+scoped role cannot perform the bootstrap that created it. Root remains an
+open finding (KF-19) and was used for nothing but that one IAM call.

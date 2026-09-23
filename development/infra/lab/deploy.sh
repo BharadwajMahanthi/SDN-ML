@@ -26,6 +26,15 @@ for pkg in "$ROOT"/development/src/*/; do
   cp -R "${pkg%/}" "$PAYLOAD/src/"
 done
 cp "$HERE"/*.py "$HERE"/*.sh "$PAYLOAD/" 2>/dev/null || true
+# Every experiment directory under development/infra, not a named one. The
+# lab scripts used to be the only place experiments lived; when the local
+# lab appeared, its experiments silently stopped being shipped and a
+# reference run executed stale code paths. Same family as KF-28.
+for dir in "$HERE"/../*/; do
+  [ -d "$dir" ] || continue
+  case "$(basename "${dir%/}")" in aws) continue ;; esac
+  cp "$dir"*.py "$PAYLOAD/" 2>/dev/null || true
+done
 find "$PAYLOAD" -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
 find "$PAYLOAD" -name '*.pyc' -delete 2>/dev/null || true
 
