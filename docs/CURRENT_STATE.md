@@ -639,3 +639,44 @@ One survivor was **redundant code** rather than a missing test: after the
 KF-48 fix the positive-return branch returned exactly what the fall-through
 returns. It was removed. Redundant code in a security path is a place for a
 future edit to diverge unnoticed.
+
+
+## V2-HOST-04F (part 1) — the full chain, on the development platform
+
+**COMPLETE on `docker-desktop-linux-vm`, kernel `6.12.76-linuxkit`, aarch64.**
+Evidence: `docs/evidence/v2-host-04f-fullchain-docker.json`.
+
+    DETECT   6 supported findings, attribution=correlated, reached independently
+    DECIDE   policy proposed -> broker APPLIED under its own policy
+    CONTAIN  nftables rule OWNED, uid 1500, scoped to one address and port
+    VERIFY   forbidden:  OPEN -> TimeoutError -> OPEN
+    BENIGN   permitted:  OPEN -> OPEN -> OPEN
+             bystander:  OPEN throughout
+    RECOVER  expired by the broker, rule removed, traffic restored
+
+The detector reached its finding from sensor evidence alone; the harness
+never told it a violation occurred. The traffic verifier is a separate
+process that never consults Annulon.
+
+**Stage controls, each proving its stage is load-bearing:**
+
+| control | result |
+|---|---|
+| detector permits the traffic | same traffic, no finding, nothing contained |
+| broker absent | `ENFORCEMENT_UNAVAILABLE`, no false claim of blocking, traffic still open |
+| sensor disabled | 6 connections made, 1 observed, no SUPPORTED finding, absence untrusted |
+
+**Defects found and fixed: KF-49, KF-50, KF-51** (see KNOWN_FAILURES).
+KF-51 is the important one — enforcement was coarser than detection and took
+out the workload's legitimate service. `destination_port` now flows through
+contract, proposal and backend.
+
+**This does NOT close SAFE-FULLCHAIN-01 or SAFE-AWS-REF-01.** Both require
+the same experiment on the intended reference profile, Ubuntu on x86_64.
+Reproducing an aarch64 linuxkit result is not independent validation of a
+different kernel build, architecture or host type.
+
+**Blocking the reference run**: the available AWS identity is **root**
+(KF-19). Running the reference lab on root credentials would violate the
+least-privilege requirement and repeat a finding the project already
+recorded, so scoped credentials are a prerequisite rather than a convenience.

@@ -327,6 +327,26 @@
       ],
       "evidence": "KF-46",
       "status": "covered"
+    },
+    {
+      "id": "INV-033",
+      "statement": "A containment action is never broader than the detection that justified it.",
+      "rationale": "The workload's prohibited and permitted services shared an address; a destination-only rule blocked both. A containment that breaks legitimate traffic is one an operator disables (KF-51).",
+      "tests": [
+        "development/tests/response/test_action_contract.py"
+      ],
+      "evidence": "docs/evidence/v2-host-04f-fullchain-docker.json benign_continuity",
+      "status": "covered"
+    },
+    {
+      "id": "INV-034",
+      "statement": "A detector reaches its finding from sensor evidence alone, and no harness or policy layer may supply the conclusion.",
+      "rationale": "A harness that requests containment directly proves only the response half of the chain. The finding and the traffic verification must be independently produced.",
+      "tests": [
+        "development/tests/detect/test_egress_policy.py"
+      ],
+      "evidence": "docs/evidence/v2-host-04f-fullchain-docker.json detection",
+      "status": "covered"
     }
   ]
 }

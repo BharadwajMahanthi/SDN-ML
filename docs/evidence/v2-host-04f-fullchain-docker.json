@@ -1,0 +1,114 @@
+{
+  "authorization": {
+    "expires_at": "2026-09-23T18:01:45.777240+00:00",
+    "note": "the broker evaluated this against its own policy; the core cannot read or influence it",
+    "outcome": "applied",
+    "reasons": []
+  },
+  "baseline": {
+    "bystander_to_forbidden": "OPEN",
+    "workload_to_forbidden": "OPEN",
+    "workload_to_permitted": "OPEN"
+  },
+  "benign_continuity": {
+    "note": "containment must not take out a workload it was not aimed at",
+    "unrelated_workload_unaffected": true
+  },
+  "completion": "COMPLETE",
+  "controls": {
+    "broker_absent": {
+      "claims_contained": false,
+      "correct": true,
+      "is_enforcement_unavailable": true,
+      "note": "the core reports that nothing happened. It does not act instead, and it does not claim the traffic was blocked",
+      "outcome": "enforcement_unavailable",
+      "traffic_still_open": true
+    },
+    "detector_permits_it": {
+      "correct": true,
+      "findings": 0,
+      "ground_truth_connections": 4,
+      "note": "same traffic, a policy that allows it: no finding, and therefore nothing to contain",
+      "owned_rules": 0
+    },
+    "sensor_disabled": {
+      "connect_attempts_to_the_forbidden_service": 1,
+      "correct": true,
+      "coverage_gap": 5,
+      "findings": 0,
+      "ground_truth_connections": 6,
+      "note": "traffic demonstrably occurred and most of it was never observed. A residual in-flight event may still arrive. No finding reached SUPPORTED, and absence is marked untrustworthy rather than clean",
+      "service_accepted_more": 21,
+      "supported_findings": 0,
+      "total_observations": 22,
+      "trustworthy_absence": false
+    }
+  },
+  "detection": {
+    "attribution": "correlated",
+    "detector_reached_it_independently": true,
+    "finding_kind": "network.egress_policy_violation",
+    "findings_produced": 6,
+    "ground_truth_connections": 6,
+    "observations_pumped": 80,
+    "resolver_stats": {
+      "not_attempted": 30,
+      "process_gone": 24,
+      "resolved": 32,
+      "start_time_mismatch": 0,
+      "unreadable": 0
+    },
+    "service_accepted": 8,
+    "supported_findings": 6,
+    "workload_pid": 53194,
+    "workload_uid": 1500
+  },
+  "environment": {
+    "capability": "NETWORK_TELEMETRY_TRACEFS",
+    "kernel": "6.12.76-linuxkit",
+    "machine": "aarch64",
+    "profile": "docker-desktop-linux-vm",
+    "service_address": "172.22.0.2"
+  },
+  "proposal": {
+    "detail": "",
+    "finding_id": "fnd-000000000003",
+    "outcome": "proposed",
+    "proposed": true,
+    "request_id": "req-6ff74b34ca54c30b27a946fb"
+  },
+  "recovery": {
+    "expired_by_broker": true,
+    "rule_removed": true,
+    "traffic_restored": true
+  },
+  "rule_evidence": {
+    "comment": "annulon;v=1;a=req-6ff74b34ca54c30b27a946fb;u=1500;x=1790186505",
+    "handle": 2,
+    "ownership": "owned",
+    "uid": 1500
+  },
+  "sensor_liveness": {
+    "observed": true,
+    "status": "HEALTHY"
+  },
+  "traffic_after": {
+    "workload_to_forbidden": "OPEN",
+    "workload_to_permitted": "OPEN"
+  },
+  "traffic_during": {
+    "bystander_to_forbidden": "OPEN",
+    "workload_to_forbidden": "TimeoutError",
+    "workload_to_permitted": "OPEN"
+  },
+  "verdict": {
+    "completion": "COMPLETE",
+    "observability": "TRUSTWORTHY",
+    "reasons": [
+      "control plane and data plane agree; controls, scope, management safety and expiry all held"
+    ],
+    "security_outcome": "CONTAINED",
+    "supports_containment_claim": true,
+    "unmeasured": []
+  }
+}
