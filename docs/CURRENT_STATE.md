@@ -725,3 +725,41 @@ IAM baseline stack persists, which has no running cost.
 
 **Defects found**: KF-52 (an evidence artifact misnamed its own platform),
 KF-53 (the deploy transfer had stopped shipping new experiments).
+
+
+## V2-INT-01 — one evidence boundary, and claims that must be earned (complete, 2026-09-24)
+
+**SDN findings now join the host findings on one boundary.**
+`sdnguard/v2/findings.py` maps a detector's `SecurityFinding` onto the shared
+model. SDN identity survives as an `SDN_ATTACHMENT` entity whose namespace
+carries the network scope, so a correlator can join on an attachment without
+knowing what a datapath id is. Severity maps across; **confidence does not**
+— a `HIGH` fabricated link whose verdict is `INCONCLUSIVE` stays weak.
+
+**No SDN finding offers containment.** Fabric enforcement is `NOT_RUN`, and
+advertising a response nothing can carry out would invite a policy layer to
+propose it.
+
+**Four boundaries moved from "holds by absence" to "holds by test"**
+(`test_pack_trust_boundaries.py`): observing packs cannot reach the response
+machinery beyond the typed contract and the asking client; the proposal layer
+cannot construct a decision; the broker holds no execution primitive; and
+exactly two named modules may spawn a process — the enforcement backend and
+the process sensor's own nonce marker, each listed with its reason.
+
+**`docs/capabilities.json` is now the single statement of what is claimed.**
+
+| status | capabilities |
+|---|---|
+| SUPPORTED (6) | host process telemetry, network telemetry, sensor liveness, egress detection, IPv4 containment, SDN topology detection |
+| NOT_RUN (3) | `NETWORK_TELEMETRY_EBPF`, IPv6 containment, SDN fabric containment |
+| NOT_IMPLEMENTED (3) | fleet, cloud control-plane telemetry, AI tool authorization |
+
+`tools/verify_all.py` gained `capability_claims`, which refuses a `SUPPORTED`
+claim with no evidence, no profile, an unknown profile or an evidence file
+that does not exist, and refuses a `NOT_RUN` entry that claims a profile.
+Demonstrated to fail on a planted bogus claim and pass once removed.
+
+**Remaining before the assurance case**: packaging from a built artifact in a
+clean environment (`SAFE-PACKAGE-01`), load (`SAFE-LOAD-01`) and soak
+(`SAFE-SOAK-01`).
