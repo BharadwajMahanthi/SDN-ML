@@ -826,3 +826,40 @@ bounded at its limit, queue drained every cycle. RSS grew 4.4 MB overall and
 **2 MB across the second half**, which is recorded rather than explained
 away — it may be allocator behaviour, and a 100-second run cannot distinguish
 that from a slow leak. **Hours-long soak remains NOT_RUN.**
+
+
+## V2-ASSURE-01 — the scoped assurance case (complete, 2026-09-24)
+
+`docs/ASSURANCE_CASE.md` states two claims and what defeats them.
+
+**A1 — Bounded privilege.** A compromised core can ask for exactly one thing:
+a time-bounded egress restriction on an already-permitted uid, scoped to a
+destination and port, at a capped rate. Thirteen malicious request variants
+were physically attempted against the real broker and backend; all were
+denied, and for the eight physical unauthorized requests the **entire `nft`
+ruleset was byte-identical before and after**. A positive control in the same
+run was applied and contained, so "everything was denied" cannot be explained
+by a broken broker.
+
+**A2 — Truthful observation.** Annulon separates severity from confidence,
+absence from ignorance, applied from verified, and attempted from
+established, each by a type rather than a convention. Eleven adversarial
+scenarios were physically attempted; the headline results are 150/150 correct
+attribution with zero unlaunched pids named, 304 interrupt-context events
+naming zero processes, and 0.63 % coverage under saturation **with the loss
+counted and completeness withdrawn**.
+
+Both sections end with explicit limitations, and the case carries a section
+on **what would falsify each claim** — mapped to tests that fail when the
+property is removed, with mutation results showing the tests notice.
+
+`tools/verify_all.py` gained `assurance_case`, which fails if a cited
+artifact is absent or unparseable, or if the scope statement, the "Not
+claimed" section or the falsification section is removed. The case cannot
+quietly become a marketing document.
+
+**Explicitly not claimed**: universal security; detection of untested attack
+classes; protection against a compromised kernel or an attacker already
+running as root; fleet, cloud and AI capabilities (`NOT_IMPLEMENTED`); SDN
+fabric containment, IPv6 containment and in-kernel process identity
+(`NOT_RUN`); any performance target; that defenders always win.

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -394,6 +395,47 @@ def check_main_history(root: Path) -> Check:
                  f"{len(MAIN_DIRECT_COMMIT_ALLOWANCES)} pinned allowance(s)")
 
 
+def check_assurance_case(root: Path) -> Check:
+    """Every artifact the assurance case cites must exist and be readable.
+
+    The case is the document somebody would rely on. A citation that has been
+    renamed, or an artifact that was never committed, turns it into an
+    argument with a hole in the middle -- and the hole is invisible when
+    reading it, because a missing file looks exactly like a present one in
+    prose.
+    """
+    path = root / "docs" / "ASSURANCE_CASE.md"
+    if not path.is_file():
+        return Check("assurance_case", FAIL, "docs/ASSURANCE_CASE.md missing")
+    text = path.read_text()
+    cited = sorted(set(re.findall(r"`?(v2-[a-z0-9._-]+\.json)`?", text)))
+    if not cited:
+        return Check("assurance_case", FAIL, "the case cites no evidence")
+    missing = [name for name in cited
+               if not (root / "docs" / "evidence" / name).is_file()]
+    if missing:
+        return Check("assurance_case", FAIL,
+                     f"{len(missing)} cited artifact(s) absent: {missing[:3]}")
+    unreadable = []
+    for name in cited:
+        try:
+            json.loads((root / "docs" / "evidence" / name).read_text())
+        except (OSError, json.JSONDecodeError):
+            unreadable.append(name)
+    if unreadable:
+        return Check("assurance_case", FAIL,
+                     f"{len(unreadable)} cited artifact(s) unparseable: "
+                     f"{unreadable[:3]}")
+    # The scope statement is the part that keeps the case honest.
+    for required in ("does **not** claim", "Not claimed",
+                     "What would falsify"):
+        if required not in text:
+            return Check("assurance_case", FAIL,
+                         f"the case no longer contains {required!r}")
+    return Check("assurance_case", OK,
+                 f"{len(cited)} cited artifact(s), all present and parseable")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="verify_all", description=__doc__)
     parser.add_argument("--cloud", action="store_true")
@@ -405,6 +447,7 @@ def main(argv: list[str] | None = None) -> int:
               check_firewall(root), check_boundaries(root), check_secrets(root),
               check_key_material(root), check_invariants(root),
               check_capabilities(root), check_main_history(root),
+              check_assurance_case(root),
               check_tests(root)]
     if args.cloud:
         checks.extend(check_cloud(root))
