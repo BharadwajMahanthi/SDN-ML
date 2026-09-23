@@ -367,12 +367,12 @@ Carried as explicit assurance obligations, not reopened branches:
 
 | id | obligation | state |
 |---|---|---|
-| SAFE-AWS-REF-01 | Ubuntu / x86_64 independent validation | OPEN |
+| SAFE-AWS-REF-01 | Ubuntu / x86_64 independent validation | **CLOSED 2026-09-24** |
 | SAFE-IPV6-01 | IPv6 containment | OPEN (KF-38) |
 | SAFE-PACKAGE-01 | clean package / install validation | OPEN |
 | SAFE-LOAD-01 | load and stress | OPEN |
 | SAFE-SOAK-01 | long-running lifecycle | OPEN |
-| SAFE-FULLCHAIN-01 | DETECT → DECIDE → CONTAIN → VERIFY → RECOVER | OPEN |
+| SAFE-FULLCHAIN-01 | DETECT → DECIDE → CONTAIN → VERIFY → RECOVER | **CLOSED 2026-09-24** |
 
 ## V2-HOST-04A — network sensor evaluation (complete, 2026-09-21)
 
@@ -680,3 +680,48 @@ different kernel build, architecture or host type.
 (KF-19). Running the reference lab on root credentials would violate the
 least-privilege requirement and repeat a finding the project already
 recorded, so scoped credentials are a prerequisite rather than a convenience.
+
+
+## V2-HOST-04G — the reference full chain on Ubuntu x86_64 (complete, 2026-09-24)
+
+**SAFE-AWS-REF-01 and SAFE-FULLCHAIN-01 are closed.**
+
+**Profile**: `REF-HOST/ubuntu-ec2-x86_64` — Ubuntu 24.04.4 LTS, kernel
+`7.0.0-1012-aws`, x86_64, EC2 `t3a.large`, pinned AMI, no inbound ports, SSM
+only. Evidence:
+`docs/evidence/v2-host-04g-fullchain-ubuntu-x86_64.json`.
+
+Unlike the development platform, this kernel has `CONFIG_CONNECTOR=y` and
+`CONFIG_PROC_EVENTS=y`, so the proc connector, nftables and `SO_PEERCRED` are
+all available — the capability probe reports all three.
+
+    DETECT   6 supported findings, attribution=correlated, reached independently
+    DECIDE   policy proposed -> broker APPLIED under its own policy
+    CONTAIN  nftables rule OWNED, uid 1500, scoped to one address and port
+    VERIFY   forbidden:  OPEN -> TimeoutError -> OPEN
+    BENIGN   permitted:  OPEN -> OPEN -> OPEN
+             bystander:  OPEN throughout
+    RECOVER  expired by the broker, rule removed, traffic restored
+    VERDICT  CONTAINED, claim supported
+
+All three stage controls passed on this platform: detector-permits-it,
+broker-absent, sensor-disabled.
+
+**Attribution under a real kernel**: 34 resolved, 30 process-gone, 0
+start-time mismatches. Roughly half of short-lived connections still cannot
+be bound to a workload even with eager resolution, which is the measured cost
+of not having in-kernel process identity and remains the argument for
+`NETWORK_TELEMETRY_EBPF`.
+
+**Credential posture**: the lab ran entirely on 1-hour STS credentials from
+`sdnguard-lab-role`, verified 19 expected / 0 unexpected / 0 inconclusive
+including ten denials. Root was used for exactly one IAM call — minting the
+entry-user key, because AWS refuses to let a root account assume a role — and
+that key was deleted afterwards. KF-19 remains open.
+
+**Cost and cleanup**: one `t3a.large` for under an hour. `destroy.sh`
+reported CLEANUP VERIFIED with zero billable resources remaining; only the
+IAM baseline stack persists, which has no running cost.
+
+**Defects found**: KF-52 (an evidence artifact misnamed its own platform),
+KF-53 (the deploy transfer had stopped shipping new experiments).

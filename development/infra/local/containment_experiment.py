@@ -38,7 +38,18 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-sys.path.insert(0, "/annulon/development/src")
+# The package tree lives in different places depending on where this runs:
+# mounted at /annulon in the Docker lab, unpacked to /opt/sdnguard/src on the
+# AWS reference host. Hard-coding one of them made the experiment
+# non-portable, and a reference run that cannot execute is not evidence about
+# the reference platform.
+for _candidate in (os.environ.get("ANNULON_SRC"),
+                   "/annulon/development/src", "/opt/sdnguard/src"):
+    if _candidate and os.path.isdir(os.path.join(_candidate, "annulon")):
+        sys.path.insert(0, _candidate)
+        break
+else:
+    raise SystemExit("cannot locate the annulon package; set ANNULON_SRC")
 
 from annulon.response import ipc                                    # noqa: E402
 from annulon.response.broker import Broker, BrokerConfig, BrokerServer  # noqa: E402

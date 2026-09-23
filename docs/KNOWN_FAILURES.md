@@ -806,3 +806,39 @@ fourth case for an unrelated reason, hiding the property under test.
   (a port alone would restrict that service everywhere, which is not a
   narrowing anyone can reason about). Verified: forbidden service blocked,
   permitted service on the same address stays reachable throughout.
+
+### KF-52 — an evidence artifact misnamed the platform it ran on
+
+- **Found on the first reference run.** The full chain executed on Ubuntu
+  24.04 on EC2, x86_64, and produced an artifact whose `environment.profile`
+  read `docker-desktop-linux-vm`.
+- **Cause**: the profile was a hard-coded string in the experiment rather
+  than something derived from the machine.
+- **Why this is serious rather than cosmetic**: the entire value of a
+  reference profile is that results are *not* transferable between
+  platforms. An artifact that names the wrong one is an assurance case built
+  on a false premise, and it would have been read as a second development
+  result rather than the reference validation it actually was.
+- **Fix**: the profile is derived — `linuxkit` in the kernel release gives
+  `REF-DEV`, an `-aws` release or a hypervisor UUID gives
+  `REF-HOST/ubuntu-ec2-<arch>`, anything else is `unclassified`. The
+  distribution string is recorded alongside it.
+- **Generalised**: any field in an evidence artifact that describes the
+  environment must be *measured at run time*, never asserted in source. The
+  same argument the project already applies to security claims applies to
+  the metadata that scopes them.
+
+### KF-53 — the deploy transfer stopped shipping new experiments
+
+- **Found when the reference run had nothing to run.** `deploy.sh` copied
+  `development/infra/lab/*.py`, and every experiment written since V2-SAFE-03
+  lives in `development/infra/local/`. The reference host received the old
+  lab scripts and none of the current ones.
+- **Exactly the KF-28 family**, which was about a hand-kept *package* list.
+  The fix then generalised over `development/src/*/`; the experiment list was
+  left specific and silently rotted the moment a second directory appeared.
+- **Fix**: the payload now iterates every directory under
+  `development/infra/` except `aws/` (templates, not code).
+- **The lesson that keeps recurring**: generalising one instance of a defect
+  is not the same as generalising the *shape*. Both KF-28 and this are "a
+  transfer enumerated by hand", and fixing one did not fix the other.

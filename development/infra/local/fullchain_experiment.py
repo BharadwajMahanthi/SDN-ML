@@ -47,7 +47,18 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-sys.path.insert(0, "/annulon/development/src")
+# The package tree lives in different places depending on where this runs:
+# mounted at /annulon in the Docker lab, unpacked to /opt/sdnguard/src on the
+# AWS reference host. Hard-coding one of them made the experiment
+# non-portable, and a reference run that cannot execute is not evidence about
+# the reference platform.
+for _candidate in (os.environ.get("ANNULON_SRC"),
+                   "/annulon/development/src", "/opt/sdnguard/src"):
+    if _candidate and os.path.isdir(os.path.join(_candidate, "annulon")):
+        sys.path.insert(0, _candidate)
+        break
+else:
+    raise SystemExit("cannot locate the annulon package; set ANNULON_SRC")
 
 from annulon.detect.attribution import WorkloadResolver                 # noqa: E402
 from annulon.detect.egress_policy import (                              # noqa: E402
@@ -76,6 +87,33 @@ PRIMARY_EVENT = "sock/inet_sock_set_state"
 
 
 # -- independent ground truth ------------------------------------------------
+
+def _distribution() -> str:
+    try:
+        with open("/etc/os-release") as handle:
+            for line in handle:
+                if line.startswith("PRETTY_NAME="):
+                    return line.split("=", 1)[1].strip().strip('"')
+    except OSError:
+        pass
+    return "unknown"
+
+
+def detect_profile() -> str:
+    """Name the platform this actually ran on.
+
+    The profile was a hard-coded string, and a reference run on EC2 produced
+    an artifact labelled `docker-desktop-linux-vm` (KF-52). An evidence file
+    that misnames its own platform is worse than no file: the whole point of
+    a reference profile is that results are not transferable between them.
+    """
+    release = os.uname().release
+    if "linuxkit" in release:
+        return "REF-DEV/docker-desktop-linux-vm"
+    if release.endswith("-aws") or os.path.exists("/sys/hypervisor/uuid"):
+        return f"REF-HOST/ubuntu-ec2-{os.uname().machine}"
+    return f"unclassified/{release}-{os.uname().machine}"
+
 
 def host_address() -> str:
     """A non-loopback address of this host.
@@ -274,7 +312,8 @@ def run(ttl_seconds: int) -> dict:
     report: dict = {"environment": {
         "kernel": os.uname().release, "machine": os.uname().machine,
         "capability": TracefsNetworkSensor.capability,
-        "profile": "docker-desktop-linux-vm"}}
+        "profile": detect_profile(),
+        "distribution": _distribution()}}
     if not TracefsNetworkSensor.available():
         return {"completion": "EVIDENCE_INCOMPLETE",
                 "reason": "; ".join(TracefsNetworkSensor.missing_requirements())}
