@@ -772,3 +772,57 @@ hide a governance failure would be worse than the failure.
 **Remaining before the assurance case**: packaging from a built artifact in a
 clean environment (`SAFE-PACKAGE-01`), load (`SAFE-LOAD-01`) and soak
 (`SAFE-SOAK-01`).
+
+
+## V2-PKG-01 — packaging, load and soak (complete, 2026-09-24)
+
+### SAFE-PACKAGE-01 — closed
+
+The product now builds as a wheel with real entry points (`annulon-broker`,
+`annulon-agent`) and works from the artifact people install rather than from
+a checkout. Evidence: `docs/evidence/v2-pkg-01-clean-install.json`.
+
+The functional half is the one that matters: the wheel was installed into an
+empty directory on Linux with **no repository present**, and the installed
+package observed **5 of 5** connection attempts with `attests_completeness`
+true. On macOS, where tracefs does not exist, the same package reports
+`sensor_available: false` with the reason — honest rather than broken.
+
+`tools/` is deliberately **not** packaged. The merge gate and context
+firewall operate on a repository, not a deployed host.
+
+**NOT_RUN**: installation onto `REF-HOST` from the wheel (the reference run
+used the SSM source transfer), upgrade/rollback/uninstall, and signed or
+provenance-attested artifacts.
+
+### SAFE-LOAD-01 — closed, and the result is the interesting part
+
+4,000 connections at ~1,276/s against a deliberately small queue (200 events)
+and buffer (512 KB), with no draining during the burst — the experiment is
+built to reach the limit, not to measure capacity.
+
+| measurement | value |
+|---|---|
+| connections made | 4,000 |
+| attempts observed | **25** |
+| coverage | **0.63 %** |
+| events dropped by the bounded queue | 47,965 |
+| `attests_completeness` | **False** |
+| `trustworthy_absence` | **False** |
+
+The system loses almost everything under saturation **and says so**. That is
+the property under test. A sensor that lost 99.4 % while still attesting
+completeness would be the disaster this whole project is built to avoid; one
+that loses events and reports the loss is usable, because a detector reading
+it will not treat silence as safety.
+
+**No throughput number here is a target.** None is approved, and the
+acceptance criteria say performance budgets remain `V2-PERF`.
+
+### SAFE-SOAK-01 — closed for a short soak only
+
+402 cycles over 100 seconds: **0 file-descriptor growth**, liveness history
+bounded at its limit, queue drained every cycle. RSS grew 4.4 MB overall and
+**2 MB across the second half**, which is recorded rather than explained
+away — it may be allocator behaviour, and a 100-second run cannot distinguish
+that from a slow leak. **Hours-long soak remains NOT_RUN.**

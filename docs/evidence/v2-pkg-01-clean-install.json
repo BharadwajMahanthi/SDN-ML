@@ -1,0 +1,74 @@
+{
+  "build_and_clean_install": {
+    "checks": {
+      "annulon_imports": {
+        "ok": true,
+        "output": "ok"
+      },
+      "broker_contract_usable": {
+        "ok": true,
+        "output": "2 1"
+      },
+      "capability_probe_is_honest": {
+        "ok": true,
+        "output": "unavailable: tracefs is not mounted; mount -t tracefs none /sys/kernel/tracing (needs CAP_SYS_ADMIN)"
+      },
+      "detector_usable": {
+        "ok": true,
+        "output": "network.egress_policy_violation"
+      },
+      "no_repo_on_path": {
+        "ok": true,
+        "output": "installed"
+      },
+      "sdnguard_imports": {
+        "ok": true,
+        "output": "ok"
+      }
+    },
+    "completion": "COMPLETE",
+    "entry_points_present": {
+      "annulon-agent": true,
+      "annulon-broker": true
+    },
+    "entry_points_runnable": {
+      "annulon-agent": {
+        "exit": 0,
+        "output": "{\n  \"sensor_available\": false,\n  \"missing\": [\n    \"tracefs is not mounted; mount -t tracefs none /sys/kernel/tracing (needs CAP_SYS_ADMIN)\"\n  ],\n  \"capability\": \"NETWORK_TELEMETRY_TRACEFS\"\n}",
+        "ran": true
+      },
+      "annulon-broker": {
+        "exit": 1,
+        "output": "broker configuration unreadable: [Errno 2] No such file or directory: '/var/folders/2y/9wbng44n0gd0wzly39wrhxzm0000gn/T/annulon-pkg-qph9hytc/absent.json'",
+        "ran": true
+      }
+    },
+    "install_ok": true,
+    "python": "3.12.13",
+    "repo": "/Users/bharadwajmahanthi/Downloads/SDN-ML",
+    "repository_paths_in_package": [],
+    "wheel": "annulon-0.5.0-py3-none-any.whl",
+    "wheel_built": true,
+    "wheel_bytes": 194521
+  },
+  "claim": "the product works from the artifact people install, not from a repository checkout",
+  "completion": "COMPLETE",
+  "linux_installed_artifact_observes": {
+    "attempts_observed": 5,
+    "attests_completeness": true,
+    "connections_made": 5,
+    "from_install_not_checkout": true,
+    "loaded_from": "/clean/annulon",
+    "sensor_available": true
+  },
+  "not_covered": [
+    "installation onto REF-HOST from the wheel; the reference run used the SSM source transfer",
+    "upgrade, rollback and uninstall paths",
+    "signed or provenance-attested artifacts"
+  ],
+  "obligation": "SAFE-PACKAGE-01",
+  "profiles": {
+    "build_and_import_checks": "macOS arm64 host, clean target directory, repository unreachable from the working directory",
+    "functional_check": "REF-DEV Docker Desktop Linux VM, python:3.12-slim, wheel installed into /clean, no repository mounted"
+  }
+}

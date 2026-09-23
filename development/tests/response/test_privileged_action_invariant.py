@@ -30,6 +30,20 @@ PRIVILEGED_EXEMPT = {
 }
 
 #: Modules that may call subprocess only to read, never to change state.
+#: Modules permitted to *name* a privileged tool without invoking one.
+#: Deliberately separate from PRIVILEGED_EXEMPT, which skips all three
+#: guards: these modules are still checked for execution imports and for
+#: execution calls, and only the text search is relaxed. The distinction
+#: matters -- a module that imports a backend by its module path is not
+#: assembling a command, and exempting it wholesale would stop the checks
+#: that actually protect it.
+MAY_NAME_TOOLS = {
+    "annulon/cli/broker.py":
+        "selects the enforcement backend by importing its module, whose path "
+        "contains the tool name. It holds no execution primitive, which the "
+        "other two guards still verify.",
+}
+
 EXECUTION_NAMES = {"system", "popen", "spawn", "spawnv", "spawnve", "execv",
                    "execve", "execl", "execlp", "fork", "forkpty", "kill",
                    "killpg", "setuid", "setgid", "seteuid", "setegid"}
@@ -95,6 +109,8 @@ def test_no_module_contains_a_privileged_tool_invocation(path: Path):
     exempt or indirect."""
     if _relative(path) in PRIVILEGED_EXEMPT:
         pytest.skip("explicitly exempt, with a stated reason")
+    if _relative(path) in MAY_NAME_TOOLS:
+        pytest.skip("may name a tool without invoking one, with a reason")
     text = path.read_text()
     for tool in ("iptables", "nft ", "nftables", "systemctl", "ip route",
                  "ip link", "aws ec2", "aws iam", "sudo "):
@@ -162,3 +178,44 @@ def test_the_broker_itself_holds_no_execution_primitive():
             if isinstance(function, ast.Attribute) and function.attr in EXECUTION_NAMES:
                 called.add(function.attr)
     assert not called, f"broker.py calls {sorted(called)}"
+
+
+def test_a_module_allowed_to_name_a_tool_still_cannot_execute():
+    """The narrow allowance must stay narrow.
+
+    `MAY_NAME_TOOLS` relaxes only the text search. Every module in it is
+    still held to the import and call guards, and this asserts that directly
+    rather than trusting the parametrisation to cover it.
+    """
+    for relative in MAY_NAME_TOOLS:
+        path = SRC / relative
+        assert path.is_file(), f"{relative} is allowed but absent"
+        tree = ast.parse(path.read_text())
+
+        imported: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported.update(a.name.split(".")[0] for a in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+                imported.add(node.module.split(".")[0])
+        assert not imported & EXECUTION_MODULES, (
+            f"{relative} imports {sorted(imported & EXECUTION_MODULES)}")
+
+        called: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                function = node.func
+                if isinstance(function, ast.Name) and function.id in FORBIDDEN_BUILTINS:
+                    called.add(function.id)
+                if isinstance(function, ast.Attribute) and function.attr in EXECUTION_NAMES:
+                    called.add(function.attr)
+        assert not called, f"{relative} calls {sorted(called)}"
+
+
+def test_every_tool_naming_allowance_is_still_needed():
+    """An allowance for a module that no longer names a tool is one nobody
+    removed."""
+    for relative in MAY_NAME_TOOLS:
+        text = (SRC / relative).read_text()
+        assert any(tool in text for tool in ("nftables", "iptables", "systemctl")), (
+            f"{relative} no longer names a tool; remove its allowance")

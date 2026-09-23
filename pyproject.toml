@@ -1,15 +1,48 @@
-# Minimal project configuration. Packaging metadata is deferred to P12-PKG-01.
-#
-# Layout rule (ADR-020): the new Python system lives entirely under
-# development/. Nothing of it is interleaved with the legacy Floodlight-era
-# code, so the legacy tree can be deleted or moved to its own branch in one
-# operation without touching the product.
-#
-#   development/src/sdnguard   the system being built
-#   development/tests          its tests
-#   development/infra          the lab that exercises it
-#   tools/, tests/tools, tests/memory, docs/, memory/   project governance
-#   everything else at the root                          legacy, to be removed
+# Packaging metadata. The layout rule (ADR-020) still holds: the product
+# lives entirely under development/, and the governance tooling under tools/
+# is deliberately NOT packaged -- it operates on the repository, not on a
+# deployed host, and shipping it would put the merge gate and the context
+# firewall on production machines where they mean nothing.
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "annulon"
+version = "0.5.0"
+description = "A local-first security agent for cloud Linux servers"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {file = "LICENSE"}
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: System Administrators",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Security",
+]
+# No runtime dependencies, on purpose. The sensor is tracefs and the
+# enforcement backend drives nft through a fixed argv; neither needs a
+# library. A security agent with a dependency tree has a supply chain, and
+# this one does not yet need to.
+dependencies = []
+
+[project.optional-dependencies]
+sdn = ["os-ken>=2.7"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+annulon-broker = "annulon.cli.broker:main"
+annulon-agent = "annulon.cli.agent:main"
+
+[tool.setuptools]
+package-dir = {"" = "development/src"}
+
+[tool.setuptools.packages.find]
+where = ["development/src"]
+include = ["annulon*", "sdnguard*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["development/src", "."]
