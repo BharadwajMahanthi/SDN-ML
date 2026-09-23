@@ -290,6 +290,110 @@ def check_invariants(root: Path) -> Check:
                  f"{len(invariants)} invariant(s), all mapped to existing tests")
 
 
+def check_capabilities(root: Path) -> Check:
+    """No capability may claim SUPPORTED without evidence that exists.
+
+    `docs/capabilities.json` is the one place that says what this system
+    claims. The failure it guards against is the quiet one: a capability
+    written down as SUPPORTED because it worked once, whose evidence file was
+    renamed, or which was promoted from NOT_RUN by a hopeful edit. Both look
+    identical in a document and neither survives this check.
+    """
+    path = root / "docs" / "capabilities.json"
+    if not path.is_file():
+        return Check("capability_claims", FAIL, "docs/capabilities.json missing")
+    try:
+        document = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        return Check("capability_claims", FAIL, f"unreadable: {exc}")
+
+    known_profiles = set(document.get("profiles", {}))
+    problems: list[str] = []
+    counts: dict[str, int] = {}
+    for entry in document.get("capabilities", []):
+        identifier = entry.get("id", "<no id>")
+        status = entry.get("status", "")
+        counts[status] = counts.get(status, 0) + 1
+        if status == "SUPPORTED":
+            if not entry.get("evidence"):
+                problems.append(f"{identifier}: SUPPORTED with no evidence")
+            if not entry.get("profiles"):
+                problems.append(f"{identifier}: SUPPORTED on no profile")
+            for name in entry.get("profiles", []):
+                if name not in known_profiles:
+                    problems.append(f"{identifier}: unknown profile {name}")
+            # An evidence value that names a file must name one that is there.
+            reference = str(entry.get("evidence", ""))
+            for token in reference.replace(",", " ").split():
+                if token.startswith("docs/") and not (root / token).exists():
+                    problems.append(f"{identifier}: missing {token}")
+        elif status in ("NOT_RUN", "NOT_IMPLEMENTED"):
+            if entry.get("profiles"):
+                problems.append(
+                    f"{identifier}: {status} but claims a profile")
+        elif status:
+            problems.append(f"{identifier}: unknown status {status!r}")
+    if problems:
+        return Check("capability_claims", FAIL,
+                     f"{len(problems)} problem(s): {problems[:3]}")
+    summary = ", ".join(f"{k.lower()}={v}" for k, v in sorted(counts.items()))
+    return Check("capability_claims", OK, summary)
+
+
+#: Work before this commit predates the merge-gate discipline and is not
+#: held to it. Everything after it must reach `main` through a merge.
+DISCIPLINE_BEGINS = "450f20a"
+
+#: Direct commits on `main` that are accepted despite the rule. Each is
+#: pinned by hash so the allowance cannot silently widen.
+MAIN_DIRECT_COMMIT_ALLOWANCES = {
+    "f02ebe1": "V2-INT-01 CURRENT_STATE entry, committed to main by mistake "
+               "and left in place rather than rewriting shared history; the "
+               "incident is KF-54 and is what prompted this check",
+}
+
+
+def check_main_history(root: Path) -> Check:
+    """Work reaches `main` through the merge gate, not around it.
+
+    The gate is an executable check on a branch. Nothing stopped a commit
+    landing directly on `main` and skipping it entirely -- which happened
+    once, silently, and was noticed only because a later gate run reported
+    `CURRENT_STATE.md unchanged` for a file that had already been updated
+    (KF-54).
+
+    A governance rule that can be bypassed without anyone noticing is a
+    governance rule that will be bypassed. This looks at recent history on
+    `main` and refuses anything that is neither a merge nor an explicit
+    allowance.
+    """
+    # First-parent only: `--no-merges` alone also lists every commit that
+    # arrived *through* a merge, which is the normal case and not a bypass.
+    # Bounded to the era the rule applies to -- the original project history
+    # predates the merge gate and is not held to it.
+    code, out = _run(["git", "log", "--first-parent", "--no-merges",
+                      "--format=%h %s", f"{DISCIPLINE_BEGINS}..main"],
+                     root, 60)
+    if code != 0:
+        return Check("main_history", WARN, "cannot read main history")
+    direct = []
+    for line in out.splitlines():
+        if not line.strip():
+            continue
+        short, _, subject = line.partition(" ")
+        if any(short.startswith(allowed) or allowed.startswith(short)
+               for allowed in MAIN_DIRECT_COMMIT_ALLOWANCES):
+            continue
+        direct.append(f"{short} {subject[:56]}")
+    if direct:
+        return Check("main_history", FAIL,
+                     f"{len(direct)} commit(s) bypassed the merge gate: "
+                     f"{direct[:2]}")
+    return Check("main_history", OK,
+                 f"recent main history is merges only, "
+                 f"{len(MAIN_DIRECT_COMMIT_ALLOWANCES)} pinned allowance(s)")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="verify_all", description=__doc__)
     parser.add_argument("--cloud", action="store_true")
@@ -300,6 +404,7 @@ def main(argv: list[str] | None = None) -> int:
     checks = [check_worktree(root), check_branches(root), check_memory(root),
               check_firewall(root), check_boundaries(root), check_secrets(root),
               check_key_material(root), check_invariants(root),
+              check_capabilities(root), check_main_history(root),
               check_tests(root)]
     if args.cloud:
         checks.extend(check_cloud(root))

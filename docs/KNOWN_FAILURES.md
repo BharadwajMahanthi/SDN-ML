@@ -842,3 +842,31 @@ fourth case for an unrelated reason, hiding the property under test.
 - **The lesson that keeps recurring**: generalising one instance of a defect
   is not the same as generalising the *shape*. Both KF-28 and this are "a
   transfer enumerated by hand", and fixing one did not fix the other.
+
+### KF-54 — a commit reached `main` without passing the merge gate
+
+- **Found by the gate itself, indirectly.** A later run reported
+  `current_state_updated: CURRENT_STATE.md unchanged` for a file that had
+  visibly been updated. The update had been committed to `main` directly,
+  because a `git checkout main` earlier in the same command chain meant the
+  following `git add`/`git commit` ran on the wrong branch.
+- **Why it matters more than the one commit.** The merge gate is an
+  executable check that runs *on a branch*. Nothing stopped work landing
+  straight on `main` and skipping every check it performs — the full suite,
+  the framework guards, the firewall tests, the checkpoint, the ownership
+  release. The governance rule existed in `AGENTS.md` and was enforced by
+  habit.
+- **Fix**: `tools/verify_all.py` gained `main_history`, which lists
+  first-parent non-merge commits since the discipline began and fails on any
+  that is not an explicitly pinned allowance. `--first-parent` matters: a
+  plain `--no-merges` also lists every commit that arrived *through* a merge,
+  which is the normal case.
+- **The offending commit was left in place.** Rewriting history to hide a
+  governance failure would be a worse act than the failure, and the content
+  was a correct documentation update. It is pinned in
+  `MAIN_DIRECT_COMMIT_ALLOWANCES` with its reason, so the record shows what
+  happened rather than concealing it.
+- **Generalised** (doctrine §51): the family is *a control that only runs
+  where somebody remembers to invoke it*. The same shape produced KF-23 (a
+  branch merged with a red guard, before the gate was executable) and KF-41
+  (a rule in a document that a concurrent process ignored).

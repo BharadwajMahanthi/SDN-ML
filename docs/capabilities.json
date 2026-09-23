@@ -1,0 +1,119 @@
+{
+  "$comment": "What Annulon claims, where it was demonstrated, and what it cannot do. A capability is SUPPORTED only on a reference profile where it was physically demonstrated with an evidence artifact (ADR-055). Machine-readable so tools/verify_all.py can refuse a claim with no evidence behind it.",
+  "schema_version": 1,
+  "profiles": {
+    "REF-DEV": "Docker Desktop Linux VM, linuxkit kernel, aarch64, container. Development and integration evidence only.",
+    "REF-HOST": "Ubuntu LTS x86_64 on EC2 t3a.large, pinned AMI, SSM only, no inbound ports. The reference profile."
+  },
+  "capabilities": [
+    {
+      "id": "HOST_PROCESS_TELEMETRY",
+      "pack": "host",
+      "status": "SUPPORTED",
+      "profiles": ["REF-HOST"],
+      "evidence": "netlink proc connector experiments; 500/500 short-lived execs with a passing negative control",
+      "limitations": ["requires CONFIG_CONNECTOR; absent on REF-DEV, where the sensor refuses to start rather than degrading"]
+    },
+    {
+      "id": "NETWORK_TELEMETRY_TRACEFS",
+      "pack": "host",
+      "status": "SUPPORTED",
+      "profiles": ["REF-DEV", "REF-HOST"],
+      "evidence": "docs/evidence/v2-host-04c-network-sensor.json, v2-host-04e-adversarial.json",
+      "limitations": [
+        "TCP connect semantics only; UDP is not covered",
+        "post-start activity only; not a connection inventory",
+        "observes host-namespace pids; container attribution NOT_RUN",
+        "flow identity is not namespace-qualified on this tier",
+        "about half of short-lived connections cannot be bound to a workload"
+      ]
+    },
+    {
+      "id": "NETWORK_TELEMETRY_EBPF",
+      "pack": "host",
+      "status": "NOT_RUN",
+      "profiles": [],
+      "evidence": null,
+      "limitations": ["would capture process-instance identity in-kernel and remove the attribution race at source; not implemented"]
+    },
+    {
+      "id": "NETWORK_SENSOR_LIVENESS",
+      "pack": "host",
+      "status": "SUPPORTED",
+      "profiles": ["REF-DEV", "REF-HOST"],
+      "evidence": "docs/evidence/v2-host-04d-network-liveness.json",
+      "limitations": ["the probe is loopback; it proves the observation path, not external connectivity"]
+    },
+    {
+      "id": "EGRESS_POLICY_DETECTION",
+      "pack": "host",
+      "status": "SUPPORTED",
+      "profiles": ["REF-DEV", "REF-HOST"],
+      "evidence": "docs/evidence/v2-host-04g-fullchain-ubuntu-x86_64.json",
+      "limitations": ["a deterministic allowlist only; no behavioural or statistical detection"]
+    },
+    {
+      "id": "IPV4_EGRESS_CONTAINMENT",
+      "pack": "response",
+      "status": "SUPPORTED",
+      "profiles": ["REF-DEV", "REF-HOST"],
+      "evidence": "docs/evidence/v2-safe-03-containment.json, v2-host-04g-fullchain-ubuntu-x86_64.json",
+      "limitations": [
+        "IPv4 only; an IPv4-scoped rule does not restrict IPv6 (KF-38)",
+        "scopes by uid, so a shared service account means collateral containment",
+        "does not survive a reboot, by design (ADR-052)"
+      ]
+    },
+    {
+      "id": "IPV6_EGRESS_CONTAINMENT",
+      "pack": "response",
+      "status": "NOT_RUN",
+      "profiles": [],
+      "evidence": null,
+      "limitations": ["SAFE-IPV6-01 remains open"]
+    },
+    {
+      "id": "SDN_TOPOLOGY_DETECTION",
+      "pack": "sdn",
+      "status": "SUPPORTED",
+      "profiles": ["REF-DEV"],
+      "evidence": "OVS datapath and OpenFlow experiments; host crossover with a passing negative control",
+      "limitations": [
+        "detection only; the SDN pack has no enforcement path and its findings offer no containment response",
+        "not re-validated on REF-HOST"
+      ]
+    },
+    {
+      "id": "SDN_FABRIC_CONTAINMENT",
+      "pack": "sdn",
+      "status": "NOT_RUN",
+      "profiles": [],
+      "evidence": null,
+      "limitations": ["no flow-rule enforcement path exists; SDN findings deliberately do not offer TEMPORARY_CONTAINMENT"]
+    },
+    {
+      "id": "FLEET_MANAGEMENT",
+      "pack": "fleet",
+      "status": "NOT_IMPLEMENTED",
+      "profiles": [],
+      "evidence": null,
+      "limitations": ["no multi-host enrolment, identity or aggregation exists. The single-host agent is the whole product today."]
+    },
+    {
+      "id": "CLOUD_CONTROL_PLANE_TELEMETRY",
+      "pack": "cloud",
+      "status": "NOT_IMPLEMENTED",
+      "profiles": [],
+      "evidence": null,
+      "limitations": ["AWS is used to host the reference lab. No cloud audit-log ingestion or cloud-side detection exists."]
+    },
+    {
+      "id": "AI_TOOL_AUTHORIZATION",
+      "pack": "ai",
+      "status": "NOT_IMPLEMENTED",
+      "profiles": [],
+      "evidence": null,
+      "limitations": ["the identity model reserves AI_TASK, AI_MODEL and AI_TOOL entity kinds; no AI integration exists, and none may bypass the deterministic broker when it does"]
+    }
+  ]
+}
