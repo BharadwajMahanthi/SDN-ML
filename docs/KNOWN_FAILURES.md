@@ -755,3 +755,54 @@ fourth case for an unrelated reason, hiding the property under test.
   rewrites an out-of-range value into an in-range one*. Coercion upward is
   always the dangerous direction; the same shape produced KF-36's
   `str(None) -> "None"` and KF-46's non-ASCII digits.
+
+### KF-49 — attribution was resolved too late to attribute anything
+
+- **Found by the first full-chain run**, which stopped honestly rather than
+  guessing: the detector produced no supported finding.
+- **Measured**: the sensor observed all 12 connection attempts and recorded
+  the correct pid, but resolution ran as a batch afterwards and `/proc`
+  found the process gone for **11 of the 12**. Zero observations could be
+  bound to a workload.
+- **Root cause**: enrichment was a *stage* rather than part of the pump. A
+  short-lived workload exits in well under the time between batches.
+- **Fix**: resolution happens inside the drain loop, so the gap between the
+  event and the `/proc` read is milliseconds rather than seconds — which is
+  what a continuously draining agent does anyway.
+- **Residual, stated rather than closed**: a process that connects and exits
+  inside one drain interval is still unattributable. That is the strongest
+  argument for `NETWORK_TELEMETRY_EBPF`, which captures `start_boottime`
+  in-kernel at event time and removes the race at source. Still NOT_RUN.
+
+### KF-50 — the full chain was aimed at a destination the broker protects
+
+- **Found on the second run**: the chain reached the broker and was denied
+  `destination_protected`.
+- **Cause**: the experiment's services were on `127.0.0.1`, and `127.0.0.0/8`
+  is protected because the broker's own IPC and health checks run over it.
+- **Not a product defect** — the safety property working exactly as designed
+  against a badly aimed experiment. Recorded because the failure mode is
+  instructive: a containment capability that cannot be demonstrated against
+  loopback is a *feature*, and an experiment that quietly removed the
+  protection to get a green result would have destroyed the evidence.
+- **Fix in the experiment**: a non-loopback host address, which is also what
+  real egress looks like.
+
+### KF-51 — enforcement was coarser than the detection that justified it
+
+- **Found by the benign-continuity requirement**, which is the only reason it
+  surfaced: the containment worked, and took out traffic it should not have.
+- **Measured**: the workload's prohibited service and its permitted service
+  shared an address and differed only by port. The backend matched
+  `ip daddr` alone, so restricting the destination blocked **both** —
+  `workload_to_permitted: TimeoutError` while the detector's rule was about
+  one port.
+- **Why it matters more than it looks**: a containment that breaks
+  legitimate traffic is one an operator turns off, and then nothing is
+  contained at all. Granularity mismatch between detection and enforcement
+  is a route to that outcome.
+- **Fix**: an optional `destination_port` carried through contract ->
+  proposal -> nftables, with the contract refusing a port without an address
+  (a port alone would restrict that service everywhere, which is not a
+  narrowing anyone can reason about). Verified: forbidden service blocked,
+  permitted service on the same address stays reachable throughout.

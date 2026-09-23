@@ -227,6 +227,14 @@ class ActionRequest:
     #: An optional narrowing of scope. Absent means "all egress for the
     #: target", which broker policy may refuse as too broad.
     destination_cidr: str | None = None
+    #: A further narrowing to one destination port. Added because a
+    #: destination-only rule is coarser than the detection that justified
+    #: it: in the first full-chain run a workload's prohibited service and
+    #: its permitted service shared an address, and containing the address
+    #: took out both (KF-51). Narrower scope is always the safer default,
+    #: and a restriction that breaks legitimate traffic is one an operator
+    #: turns off.
+    destination_port: int | None = None
     schema_version: int = SCHEMA_VERSION
 
     def __post_init__(self) -> None:
@@ -268,6 +276,17 @@ class ActionRequest:
                                 f"{MAX_POLICY_VERSION_CHARS} characters")
         if self.destination_cidr is not None:
             _validate_cidr(self.destination_cidr)
+        if self.destination_port is not None:
+            if (not isinstance(self.destination_port, int)
+                    or isinstance(self.destination_port, bool)):
+                raise ContractError("destination_port must be an integer")
+            if not 0 <= self.destination_port <= 65535:
+                raise ContractError("destination_port out of range")
+            if self.destination_cidr is None:
+                # A port without an address is not a narrowing anyone can
+                # reason about: it would restrict that port everywhere.
+                raise ContractError(
+                    "destination_port requires a destination_cidr")
 
     @property
     def expires_at(self) -> datetime:
@@ -286,6 +305,7 @@ class ActionRequest:
             "requesting_component": self.requesting_component,
             "policy_version": self.policy_version,
             "destination_cidr": self.destination_cidr,
+            "destination_port": self.destination_port,
         }
 
     @staticmethod
@@ -301,7 +321,8 @@ class ActionRequest:
         unknown = set(raw) - {
             "schema_version", "request_id", "action_type", "target",
             "duration_seconds", "reason", "finding_id", "requested_at",
-            "requesting_component", "policy_version", "destination_cidr"}
+            "requesting_component", "policy_version", "destination_cidr",
+            "destination_port"}
         if unknown:
             raise ContractError(f"unknown request field(s): {sorted(unknown)}")
         try:
@@ -319,6 +340,10 @@ class ActionRequest:
         destination = raw.get("destination_cidr")
         if destination is not None and not isinstance(destination, str):
             raise ContractError("destination_cidr must be a string or null")
+        port = raw.get("destination_port")
+        if port is not None and (not isinstance(port, int)
+                                 or isinstance(port, bool)):
+            raise ContractError("destination_port must be an integer or null")
         return ActionRequest(
             request_id=_require_str(raw, "request_id"), action_type=action_type,
             target=Target.from_dict(raw.get("target")),
@@ -328,7 +353,7 @@ class ActionRequest:
             requested_at=requested_at,
             requesting_component=_require_str(raw, "requesting_component"),
             policy_version=_require_str(raw, "policy_version", default=""),
-            destination_cidr=destination or None)
+            destination_cidr=destination or None, destination_port=port)
 
 
 class Decision(enum.Enum):

@@ -295,6 +295,10 @@ class NftablesEnforcer:
                        "right": uid}}]
         if request.destination_cidr:
             expressions.append(_destination_match(request.destination_cidr))
+        if request.destination_port is not None:
+            # Narrows the rule to one service on that host, so a workload's
+            # other, legitimate traffic to the same address keeps working.
+            expressions.append(_port_match(request.destination_port))
         expressions.append({"drop": None})
 
         try:
@@ -476,6 +480,13 @@ def _destination_match(cidr: str) -> dict:
     return {"match": {"op": "==",
                       "left": {"payload": {"protocol": protocol, "field": "daddr"}},
                       "right": right}}
+
+
+def _port_match(port: int) -> dict:
+    """A destination-port match, built from an already-validated integer."""
+    return {"match": {"op": "==",
+                      "left": {"payload": {"protocol": "tcp", "field": "dport"}},
+                      "right": int(port)}}
 
 
 def _now() -> datetime:
