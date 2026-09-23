@@ -760,6 +760,15 @@ claim with no evidence, no profile, an unknown profile or an evidence file
 that does not exist, and refuses a `NOT_RUN` entry that claims a profile.
 Demonstrated to fail on a planted bogus claim and pass once removed.
 
+**A governance gap found and closed during this branch (KF-54).** A commit
+reached `main` without passing the merge gate, because the gate runs on a
+branch and nothing checked what arrived on `main` by other means. The rule
+lived in `AGENTS.md` and was enforced by habit. `tools/verify_all.py` gained
+`main_history`, which fails on any first-parent non-merge commit since the
+discipline began that is not an explicitly pinned allowance. The offending
+commit was left in place and pinned with its reason: rewriting history to
+hide a governance failure would be worse than the failure.
+
 **Remaining before the assurance case**: packaging from a built artifact in a
 clean environment (`SAFE-PACKAGE-01`), load (`SAFE-LOAD-01`) and soak
 (`SAFE-SOAK-01`).
