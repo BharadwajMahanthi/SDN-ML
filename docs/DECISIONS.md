@@ -987,3 +987,45 @@ entirely on 1-hour STS credentials that verified as 19 expected / 0
 unexpected, including ten denials — among them `iam:CreateAccessKey`, so the
 scoped role cannot perform the bootstrap that created it. Root remains an
 open finding (KF-19) and was used for nothing but that one IAM call.
+
+## ADR-056 — one evidence boundary for every pack, and capability claims that must be earned
+
+**Status**: accepted, V2-INT-01.
+
+**Problem.** The SDN pack produced its own `SecurityFinding` and the host
+pack produced Annulon `Finding`s. Two shapes meant two assessment paths, two
+places to get severity-versus-confidence wrong, and no way for a correlator
+to hold both. Meanwhile the trust boundaries between packs held only because
+nobody had written the import that would break them.
+
+**Decision, three parts.**
+
+*One finding shape.* `sdnguard/v2/findings.py` maps a detector's
+`SecurityFinding` onto the shared model. SDN identity survives as an
+`EntityRef` of kind `SDN_ATTACHMENT` whose namespace carries the network
+scope, so a host-side consumer can correlate on an attachment without
+knowing what a datapath id is. Severity maps across; **confidence does not**
+— a `HIGH` fabricated link whose verdict is `INCONCLUSIVE` stays weak.
+
+*Boundaries held by test.* `test_pack_trust_boundaries.py` asserts that
+observing packs cannot import the response machinery beyond the typed
+contract and the asking client, that the proposal layer cannot construct a
+decision, that the broker holds no execution primitive, and that exactly two
+named modules may spawn a process — the enforcement backend and the process
+sensor's own nonce marker. Each allowance is listed with its reason.
+
+*Claims that must be earned.* `docs/capabilities.json` states every
+capability's status, the profiles it was demonstrated on, its evidence and
+its limitations. `tools/verify_all.py` refuses a `SUPPORTED` claim with no
+evidence, with no profile, with an unknown profile, or whose evidence file
+does not exist — and refuses a `NOT_RUN` entry that claims a profile. The
+failure this guards against is the quiet one: a capability promoted by a
+hopeful edit, which looks identical in prose to one that was measured.
+
+**What this deliberately does not do.** No SDN finding offers
+`TEMPORARY_CONTAINMENT`. Fabric enforcement is `NOT_RUN`, and advertising a
+response nothing can carry out would invite a policy layer to propose it.
+Fleet, cloud and AI capabilities are recorded as `NOT_IMPLEMENTED` rather
+than sketched: the identity model reserves `AI_TASK`, `AI_MODEL` and
+`AI_TOOL` entity kinds, and when that work happens none of it may bypass the
+deterministic broker.

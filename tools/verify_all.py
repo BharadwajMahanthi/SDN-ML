@@ -290,6 +290,56 @@ def check_invariants(root: Path) -> Check:
                  f"{len(invariants)} invariant(s), all mapped to existing tests")
 
 
+def check_capabilities(root: Path) -> Check:
+    """No capability may claim SUPPORTED without evidence that exists.
+
+    `docs/capabilities.json` is the one place that says what this system
+    claims. The failure it guards against is the quiet one: a capability
+    written down as SUPPORTED because it worked once, whose evidence file was
+    renamed, or which was promoted from NOT_RUN by a hopeful edit. Both look
+    identical in a document and neither survives this check.
+    """
+    path = root / "docs" / "capabilities.json"
+    if not path.is_file():
+        return Check("capability_claims", FAIL, "docs/capabilities.json missing")
+    try:
+        document = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        return Check("capability_claims", FAIL, f"unreadable: {exc}")
+
+    known_profiles = set(document.get("profiles", {}))
+    problems: list[str] = []
+    counts: dict[str, int] = {}
+    for entry in document.get("capabilities", []):
+        identifier = entry.get("id", "<no id>")
+        status = entry.get("status", "")
+        counts[status] = counts.get(status, 0) + 1
+        if status == "SUPPORTED":
+            if not entry.get("evidence"):
+                problems.append(f"{identifier}: SUPPORTED with no evidence")
+            if not entry.get("profiles"):
+                problems.append(f"{identifier}: SUPPORTED on no profile")
+            for name in entry.get("profiles", []):
+                if name not in known_profiles:
+                    problems.append(f"{identifier}: unknown profile {name}")
+            # An evidence value that names a file must name one that is there.
+            reference = str(entry.get("evidence", ""))
+            for token in reference.replace(",", " ").split():
+                if token.startswith("docs/") and not (root / token).exists():
+                    problems.append(f"{identifier}: missing {token}")
+        elif status in ("NOT_RUN", "NOT_IMPLEMENTED"):
+            if entry.get("profiles"):
+                problems.append(
+                    f"{identifier}: {status} but claims a profile")
+        elif status:
+            problems.append(f"{identifier}: unknown status {status!r}")
+    if problems:
+        return Check("capability_claims", FAIL,
+                     f"{len(problems)} problem(s): {problems[:3]}")
+    summary = ", ".join(f"{k.lower()}={v}" for k, v in sorted(counts.items()))
+    return Check("capability_claims", OK, summary)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="verify_all", description=__doc__)
     parser.add_argument("--cloud", action="store_true")
@@ -300,6 +350,7 @@ def main(argv: list[str] | None = None) -> int:
     checks = [check_worktree(root), check_branches(root), check_memory(root),
               check_firewall(root), check_boundaries(root), check_secrets(root),
               check_key_material(root), check_invariants(root),
+              check_capabilities(root),
               check_tests(root)]
     if args.cloud:
         checks.extend(check_cloud(root))
