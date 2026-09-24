@@ -1029,3 +1029,40 @@ Fleet, cloud and AI capabilities are recorded as `NOT_IMPLEMENTED` rather
 than sketched: the identity model reserves `AI_TASK`, `AI_MODEL` and
 `AI_TOOL` entity kinds, and when that work happens none of it may bypass the
 deterministic broker.
+
+## ADR-057 — process identity is captured at start, not read after the event
+
+**Status**: accepted, V2-REL-01. Supersedes nothing; narrows the case for
+`NETWORK_TELEMETRY_EBPF` without closing it.
+
+**Problem.** Resolving a network event's pid through `/proc` is late by
+construction. Measured on the reference host: 34 resolved, 30 process-gone.
+Measured in isolation against 40 deliberately short-lived processes: **0 of
+40** attributable.
+
+**Decision.** A bounded `ProcessTable` is fed by the process connector, which
+reports a start *while the process is running* — the only moment its uid and
+start time can be read. Network events resolve against the table. The same 40
+processes: **40 of 40** attributable.
+
+**Why this and not eBPF.** eBPF captures `start_boottime` inside the kernel
+at the instant of the connect, which is strictly better and removes the last
+race. It also costs a compiler, BTF, and a probe to maintain. The process
+connector is already physically validated on the reference profile and needs
+nothing new, so it is the strongest tier the current evidence justifies
+building. `NETWORK_TELEMETRY_EBPF` stays an honest NOT_RUN rather than
+becoming a plan nobody has measured.
+
+**The risk this introduces, and how it is held.** A table that remembers pids
+will be asked about a pid that has since been reused, and answering with the
+current occupant is worse than the gap it replaces. Generations are therefore
+kept per pid with the window each was alive for, and a lookup takes the
+event's timestamp. An event from a reuse gap resolves to nobody. A credential
+change closes the current generation and opens a new one, because a process
+that drops privilege has two identities across its lifetime and overwriting
+the uid would retroactively re-attribute its earlier connections.
+
+**Residual window, stated.** A process that connects before its start
+notification is processed is still unattributable. That window is what eBPF
+would close, and it is recorded in the table's own `health()` output rather
+than only in prose.

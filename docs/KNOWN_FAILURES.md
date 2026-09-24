@@ -870,3 +870,25 @@ fourth case for an unrelated reason, hiding the property under test.
   where somebody remembers to invoke it*. The same shape produced KF-23 (a
   branch merged with a red guard, before the gate was executable) and KF-41
   (a rule in a document that a concurrent process ignored).
+
+### KF-55 — the protected destinations were IPv4-only while IPv6 containment worked
+
+- **Found while closing `SAFE-IPV6-01`.** The moment IPv6 enforcement was
+  verified, the protection list became a gap rather than a limitation:
+  `::1`, the AWS IPv6 metadata endpoint `fd00:ec2::254`, link-local
+  `fe80::/10` and v4-mapped forms such as `::ffff:127.0.0.1` were all
+  containable.
+- **Why it was latent, not new.** The list was written when only IPv4 could
+  be enforced, so an unprotected v6 address could not be restricted anyway.
+  Adding the capability turned a harmless omission into a way to cut a
+  workload off from its own management path — the exact failure
+  `ProtectedScopes` exists to prevent.
+- **Fix**: the v6 equivalents are protected, and a v4-mapped v6 address is
+  unmapped before comparison so it inherits the v4 protection. Only a
+  host-sized mapped address is unmapped; a wider prefix that merely overlaps
+  the mapped range is not equivalent to any single v4 network, and treating
+  it as one would be a guess.
+- **Generalised** (doctrine §51): the family is *a protection scoped to the
+  capabilities that existed when it was written*. Adding a capability must
+  include re-reading every guard that constrains it, because a guard silently
+  becomes partial rather than failing.

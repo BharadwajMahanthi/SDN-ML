@@ -46,6 +46,21 @@ class PolicyError(ValueError):
     than falling back to a permissive default."""
 
 
+def _unmap_v4_in_v6(network: "ipaddress.IPv4Network | ipaddress.IPv6Network"):
+    """The IPv4 form of a v4-mapped IPv6 network, or ``None``.
+
+    Only a host-sized mapped address is unmapped: a wider v6 prefix that
+    merely overlaps the mapped range is not equivalent to any single v4
+    network, and pretending otherwise would be a guess.
+    """
+    if network.version != 6 or network.prefixlen != 128:
+        return None
+    mapped = getattr(network.network_address, "ipv4_mapped", None)
+    if mapped is None:
+        return None
+    return ipaddress.ip_network(f"{mapped}/32", strict=False)
+
+
 @dataclass(frozen=True)
 class ProtectedScopes:
     """Things no response may ever touch, whatever the core proposes.
@@ -67,6 +82,13 @@ class ProtectedScopes:
     protected_destinations: tuple[str, ...] = (
         "169.254.169.254/32",     # instance metadata
         "127.0.0.0/8",            # loopback: local IPC and health checks
+        # IPv6 equivalents. Omitting these was a real gap: once IPv6
+        # containment worked, a workload could be cut off from its v6
+        # management path while the v4 one was protected (KF-55). A
+        # protection that covers one address family is not a protection.
+        "::1/128",                # v6 loopback
+        "fd00:ec2::254/128",      # AWS instance metadata over IPv6
+        "fe80::/10",              # link-local: neighbour discovery
     )
 
     def covers_uid(self, uid: int | None) -> bool:
@@ -87,6 +109,12 @@ class ProtectedScopes:
             requested = ipaddress.ip_network(cidr, strict=False)
         except ValueError:
             return True        # unparseable is treated as protected, not open
+        # A v4-mapped v6 address is the same destination wearing a different
+        # spelling. Comparing it only against the v6 list would let
+        # `::ffff:127.0.0.1` slip past the loopback protection.
+        unmapped = _unmap_v4_in_v6(requested)
+        if unmapped is not None:
+            requested = unmapped
         for protected in self.protected_destinations:
             network = ipaddress.ip_network(protected, strict=False)
             if requested.version == network.version and requested.overlaps(network):

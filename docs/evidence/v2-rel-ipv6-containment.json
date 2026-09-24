@@ -1,0 +1,50 @@
+{
+  "apply_detail": "handle 2; coverage=ipv6_only",
+  "baseline": {
+    "bystander": "OPEN",
+    "service_accepted": 2,
+    "target": "OPEN"
+  },
+  "coverage_declared": {
+    "ipv4_destination": "ipv4_only",
+    "ipv6_destination": "ipv6_only",
+    "unscoped": "all_families"
+  },
+  "environment": {
+    "kernel": "6.12.76-linuxkit",
+    "machine": "aarch64"
+  },
+  "protected_scopes_cover_ipv6": {
+    "::1/128": true,
+    "::ffff:127.0.0.1/128": true,
+    "fd00:a11:c0de::1/128": false,
+    "fd00:ec2::254/128": true,
+    "fe80::1/128": true
+  },
+  "rule_evidence": {
+    "comment": "annulon;v=1;a=req-ipv6-containment-01;u=1500;x=1790232899",
+    "handle": 2,
+    "ownership": "owned",
+    "uid": 1500
+  },
+  "rule_removed": true,
+  "traffic_after": {
+    "target": "OPEN"
+  },
+  "traffic_during": {
+    "bystander": "OPEN",
+    "target": "TimeoutError"
+  },
+  "verdict": {
+    "baseline_reachable_over_ipv6": true,
+    "bystander_unaffected": true,
+    "completion": "COMPLETE",
+    "coverage_named_ipv6_only": true,
+    "ipv6_management_paths_protected": true,
+    "ipv6_traffic_blocked": true,
+    "ordinary_ipv6_destination_still_containable": true,
+    "rule_owned": true,
+    "rule_removed": true,
+    "traffic_restored": true
+  }
+}

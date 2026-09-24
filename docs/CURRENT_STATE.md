@@ -863,3 +863,51 @@ classes; protection against a compromised kernel or an attacker already
 running as root; fleet, cloud and AI capabilities (`NOT_IMPLEMENTED`); SDN
 fabric containment, IPv6 containment and in-kernel process identity
 (`NOT_RUN`); any performance target; that defenders always win.
+
+
+## V2-REL-01 — attribution tier and IPv6 containment (complete, 2026-09-24)
+
+Two of the five release blockers for the Ubuntu/x86_64 profile.
+
+### The short-lived-process attribution gap
+
+Measured against the same 40 deliberately short-lived processes, resolved one
+second after each exited:
+
+| method | attributed |
+|---|---|
+| late `/proc` read (previous behaviour) | **0 / 40** |
+| live process table (ADR-057) | **40 / 40** |
+
+Identity is now captured when the process connector reports a start, while
+the process still exists, and kept briefly. The chain runs end to end with
+it and the workload's connections are all attributed.
+
+**PID reuse is handled by generation.** The table keeps a short history per
+pid with the window each generation was alive for; a lookup takes the event's
+timestamp, and an event from a reuse gap resolves to nobody. A credential
+change closes the current generation and opens a new one, because a process
+that drops privilege has two identities and overwriting the uid would
+retroactively re-attribute its earlier connections.
+
+**Residual window**: a process that connects before its start notification is
+processed is still unattributable. That is what `NETWORK_TELEMETRY_EBPF`
+would close, and it stays NOT_RUN rather than becoming a plan nobody has
+measured.
+
+### SAFE-IPV6-01 — closed
+
+IPv6 egress containment physically verified on REF-DEV against a ULA address
+on a dummy interface: target `OPEN -> TimeoutError -> OPEN`, bystander
+unaffected throughout, rule provably owned, removed on release. Evidence:
+`docs/evidence/v2-rel-ipv6-containment.json`.
+
+**KF-55, found while closing it**: the protected-destination list was
+IPv4-only. The moment IPv6 enforcement worked, `::1`, the AWS IPv6 metadata
+endpoint, link-local and v4-mapped loopback all became containable — a
+workload could have been cut off from its own management path. The list now
+covers both families, and a v4-mapped address is unmapped so it inherits the
+v4 protection.
+
+**Remaining release blockers**: signed install/update/rollback, clean
+installation on REF-HOST, and long soak with resource limits.

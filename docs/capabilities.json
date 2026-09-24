@@ -32,8 +32,8 @@
         "post-start activity only; not a connection inventory",
         "observes host-namespace pids; container attribution NOT_RUN",
         "flow identity is not namespace-qualified on this tier",
-        "about half of short-lived connections cannot be bound to a workload",
-        "under saturation coverage collapses -- measured 25 of 4000 connections observed with a 200-event queue -- and the sensor reports the loss rather than attesting completeness"
+        "under saturation coverage collapses -- measured 25 of 4000 connections observed with a 200-event queue -- and the sensor reports the loss rather than attesting completeness",
+        "short-lived connections are attributable when the process table has seen the process start; measured 40 of 40 against 0 of 40 for a late /proc read"
       ]
     },
     {
@@ -82,19 +82,22 @@
       ],
       "evidence": "docs/evidence/v2-safe-03-containment.json, v2-host-04g-fullchain-ubuntu-x86_64.json",
       "limitations": [
-        "IPv4 only; an IPv4-scoped rule does not restrict IPv6 (KF-38)",
         "scopes by uid, so a shared service account means collateral containment",
-        "does not survive a reboot, by design (ADR-052)"
+        "does not survive a reboot, by design (ADR-052)",
+        "an IPv4-scoped rule covers IPv4 only; IPv6 is a separate action with its own coverage value, and both are now enforceable"
       ]
     },
     {
       "id": "IPV6_EGRESS_CONTAINMENT",
       "pack": "response",
-      "status": "NOT_RUN",
-      "profiles": [],
-      "evidence": null,
+      "status": "SUPPORTED",
+      "profiles": [
+        "REF-DEV"
+      ],
+      "evidence": "docs/evidence/v2-rel-ipv6-containment.json",
       "limitations": [
-        "SAFE-IPV6-01 remains open"
+        "verified on REF-DEV; not yet re-run on REF-HOST",
+        "a destination-scoped rule still covers only the family of that destination -- a dual-stack host needs one action per family"
       ]
     },
     {
@@ -176,6 +179,21 @@
         "a 100-second soak only; hours-long runs are NOT_RUN",
         "RSS grew 2 MB across the second half of the soak, which is recorded rather than explained away",
         "no throughput target is claimed or approved"
+      ]
+    },
+    {
+      "id": "LIVE_PROCESS_ATTRIBUTION",
+      "pack": "host",
+      "status": "SUPPORTED",
+      "profiles": [
+        "REF-DEV"
+      ],
+      "evidence": "docs/evidence/v2-rel-01-attribution.json",
+      "limitations": [
+        "identity is captured when the process connector reports a start; a process that connects before that notification is processed is still unattributable",
+        "only an in-kernel capture at the moment of the connect removes that window, which is NETWORK_TELEMETRY_EBPF and remains NOT_RUN",
+        "the table is bounded by age and size, so a process older than the retention window falls back to a /proc read that can fail",
+        "measured on REF-DEV; not yet re-run on REF-HOST"
       ]
     }
   ]

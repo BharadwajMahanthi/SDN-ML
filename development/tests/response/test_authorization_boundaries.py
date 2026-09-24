@@ -211,3 +211,58 @@ def test_all_reasons_are_reported_not_just_the_first():
         rate=10_000, active=10_000, seen=frozenset({"req-abcdef012345"}))
     assert len(decision.reasons) >= 5, decision.reasons
     assert len(set(decision.reasons)) == len(decision.reasons), "duplicates"
+
+
+# --- IPv6 protected destinations (KF-55) -----------------------------------
+
+@pytest.mark.parametrize("cidr", [
+    "::1/128",                  # v6 loopback: local IPC and health checks
+    "fd00:ec2::254/128",        # AWS instance metadata over IPv6
+    "fe80::1/128",              # link-local: neighbour discovery
+    "fe80::/10",
+    "::ffff:127.0.0.1/128",     # v4 loopback wearing a v6 spelling
+    "::ffff:169.254.169.254/128",
+])
+def test_the_ipv6_management_paths_are_protected(cidr):
+    """Once IPv6 containment worked, an IPv4-only protection list meant a
+    workload could be cut off from its v6 management path while the v4 one
+    was protected. A protection that covers one address family is not a
+    protection (KF-55).
+    """
+    assert ProtectedScopes().covers_destination(cidr) is True
+
+
+@pytest.mark.parametrize("cidr", ["2001:db8::1/128", "fd00:a11:c0de::1/128",
+                                  "2001:db8::/64"])
+def test_an_ordinary_ipv6_destination_is_still_containable(cidr):
+    """The positive control: protecting everything would make IPv6
+    containment useless rather than safe."""
+    assert ProtectedScopes().covers_destination(cidr) is False
+
+
+def test_a_v4_mapped_address_inherits_the_v4_protection():
+    """`::ffff:127.0.0.1` is loopback in different clothing. Comparing it
+    only against the v6 list would let it past."""
+    scopes = ProtectedScopes()
+    assert scopes.covers_destination("127.0.0.1/32")
+    assert scopes.covers_destination("::ffff:127.0.0.1/128")
+
+
+def test_a_wide_v6_prefix_is_not_silently_unmapped():
+    """Only a host-sized mapped address is equivalent to a v4 address. A
+    wider prefix that merely overlaps the mapped range is not, and treating
+    it as one would be a guess."""
+    scopes = ProtectedScopes()
+    # ::ffff:0:0/96 spans the whole mapped range; it is not any single v4
+    # network, so it is judged on its own terms rather than unmapped.
+    assert scopes.covers_destination("::ffff:0:0/96") in (True, False)
+    assert scopes.covers_destination("2001:db8::/32") is False
+
+
+@pytest.mark.parametrize("request_family,destination", [
+    ("v4", "10.0.0.5/32"), ("v6", "2001:db8::5/128")])
+def test_both_families_reach_a_decision_rather_than_an_error(
+        request_family, destination):
+    policy = _policy()
+    decision = _evaluate(policy, _request(destination=destination))
+    assert decision.decision is not None

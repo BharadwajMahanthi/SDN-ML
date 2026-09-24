@@ -61,6 +61,7 @@ else:
     raise SystemExit("cannot locate the annulon package; set ANNULON_SRC")
 
 from annulon.detect.attribution import WorkloadResolver                 # noqa: E402
+from annulon.detect.process_table import ProcessTable                   # noqa: E402
 from annulon.detect.egress_policy import (                              # noqa: E402
     EgressAllowlist, EgressPolicyDetector, WorkloadRule,
 )
@@ -200,8 +201,30 @@ print(json.dumps({"pid": os.getpid(), "uid": os.getuid(), "made": made,
 """
 
 
-def run_workload(address: str, port: int, count: int, user: str) -> dict:
-    """A real workload making real connections. Told nothing about policy."""
+def run_workload(address: str, port: int, count: int, user: str,
+                 table=None) -> dict:
+    """A real workload making real connections. Told nothing about policy.
+
+    When a table is supplied it is notified at launch, standing in for the
+    process connector's exec notification -- the point being that identity is
+    recorded while the process exists rather than looked up afterwards.
+    """
+    if table is not None:
+        process = subprocess.Popen(
+            ["/usr/bin/setpriv", "--reuid", user, "--regid", "nogroup",
+             "--clear-groups", sys.executable, "-c", _WORKLOAD,
+             address, str(port), str(count)],
+            stdout=subprocess.PIPE, text=True)
+        table.note_start(process.pid)
+        # setpriv is still root at launch and drops privilege before exec'ing
+        # the workload. The connector would deliver a credential-change event
+        # here; without it the table records root and the detector looks up
+        # the wrong workload.
+        time.sleep(0.15)
+        table.note_credential_change(process.pid)
+        out, _ = process.communicate(timeout=180)
+        table.note_exit(process.pid)
+        return json.loads(out.strip().splitlines()[-1])
     result = subprocess.run(
         ["/usr/bin/setpriv", "--reuid", user, "--regid", "nogroup",
          "--clear-groups", "/usr/bin/python3", "-c", _WORKLOAD,
@@ -252,6 +275,12 @@ class Chain:
         self.sensor = sensor
         self.monitor = monitor
         self.normalizer = NetworkNormalizer()
+        # Identity is captured while the process is alive and kept briefly,
+        # rather than read from /proc after the event. Measured: 0 of 40
+        # short-lived processes attributable the late way, 40 of 40 this way
+        # (KF-49). The late resolver stays as the fallback for processes that
+        # predate the table.
+        self.table = ProcessTable(host_id=HOST_ID, boot_id=BOOT_ID)
         self.resolver = WorkloadResolver(host_id=HOST_ID, boot_id=BOOT_ID)
         self.detector = EgressPolicyDetector(allowlist, host_id=HOST_ID,
                                              boot_id=BOOT_ID)
@@ -268,7 +297,7 @@ class Chain:
         produced = self.normalizer.normalize_all(self.sensor.drain())
         for observation in produced:
             self.monitor.consider(observation)
-        resolved = [self.resolver.resolve(o) for o in produced]
+        resolved = [self.table.resolve(o) for o in produced]
         with self._lock:
             self.resolved.extend(resolved)
         return resolved
@@ -381,7 +410,8 @@ def run(ttl_seconds: int) -> dict:
         # process still exists, as a running agent would.
         chain.take_resolved()
         chain.start_pumping()
-        truth = run_workload(address, forbidden.port, 6, WORKLOAD_USER)
+        truth = run_workload(address, forbidden.port, 6, WORKLOAD_USER,
+                             table=chain.table)
         time.sleep(1.0)
         chain.stop_pumping()
         observations = chain.take_resolved()
@@ -400,6 +430,7 @@ def run(ttl_seconds: int) -> dict:
             "attribution": (supported[0].evidence[0].attributes
                             .get("attribution_confidence") if supported else None),
             "resolver_stats": chain.resolver.stats.to_dict(),
+            "process_table": chain.table.health(),
         }
         if not supported:
             raise RuntimeError("the detector produced no supported finding; "
