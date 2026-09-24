@@ -1,0 +1,144 @@
+{
+  "attribution_note": {
+    "in_chain_measurement": {
+      "attribution_rate": 0.5789,
+      "caveat": "this rate covers EVERY process the network sensor saw, including host processes the harness never told the table about. In production the process connector feeds the table continuously, so an unfed process is an artefact of the experiment rather than a property of the design. The workload's own connections were all attributed, which is what the chain depends on."
+    },
+    "isolated_measurement": {
+      "attributed_by_late_proc_read": 0,
+      "attributed_by_live_process_table": 40,
+      "method": "the same 40 short-lived processes resolved both ways, one second after each exited",
+      "short_lived_processes": 40
+    }
+  },
+  "authorization": {
+    "expires_at": "2026-09-24T06:52:27.657390+00:00",
+    "note": "the broker evaluated this against its own policy; the core cannot read or influence it",
+    "outcome": "applied",
+    "reasons": []
+  },
+  "baseline": {
+    "bystander_to_forbidden": "OPEN",
+    "workload_to_forbidden": "OPEN",
+    "workload_to_permitted": "OPEN"
+  },
+  "benign_continuity": {
+    "note": "containment must not take out a workload it was not aimed at",
+    "unrelated_workload_unaffected": true
+  },
+  "completion": "COMPLETE",
+  "controls": {
+    "broker_absent": {
+      "claims_contained": false,
+      "correct": true,
+      "is_enforcement_unavailable": true,
+      "note": "the core reports that nothing happened. It does not act instead, and it does not claim the traffic was blocked",
+      "outcome": "enforcement_unavailable",
+      "traffic_still_open": true
+    },
+    "detector_permits_it": {
+      "correct": true,
+      "findings": 0,
+      "ground_truth_connections": 4,
+      "note": "same traffic, a policy that allows it: no finding, and therefore nothing to contain",
+      "owned_rules": 0
+    },
+    "sensor_disabled": {
+      "connect_attempts_to_the_forbidden_service": 1,
+      "correct": true,
+      "coverage_gap": 5,
+      "findings": 0,
+      "ground_truth_connections": 6,
+      "note": "traffic demonstrably occurred and most of it was never observed. A residual in-flight event may still arrive. No finding reached SUPPORTED, and absence is marked untrustworthy rather than clean",
+      "service_accepted_more": 21,
+      "supported_findings": 0,
+      "total_observations": 21,
+      "trustworthy_absence": false
+    }
+  },
+  "detection": {
+    "attribution": "correlated",
+    "detector_reached_it_independently": true,
+    "finding_kind": "network.egress_policy_violation",
+    "findings_produced": 3,
+    "ground_truth_connections": 6,
+    "observations_pumped": 73,
+    "process_table": {
+      "attribution_rate": 0.5789,
+      "limitation": "a process that starts and connects before its start notification is processed is still unattributable; only an in-kernel capture at the moment of the connect removes that window",
+      "stats": {
+        "enriched_live": 2,
+        "enrichment_failed": 0,
+        "evicted_for_age": 0,
+        "evicted_for_size": 0,
+        "generation_mismatch": 0,
+        "observed_exits": 1,
+        "observed_starts": 2,
+        "resolved_from_proc": 5,
+        "resolved_from_table": 28,
+        "unresolved": 24
+      },
+      "tracked_processes": 1
+    },
+    "resolver_stats": {
+      "not_attempted": 0,
+      "process_gone": 0,
+      "resolved": 0,
+      "start_time_mismatch": 0,
+      "unreadable": 0
+    },
+    "service_accepted": 8,
+    "supported_findings": 3,
+    "workload_pid": 22333,
+    "workload_uid": 1500
+  },
+  "environment": {
+    "capability": "NETWORK_TELEMETRY_TRACEFS",
+    "distribution": "Debian GNU/Linux 12 (bookworm)",
+    "kernel": "6.12.76-linuxkit",
+    "machine": "aarch64",
+    "profile": "REF-DEV/docker-desktop-linux-vm",
+    "service_address": "172.22.0.2"
+  },
+  "proposal": {
+    "detail": "",
+    "finding_id": "fnd-000000000003",
+    "outcome": "proposed",
+    "proposed": true,
+    "request_id": "req-99869881557dca8c2e0a0895"
+  },
+  "recovery": {
+    "expired_by_broker": true,
+    "rule_removed": true,
+    "traffic_restored": true
+  },
+  "rule_evidence": {
+    "comment": "annulon;v=1;a=req-99869881557dca8c2e0a0895;u=1500;x=1790232747",
+    "handle": 2,
+    "ownership": "owned",
+    "uid": 1500
+  },
+  "sensor_liveness": {
+    "observed": true,
+    "status": "HEALTHY"
+  },
+  "traffic_after": {
+    "workload_to_forbidden": "OPEN",
+    "workload_to_permitted": "OPEN"
+  },
+  "traffic_during": {
+    "bystander_to_forbidden": "OPEN",
+    "workload_to_forbidden": "TimeoutError",
+    "workload_to_permitted": "OPEN"
+  },
+  "verdict": {
+    "completion": "COMPLETE",
+    "observability": "TRUSTWORTHY",
+    "reasons": [
+      "control plane and data plane agree; controls, scope, management safety and expiry all held"
+    ],
+    "security_outcome": "CONTAINED",
+    "supports_containment_claim": true,
+    "unmeasured": []
+  }
+}
