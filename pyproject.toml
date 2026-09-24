@@ -31,11 +31,18 @@ dependencies = []
 
 [project.optional-dependencies]
 sdn = ["os-ken>=2.7"]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "cryptography>=42"]
+# Release verification needs public-key signatures, which the standard
+# library does not provide. It is an extra rather than a runtime dependency
+# because the agent and broker never verify anything -- only the installer
+# does, and it runs before they exist. The running agent stays dependency
+# free, which is where a supply chain would actually hurt.
+verify = ["cryptography>=42"]
 
 [project.scripts]
 annulon-broker = "annulon.cli.broker:main"
 annulon-agent = "annulon.cli.agent:main"
+annulon-install = "annulon.supply.install:main"
 
 [tool.setuptools]
 package-dir = {"" = "development/src"}

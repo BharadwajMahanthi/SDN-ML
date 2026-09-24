@@ -44,6 +44,16 @@ MAY_NAME_TOOLS = {
         "other two guards still verify.",
 }
 
+#: Modules permitted to import an execution primitive without being the
+#: enforcement backend. Narrow, and separate from PRIVILEGED_EXEMPT: these
+#: are still checked for privileged tool names and for forbidden builtins.
+MAY_IMPORT_SUBPROCESS = {
+    "annulon/supply/install.py":
+        "runs the package installer. It is the install path, not the running "
+        "agent, and it executes one fixed argv built from verified inputs "
+        "after the signature and hash have both been checked.",
+}
+
 EXECUTION_NAMES = {"system", "popen", "spawn", "spawnv", "spawnve", "execv",
                    "execve", "execl", "execlp", "fork", "forkpty", "kill",
                    "killpg", "setuid", "setgid", "seteuid", "setegid"}
@@ -68,6 +78,8 @@ def test_the_source_tree_is_actually_scanned():
 def test_no_unexempt_module_imports_an_execution_primitive(path: Path):
     if _relative(path) in PRIVILEGED_EXEMPT:
         pytest.skip("explicitly exempt, with a stated reason")
+    if _relative(path) in MAY_IMPORT_SUBPROCESS:
+        pytest.skip("may import subprocess, with a stated reason")
     tree = ast.parse(path.read_text())
     imported: set[str] = set()
     for node in ast.walk(tree):
@@ -219,3 +231,14 @@ def test_every_tool_naming_allowance_is_still_needed():
         text = (SRC / relative).read_text()
         assert any(tool in text for tool in ("nftables", "iptables", "systemctl")), (
             f"{relative} no longer names a tool; remove its allowance")
+
+
+def test_a_module_allowed_to_import_subprocess_names_no_privileged_tool():
+    """The import allowance must not become a way to smuggle a command."""
+    for relative in MAY_IMPORT_SUBPROCESS:
+        path = SRC / relative
+        assert path.is_file(), f"{relative} is allowed but absent"
+        text = path.read_text()
+        for tool in ("iptables", "nft ", "nftables", "systemctl", "ip route",
+                     "ip link", "aws ec2", "aws iam", "sudo "):
+            assert tool not in text, f"{relative} references {tool!r}"

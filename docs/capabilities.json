@@ -195,6 +195,22 @@
         "the table is bounded by age and size, so a process older than the retention window falls back to a /proc read that can fail",
         "measured on REF-DEV; not yet re-run on REF-HOST"
       ]
+    },
+    {
+      "id": "SIGNED_INSTALL_UPDATE_ROLLBACK",
+      "pack": "platform",
+      "status": "SUPPORTED",
+      "profiles": [
+        "REF-DEV"
+      ],
+      "evidence": "docs/evidence/v2-rel-02-signed-install.json",
+      "limitations": [
+        "Ed25519 detached manifests; verification needs the 'verify' extra, and the verifier refuses rather than falling back to a hash comparison",
+        "trusted keys come from an operator-controlled file; nothing in a release can introduce a key",
+        "key rotation and revocation are NOT_RUN",
+        "artifacts are not yet published through a transparency log or provenance attestation",
+        "verified on REF-DEV; the REF-HOST install path is separate"
+      ]
     }
   ]
 }
