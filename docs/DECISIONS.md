@@ -1066,3 +1066,39 @@ the uid would retroactively re-attribute its earlier connections.
 notification is processed is still unattributable. That window is what eBPF
 would close, and it is recorded in the table's own `health()` output rather
 than only in prose.
+
+## ADR-058 — releases are signed, and the installer refuses rather than warns
+
+**Status**: accepted, V2-REL-02.
+
+**Problem.** An attacker who can replace the artifact does not need to defeat
+the broker, the detector or the sensor — they get to write them. The update
+channel is the shortest path to everything this project protects, and until
+now it had no integrity control at all.
+
+**Decision.** Ed25519 detached manifests. A release is a wheel plus a
+manifest signed over a canonical serialisation of its metadata, and the
+installer verifies the signature *before* the hash and the hash before
+unpacking anything. Every failure aborts; none warns.
+
+**Rejected alternatives, and why.** A hash alone proves the artifact matches
+*a* manifest, not that the manifest came from the project — replace both and
+nothing notices. HMAC would require every deployed host to hold a secret that
+can also *create* releases, which is the wrong shape for something installed
+widely. Ed25519 keeps signing keys off hosts entirely.
+
+**Version state, because signatures are not enough.** An attacker who cannot
+forge a signature can still serve an older, genuinely signed release with a
+known flaw. Every byte of it verifies. So the installer records what is
+installed and refuses a downgrade unless it is the single version the current
+release explicitly names as its rollback target. Measured: a genuine 0.5.0
+was refused against an installed 0.6.0, and a rollback to an unnamed 0.1.0
+was refused even with rollback permitted.
+
+**`cryptography` is an extra, not a runtime dependency.** The agent and
+broker verify nothing; only the installer does, and it runs before they
+exist. The running agent stays dependency-free, which is where a supply chain
+would actually hurt.
+
+**No silent degradation.** With no signature backend the verifier raises. A
+verification that cannot detect a forged manifest must not report success.

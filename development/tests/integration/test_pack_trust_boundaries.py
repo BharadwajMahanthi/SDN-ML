@@ -161,6 +161,10 @@ MAY_EXECUTE = {
     "annulon/agent/liveness.py":
         "execs a nonce marker of its own to prove the process sensor still "
         "delivers; touches nothing else",
+    "annulon/supply/install.py":
+        "runs the package installer, after the release signature and hash "
+        "have both verified. It is the install path rather than the running "
+        "agent, and it builds one fixed argv from verified inputs.",
 }
 
 

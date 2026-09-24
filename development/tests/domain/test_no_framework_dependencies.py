@@ -96,14 +96,45 @@ def test_the_shared_core_is_framework_free_and_sdn_free():
     modules = sorted(shared.rglob("*.py"))
     assert len(modules) >= 3, "guard would pass vacuously"
     allowed = set(sys.stdlib_module_names) | {"annulon"}
+    #: The install path is not the runtime core. `annulon/supply` verifies
+    #: release signatures, which the standard library cannot do, and it runs
+    #: before the agent exists rather than alongside it. The import is lazy
+    #: and its absence is a refusal, not a degradation -- but an AST guard
+    #: cannot see either of those, so the allowance is stated here with the
+    #: reason. What this guard protects is that the *running* agent needs
+    #: nothing but Python, and that is still true.
+    optional_backend = {
+        "supply/manifest.py": {"cryptography"},
+        "supply/install.py": {"cryptography"},
+    }
     for path in modules:
         roots = _imported_roots(path)
         assert not (roots & FORBIDDEN), f"{path.name} imports a framework"
         assert "sdnguard" not in roots, (
             f"{path.name} imports sdnguard; the shared core must not depend on "
             "the SDN integration")
-        unexpected = roots - allowed
+        relative = str(path.relative_to(shared))
+        unexpected = roots - allowed - optional_backend.get(relative, set())
         assert not unexpected, f"{path.name} imports non-stdlib {sorted(unexpected)}"
+
+
+def test_the_running_agent_needs_nothing_but_python():
+    """The claim the allowance above must not erode.
+
+    Whatever the install path needs, everything the agent and broker import
+    at run time has to be in the standard library -- that is what makes a
+    dependency-free deployment true rather than aspirational.
+    """
+    shared = CORE.parent / "annulon"
+    allowed = set(sys.stdlib_module_names) | {"annulon"}
+    runtime = [p for p in sorted(shared.rglob("*.py"))
+               if "supply" not in p.parts]
+    assert len(runtime) >= 10, "guard would pass vacuously"
+    for path in runtime:
+        unexpected = _imported_roots(path) - allowed
+        assert not unexpected, (
+            f"{path.relative_to(shared)} imports {sorted(unexpected)} at "
+            "run time; the agent must need nothing but Python")
 
 
 def test_the_exempt_adapter_is_not_imported_by_the_core():

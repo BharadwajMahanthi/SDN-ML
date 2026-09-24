@@ -911,3 +911,43 @@ v4 protection.
 
 **Remaining release blockers**: signed install/update/rollback, clean
 installation on REF-HOST, and long soak with resource limits.
+
+
+## V2-REL-02 — signed install, update and rollback (complete, 2026-09-24)
+
+The third release blocker. An attacker who owns the update channel does not
+need to defeat the broker, the detector or the sensor — they get to write
+them — and until now that channel had no integrity control at all.
+
+Ed25519 detached manifests (ADR-058). The installer verifies the signature
+before the hash and the hash before unpacking. Evidence:
+`docs/evidence/v2-rel-02-signed-install.json`.
+
+| attempted substitution | outcome |
+|---|---|
+| artifact swapped after signing | refused, size mismatch |
+| manifest edited after signing | refused, signature does not verify |
+| signed by an untrusted key | refused |
+| manifest carrying an unknown field | refused |
+| **a genuine but older signed release** | **refused as a downgrade** |
+| rollback to a version this release did not name | refused |
+
+The fifth row is the one signatures alone do not stop: every byte of an old
+release verifies. Version state is what closes it, and rollback is permitted
+only to the single version the current release explicitly names.
+
+Genuine install, genuine update and the permitted rollback all succeeded, and
+the installed package imports and runs.
+
+`cryptography` is an **extra, not a runtime dependency**. The agent and
+broker verify nothing; only the installer does, and it runs before they
+exist. A new guard, `test_the_running_agent_needs_nothing_but_python`,
+asserts that everything outside the install path imports only the standard
+library — so the allowance cannot erode into a runtime dependency.
+
+Three existing guards fired on this work and each was answered with a narrow,
+reasoned allowance rather than a widening: the framework-free check, the
+privileged-action import check, and the named-executor list.
+
+**Remaining release blockers**: clean installation on REF-HOST, and long soak
+with resource limits.
