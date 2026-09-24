@@ -951,3 +951,70 @@ privileged-action import check, and the named-executor list.
 
 **Remaining release blockers**: clean installation on REF-HOST, and long soak
 with resource limits.
+
+
+## V2-REL-03 — the release validated on the reference profile (complete, 2026-09-24)
+
+The last two release blockers, run where the claim has to hold: Ubuntu
+24.04.4 LTS, kernel `7.0.0-1012-aws`, x86_64. Evidence:
+`docs/evidence/v2-rel-03-refhost-validation.json`.
+
+### Clean signed installation on REF-HOST
+
+The wheel was built and signed **locally** — the signing key never left this
+machine — shipped as base64 over SSM with a digest check, and verified on the
+host before anything was unpacked.
+
+| step | outcome |
+|---|---|
+| artifacts shipped and digest-verified | yes |
+| install attempted with an untrusted key file | **refused**, `signed by an untrusted key` |
+| genuine install | succeeded, `signature, hash and version accepted` |
+| installed agent self-check | `sensor_available: true` on the real kernel |
+
+The untrusted-key attempt is the one that matters: the same genuine artifact
+and manifest, verified against a key file that does not contain the signer.
+
+### Long soak on REF-HOST
+
+**2,607 cycles over 15 minutes**, from the installed package:
+
+| measurement | value |
+|---|---|
+| file-descriptor growth | **0** |
+| RSS first / last | 23,052 KB / 25,092 KB |
+| RSS growth, whole run | 2,040 KB |
+| **RSS growth, second half** | **640 KB** |
+| liveness history bounded | yes |
+| queue drained each cycle | yes |
+
+Growth flattening across the run is consistent with allocator warm-up rather
+than a leak. It does not *prove* the absence of a slow leak, and multi-hour
+runs remain NOT_RUN.
+
+Load on the reference kernel reproduced the development result: 2,000
+connections, 20 observed, 23,810 events dropped by the bounded queue, and
+`attests_completeness` false. The system degrades truthfully on both
+profiles.
+
+**Cost and cleanup**: one `t3a.large` for under an hour, `CLEANUP VERIFIED`,
+zero billable resources remaining. The lab ran on 1-hour STS credentials; the
+bootstrap entry-user key was deleted afterwards.
+
+## Release-grade status for the Ubuntu/x86_64 profile
+
+| blocker | state |
+|---|---|
+| short-lived attribution gap | **closed** — 0/40 to 40/40, generations handle PID reuse |
+| IPv4 + IPv6 bounded containment | **closed** — both families enforced and verified; KF-55 fixed |
+| signed install / update / rollback | **closed** — six substitutions refused, including a genuine older release |
+| clean REF-HOST installation | **closed** |
+| long soak and resource limits | **closed for 15 minutes**; multi-hour NOT_RUN |
+
+**Accepted for release, with the limitation stated rather than removed:**
+`NETWORK_TELEMETRY_EBPF` remains NOT_RUN. Its advantage over the process
+table is now narrow and measured — the window between a process connecting
+and its start notification being processed — rather than the near-half of
+short-lived connections it was before.
+
+Fleet, cloud and AI remain NOT_IMPLEMENTED and are not started.
