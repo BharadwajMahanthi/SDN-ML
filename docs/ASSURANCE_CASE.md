@@ -128,14 +128,20 @@ established. Each separation is enforced by a type, not a convention.
 
 ### A2 limitations, stated
 
-- **About half of short-lived connections cannot be attributed at all.**
-  Measured on `REF-HOST`: 34 resolved, 30 process-gone. The observation
-  survives with weak attribution; it does not become an accusation.
+- **Short-lived connections are now attributable**, because identity is
+  captured when the process connector reports a start rather than read from
+  `/proc` afterwards: measured 40 of 40 against 0 of 40 for the previous
+  behaviour (ADR-057). The residual window is a process that connects before
+  its start notification is processed, which only an in-kernel capture
+  removes. `NETWORK_TELEMETRY_EBPF` remains NOT_RUN.
 - Flow identity is **not namespace-qualified** on the tracefs tier, and the
   data says so via `flow_key_is_namespace_qualified`.
 - Detection covers a deterministic egress allowlist. **No behavioural,
   statistical or ML detection exists**, and none is claimed.
 - UDP is not covered. Pre-existing connections are not discovered.
+- The longest soak is 15 minutes. RSS growth flattened across it, which is
+  consistent with allocator warm-up and does not prove the absence of a slow
+  leak. Multi-hour runs are NOT_RUN.
 - Ownership comments are forgeable by root.
 
 ---
@@ -155,6 +161,10 @@ established. Each separation is enforced by a type, not a convention.
 | **`v2-host-04g-fullchain-ubuntu-x86_64.json`** | **full chain on the reference profile** | **REF-HOST** |
 | `v2-pkg-01-clean-install.json` | the installed artifact works with no repository present | REF-DEV |
 | `v2-load-soak.json` | truthful degradation under saturation; bounded resources | REF-DEV |
+| `v2-rel-01-attribution.json` | short-lived process attribution, 0/40 to 40/40 | REF-DEV |
+| `v2-rel-ipv6-containment.json` | IPv6 egress containment enforced and verified | REF-DEV |
+| `v2-rel-02-signed-install.json` | six release substitutions refused | REF-DEV |
+| **`v2-rel-03-refhost-validation.json`** | **signed install and 15-minute soak on the reference profile** | **REF-HOST** |
 
 ---
 
@@ -191,6 +201,23 @@ A project that has never found a defect in its own controls has not looked.
 
 Universal security. Detection of untested attack classes. Protection against
 a compromised kernel or an attacker already running as root. Fleet, cloud and
-AI capabilities — all `NOT_IMPLEMENTED`. SDN fabric containment, IPv6
-containment and in-kernel process identity — all `NOT_RUN`. Any performance
+AI capabilities — all `NOT_IMPLEMENTED`. SDN fabric containment and in-kernel
+process identity — `NOT_RUN`. Key rotation and revocation, artifact
+provenance attestation, and multi-hour soak — `NOT_RUN`. Any performance
 target. That defenders always win.
+
+## A third claim, added at release
+
+**A3 — Trustworthy delivery.** *A host does not install an artifact the
+project did not sign, and cannot be downgraded to an older signed release
+except to the version the current one explicitly names.*
+
+Physically attempted and refused on both profiles: an artifact swapped after
+signing, a manifest edited after signing, a signature from an untrusted key,
+a manifest carrying an unknown field, a rollback to an unnamed version, and a
+genuine but older signed release — every byte of which verifies. On
+`REF-HOST` the same genuine artifact was refused against a key file that did
+not contain its signer, then accepted against one that did.
+
+A3 does **not** cover key rotation, key revocation, or provenance beyond the
+signature; and the signing key's own protection is outside the software.

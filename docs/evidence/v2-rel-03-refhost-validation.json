@@ -1,0 +1,190 @@
+{
+  "artifacts_shipped_and_verified": true,
+  "backend_install": "backend=0\n\n--- ssm status: Success ---",
+  "completion": "COMPLETE",
+  "environment": [
+    "Linux 7.0.0-1012-aws x86_64",
+    "Ubuntu 24.04.4 LTS"
+  ],
+  "genuine_install": {
+    "candidate": "0.5.0",
+    "install_exit": 0,
+    "installed": true,
+    "installed_before": null,
+    "installed_now": "0.5.0",
+    "reason": "signature, hash and version accepted",
+    "rollback_available_to": null,
+    "verified": true
+  },
+  "installed_agent_check": "{\n  \"sensor_available\": true,\n  \"missing\": [],\n  \"capability\": \"NETWORK_TELEMETRY_TRACEFS\"\n}\n\n--- ssm status: Success ---",
+  "obligations": [
+    "SAFE-PACKAGE-01 on REF-HOST",
+    "SAFE-SOAK-01 long run"
+  ],
+  "release": {
+    "version": "0.5.0",
+    "wheel": "annulon-0.5.0-py3-none-any.whl",
+    "wheel_bytes": 207716
+  },
+  "soak": {
+    "completion": "COMPLETE",
+    "environment": {
+      "kernel": "7.0.0-1012-aws",
+      "machine": "x86_64"
+    },
+    "load": {
+      "attempts_observed": 20,
+      "attests_completeness": false,
+      "connections_made": 2000,
+      "connections_per_second": 1539.6,
+      "connections_requested": 2000,
+      "coverage": 0.01,
+      "elapsed_seconds": 1.299,
+      "fds_after": 6,
+      "fds_before": 6,
+      "honest_under_load": true,
+      "loss": {
+        "commit_overrun": 0,
+        "dropped": 0,
+        "lossless": false,
+        "overrun": 0,
+        "queue_dropped": 23810,
+        "total": 23810
+      },
+      "loss_was_counted_when_coverage_dropped": true,
+      "note": "not a throughput measurement and not a product target. The property is that loss is counted and health tracks it.",
+      "queue_limit": 200,
+      "rss_kb_after": 18516,
+      "rss_kb_before": 18004,
+      "sink_accepted": 2000,
+      "trustworthy_absence": false
+    },
+    "soak": {
+      "cycles": 2607,
+      "duration_seconds": 900,
+      "fd_growth": 0,
+      "fds_first": 6,
+      "fds_last": 6,
+      "liveness_history_bounded": true,
+      "note": "a short soak. Hours-long runs remain NOT_RUN; this bounds the obvious leaks rather than proving their absence.",
+      "queue_drained_each_cycle": true,
+      "rss_growth_kb": 2040,
+      "rss_growth_second_half_kb": 640,
+      "rss_kb_first": 23052,
+      "rss_kb_last": 25092,
+      "samples": [
+        {
+          "fds": 6,
+          "liveness_history": 1,
+          "queue_pending": 4,
+          "rss_kb": 23052,
+          "t": 0.3,
+          "unparsed": 0
+        },
+        {
+          "fds": 6,
+          "liveness_history": 20,
+          "queue_pending": 0,
+          "rss_kb": 23940,
+          "t": 76.1,
+          "unparsed": 0
+        },
+        {
+          "fds": 6,
+          "liveness_history": 20,
+          "queue_pending": 0,
+          "rss_kb": 24068,
+          "t": 151.2,
+          "unparsed": 0
+        },
+        {
+          "fds": 6,
+          "liveness_history": 20,
+          "queue_pending": 0,
+          "rss_kb": 24068,
+          "t": 226.2,
+          "unparsed": 0
+        },
+        {
+          "fds": 6,
+          "liveness_history": 20,
+          "queue_pending": 0,
+          "rss_kb": 24324,
+          "t": 300.9,
+          "unparsed": 0
+        },
+        {
+          "fds": 6,
+          "liveness_history": 20,
+          "queue_pending": 1,
+          "rss_kb": 24324,
+          "t": 376.1,
+          "unparsed": 0
+        },
+        {
+          "fds": 6,
+          "liveness_history": 20,
+          "queue_pending": 0,
+          "rss_kb": 24452,
+          "t": 451.7,
+          "unparsed": 0
+        },
+        {
+          "fds": 6,
+          "liveness_history": 20,
+          "queue_pending": 0,
+          "rss_kb": 24452,
+          "t": 526.8,
+          "unparsed": 0
+        },
+        {
+          "fds": 6,
+          "liveness_history": 20,
+          "queue_pending": 0,
+          "rss_kb": 24964,
+          "t": 601.2,
+          "unparsed": 0
+        },
+        {
+          "fds": 6,
+          "liveness_history": 20,
+          "queue_pending": 0,
+          "rss_kb": 25092,
+          "t": 676.1,
+          "unparsed": 0
+        },
+        {
+          "fds": 6,
+          "liveness_history": 20,
+          "queue_pending": 5,
+          "rss_kb": 25092,
+          "t": 750.5,
+          "unparsed": 0
+        },
+        {
+          "fds": 6,
+          "liveness_history": 20,
+          "queue_pending": 0,
+          "rss_kb": 25092,
+          "t": 825.3,
+          "unparsed": 0
+        },
+        {
+          "fds": 6,
+          "liveness_history": 20,
+          "queue_pending": 0,
+          "rss_kb": 25092,
+          "t": 899.6,
+          "unparsed": 0
+        }
+      ]
+    }
+  },
+  "untrusted_key_refused": {
+    "candidate": "0.5.0",
+    "installed": false,
+    "installed_before": null,
+    "reason": "signed by an untrusted key 'refhost-validation'",
+    "verified": false
+  }
+}

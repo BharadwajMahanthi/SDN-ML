@@ -158,13 +158,13 @@
       "pack": "platform",
       "status": "SUPPORTED",
       "profiles": [
-        "REF-DEV"
+        "REF-DEV",
+        "REF-HOST"
       ],
-      "evidence": "docs/evidence/v2-pkg-01-clean-install.json",
+      "evidence": "docs/evidence/v2-pkg-01-clean-install.json, docs/evidence/v2-rel-03-refhost-validation.json",
       "limitations": [
-        "installation onto REF-HOST from the wheel is NOT_RUN; the reference run used the SSM source transfer",
-        "upgrade, rollback and uninstall paths are NOT_RUN",
-        "artifacts are neither signed nor provenance-attested"
+        "upgrade, rollback and uninstall are covered by SIGNED_INSTALL_UPDATE_ROLLBACK; uninstall itself is NOT_RUN",
+        "artifacts are not published through a transparency log or provenance attestation"
       ]
     },
     {
@@ -172,12 +172,13 @@
       "pack": "host",
       "status": "SUPPORTED",
       "profiles": [
-        "REF-DEV"
+        "REF-DEV",
+        "REF-HOST"
       ],
-      "evidence": "docs/evidence/v2-load-soak.json",
+      "evidence": "docs/evidence/v2-load-soak.json, docs/evidence/v2-rel-03-refhost-validation.json",
       "limitations": [
-        "a 100-second soak only; hours-long runs are NOT_RUN",
-        "RSS grew 2 MB across the second half of the soak, which is recorded rather than explained away",
+        "the longest soak is 15 minutes over 2607 cycles on REF-HOST; multi-hour runs are NOT_RUN",
+        "RSS grew 2.0 MB over that run with 0.6 MB of it in the second half, which is consistent with allocator warm-up but does not prove the absence of a slow leak",
         "no throughput target is claimed or approved"
       ]
     },
@@ -193,7 +194,8 @@
         "identity is captured when the process connector reports a start; a process that connects before that notification is processed is still unattributable",
         "only an in-kernel capture at the moment of the connect removes that window, which is NETWORK_TELEMETRY_EBPF and remains NOT_RUN",
         "the table is bounded by age and size, so a process older than the retention window falls back to a /proc read that can fail",
-        "measured on REF-DEV; not yet re-run on REF-HOST"
+        "measured on REF-DEV; not yet re-run on REF-HOST",
+        "measured 40 of 40 in isolation on REF-DEV; the chain-level rate also counts host processes the experiment never fed to the table"
       ]
     },
     {
@@ -201,15 +203,15 @@
       "pack": "platform",
       "status": "SUPPORTED",
       "profiles": [
-        "REF-DEV"
+        "REF-DEV",
+        "REF-HOST"
       ],
-      "evidence": "docs/evidence/v2-rel-02-signed-install.json",
+      "evidence": "docs/evidence/v2-rel-02-signed-install.json, docs/evidence/v2-rel-03-refhost-validation.json",
       "limitations": [
-        "Ed25519 detached manifests; verification needs the 'verify' extra, and the verifier refuses rather than falling back to a hash comparison",
+        "Ed25519 detached manifests; verification needs the 'verify' extra and refuses rather than falling back to a hash comparison",
         "trusted keys come from an operator-controlled file; nothing in a release can introduce a key",
         "key rotation and revocation are NOT_RUN",
-        "artifacts are not yet published through a transparency log or provenance attestation",
-        "verified on REF-DEV; the REF-HOST install path is separate"
+        "artifacts are not published through a transparency log or provenance attestation"
       ]
     }
   ]
