@@ -61,7 +61,8 @@ class CheckSpec:
 
 
 CHECK_SPECS: tuple[CheckSpec, ...] = (
-    CheckSpec("branch_matches_task", "branch name carries the task id"),
+    CheckSpec("branch_matches_task", "branch name carries the task id",
+              may_be_not_applicable=True),
     CheckSpec("working_tree_clean", "no uncommitted changes at gate time"),
     CheckSpec("focused_tests", "tests for the code this branch changed",
               may_be_not_applicable=True),
@@ -162,7 +163,19 @@ class Gate:
     # -- individual checks -----------------------------------------------
 
     def check_branch(self, task: str) -> CheckResult:
+        """Under the single-branch model there is no branch name to match.
+
+        The check remains so the gate's shape is unchanged and so a
+        repository that still uses branches is still held to it. On `main`
+        it is NOT_APPLICABLE rather than PASS: the task identity comes from
+        the memory checkpoint, which `check_checkpoint` verifies, and
+        silently passing would claim a check that did not happen (ADR-059).
+        """
         branch = self.branch()
+        if branch == "main":
+            return CheckResult(
+                "branch_matches_task", NOT_APPLICABLE,
+                f"single-branch model; task {task} identified by its checkpoint")
         slug = task.lower().replace("_", "-")
         tail = slug.split("-")[-1]
         family = "-".join(slug.split("-")[:-1])

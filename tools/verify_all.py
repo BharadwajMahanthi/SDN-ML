@@ -76,32 +76,39 @@ def check_memory(root: Path) -> Check:
 #: Long-lived branches that are never merged and must not be deleted.
 #: Exempt from the delete-on-merge rule, with the reason stated here so that
 #: neither a human nor an agent tidies one away.
-ARCHIVE_BRANCHES = {
-    "legacy/java-topoguard-research":
-        "the original Floodlight/TopoGuard tree, preserved by ADR-045",
+#: The archive is a tag, not a branch. The commit it names is reachable from
+#: main's own history, so the branch ref added nothing while still looking
+#: like a line of development somebody might commit to (ADR-059).
+ARCHIVE_TAGS = {
+    "archive/java-topoguard-research":
+        "the last commit before the legacy Floodlight/TopoGuard tree was "
+        "removed from main (ADR-045)",
 }
 
 
 def check_branches(root: Path) -> Check:
+    """`main` is the only branch. Work happens on it and is gated per commit.
+
+    The repository ran a branch-per-task model until ADR-059. It worked, and
+    it left a trail of refs that had to be reasoned about every time somebody
+    looked at the repository. A single branch removes the question, at the
+    cost of moving the gate from "before a merge" to "before a commit is
+    accepted" -- which `main_tip_gated` enforces.
+    """
     _, out = _run(["git", "branch", "--format=%(refname:short)"], root, 60)
     branches = [b for b in out.splitlines() if b and b != "main"]
-    _, merged = _run(["git", "branch", "--merged", "main",
-                      "--format=%(refname:short)"], root, 60)
-    _, current = _run(["git", "rev-parse", "--abbrev-ref", "HEAD"], root, 60)
-    # A freshly created branch with no commits is trivially "merged". Excluding
-    # the checked-out branch keeps the check about leftovers, not work in hand.
-    stale = [b for b in merged.splitlines()
-             if b and b not in ("main", current.strip())
-             and b not in ARCHIVE_BRANCHES]
-    missing_archive = [b for b in ARCHIVE_BRANCHES if b not in branches]
-    if missing_archive:
+    if branches:
         return Check("branch_hygiene", FAIL,
-                     f"archive branch(es) missing: {missing_archive}")
-    if stale:
-        return Check("branch_hygiene", WARN,
-                     f"{len(stale)} merged branch(es) not deleted: {stale[:3]}")
+                     f"{len(branches)} branch(es) besides main: {branches[:3]}. "
+                     "Work happens on main (ADR-059).")
+    _, tags = _run(["git", "tag"], root, 60)
+    present = set(tags.split())
+    missing = [tag for tag in ARCHIVE_TAGS if tag not in present]
+    if missing:
+        return Check("branch_hygiene", FAIL,
+                     f"archive tag(s) missing: {missing}")
     return Check("branch_hygiene", OK,
-                 f"{len(branches)} working branch(es) besides main")
+                 f"main only, {len(ARCHIVE_TAGS)} archive tag(s) intact")
 
 
 def check_worktree(root: Path) -> Check:
@@ -341,58 +348,45 @@ def check_capabilities(root: Path) -> Check:
     return Check("capability_claims", OK, summary)
 
 
-#: Work before this commit predates the merge-gate discipline and is not
-#: held to it. Everything after it must reach `main` through a merge.
-DISCIPLINE_BEGINS = "450f20a"
+def check_main_tip_gated(root: Path) -> Check:
+    """Every commit on `main` must have passed the gate.
 
-#: Direct commits on `main` that are accepted despite the rule. Each is
-#: pinned by hash so the allowance cannot silently widen.
-MAIN_DIRECT_COMMIT_ALLOWANCES = {
-    "f02ebe1": "V2-INT-01 CURRENT_STATE entry, committed to main by mistake "
-               "and left in place rather than rewriting shared history; the "
-               "incident is KF-54 and is what prompted this check",
-}
+    Under the branch model the gate ran before a merge, and `main_history`
+    caught work that arrived by other means (KF-54). With a single branch
+    that check inverts: direct commits are now the only kind there is, so
+    what has to be true instead is that the *current tip* has a passing gate
+    record naming it.
 
-
-def check_main_history(root: Path) -> Check:
-    """Work reaches `main` through the merge gate, not around it.
-
-    The gate is an executable check on a branch. Nothing stopped a commit
-    landing directly on `main` and skipping it entirely -- which happened
-    once, silently, and was noticed only because a later gate run reported
-    `CURRENT_STATE.md unchanged` for a file that had already been updated
-    (KF-54).
-
-    A governance rule that can be bypassed without anyone noticing is a
-    governance rule that will be bypassed. This looks at recent history on
-    `main` and refuses anything that is neither a merge nor an explicit
-    allowance.
+    This is a weaker guarantee than the old one and it is worth saying so: it
+    proves the tip was verified, not that every commit in between was. The
+    gate is what makes it meaningful, and running it is a step somebody can
+    still skip -- which is why the record names a commit rather than just
+    saying "passed".
     """
-    # First-parent only: `--no-merges` alone also lists every commit that
-    # arrived *through* a merge, which is the normal case and not a bypass.
-    # Bounded to the era the rule applies to -- the original project history
-    # predates the merge gate and is not held to it.
-    code, out = _run(["git", "log", "--first-parent", "--no-merges",
-                      "--format=%h %s", f"{DISCIPLINE_BEGINS}..main"],
-                     root, 60)
-    if code != 0:
-        return Check("main_history", WARN, "cannot read main history")
-    direct = []
-    for line in out.splitlines():
-        if not line.strip():
-            continue
-        short, _, subject = line.partition(" ")
-        if any(short.startswith(allowed) or allowed.startswith(short)
-               for allowed in MAIN_DIRECT_COMMIT_ALLOWANCES):
-            continue
-        direct.append(f"{short} {subject[:56]}")
-    if direct:
-        return Check("main_history", FAIL,
-                     f"{len(direct)} commit(s) bypassed the merge gate: "
-                     f"{direct[:2]}")
-    return Check("main_history", OK,
-                 f"recent main history is merges only, "
-                 f"{len(MAIN_DIRECT_COMMIT_ALLOWANCES)} pinned allowance(s)")
+    record = root / "memory" / "runtime" / "gate" / "main.json"
+    if not record.is_file():
+        return Check("main_tip_gated", WARN,
+                     "no gate record for main; run "
+                     "tools/merge_gate.py run --task <ID>")
+    try:
+        gate = json.loads(record.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        return Check("main_tip_gated", FAIL, f"gate record unreadable: {exc}")
+
+    code, head = _run(["git", "rev-parse", "HEAD"], root, 60)
+    head = head.strip()
+    gated = str(gate.get("head_commit", "")).strip()
+    if not gate.get("merge_eligible"):
+        blocking = gate.get("blocking") or []
+        return Check("main_tip_gated", FAIL,
+                     f"the last gate run did not pass: {blocking[:2]}")
+    if gated != head:
+        return Check("main_tip_gated", WARN,
+                     f"the gate last passed at {gated[:8]}, HEAD is "
+                     f"{head[:8]}; re-run the gate for the current tip")
+    return Check("main_tip_gated", OK,
+                 f"tip {head[:8]} has a passing gate record for "
+                 f"{gate.get('task_id', '<no task>')}")
 
 
 def check_assurance_case(root: Path) -> Check:
@@ -446,7 +440,7 @@ def main(argv: list[str] | None = None) -> int:
     checks = [check_worktree(root), check_branches(root), check_memory(root),
               check_firewall(root), check_boundaries(root), check_secrets(root),
               check_key_material(root), check_invariants(root),
-              check_capabilities(root), check_main_history(root),
+              check_capabilities(root), check_main_tip_gated(root),
               check_assurance_case(root),
               check_tests(root)]
     if args.cloud:

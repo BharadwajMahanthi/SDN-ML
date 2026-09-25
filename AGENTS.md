@@ -209,23 +209,37 @@ status) recorded before implementation.
 
 ## Repository hygiene
 
-`main` is the only long-lived branch, and it holds the product: the Python
-platform under `development/`, the governance tooling under `tools/`, and
-`docs/`. Nothing else lives there.
+**`main` is the only branch, and it is the complete product.** Work happens
+on it directly. Do not create working branches.
 
-Merge through `python tools/merge_gate.py merge <branch>`. It deletes the
-branch on success; the merge commit is the history and a leftover ref only
-hides what is actually in flight.
+    development/   the platform
+    tools/         governance, not shipped
+    docs/          architecture, decisions, evidence, known failures
 
-- A working branch exists only while its task is in flight. After the merge
-  gate passes, it is merged and deleted in the same step.
-- The sole permitted exception is `legacy/java-topoguard-research`, the
-  archive of the original Java tree. It is published to the remote so the
-  history survives, and it is never merged into `main` and never developed on.
-  `ARCHIVE_BRANCHES` in `tools/verify_all.py` protects it from deletion.
-- No other long-lived branch may be created. If work needs to persist across
-  sessions, it belongs on `main` behind a flag or in `docs/`, not on a branch
-  nobody merges.
+The gate moved with the model. It used to run before a merge; it now runs
+against a commit on `main`:
+
+```bash
+git add -A && git commit            # commit the work
+python tools/merge_gate.py run --task <TASK-ID>
+```
+
+The gate requires a clean tree, so it verifies the committed state. If it
+fails, fix and commit again — the record names a commit, and
+`tools/verify_all.py`'s `main_tip_gated` check fails when `main`'s tip has no
+passing record of its own.
+
+**Be honest about what this is worth.** The branch model let the gate stand
+between unverified work and `main`. Gating a commit is weaker: it proves the
+tip was verified, not that every commit on the way there was. It is the
+trade the single-branch model asks for, and the alternative — a rule saying
+"remember to run the gate" — was tried and failed once already (KF-54).
+
+**The archive is a tag, not a branch.** `archive/java-topoguard-research`
+names the last commit before the legacy Floodlight tree was removed. That
+commit is reachable from `main`'s own history, so a branch ref added nothing
+while still looking like a line of development. `ARCHIVE_TAGS` in
+`tools/verify_all.py` checks it is still there.
 
 ## 6. Session close
 

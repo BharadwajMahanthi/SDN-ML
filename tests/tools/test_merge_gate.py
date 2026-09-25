@@ -326,11 +326,29 @@ def test_keep_branch_retains_the_ref_when_explicitly_asked(repo):
     assert BRANCH in git(repo, "branch")
 
 
-def test_the_archive_branch_is_protected_from_tidying():
-    """ADR-045 keeps the legacy tree on a long-lived branch. Neither a human
-    nor an agent should delete it while tidying merged branches."""
-    from tools.verify_all import ARCHIVE_BRANCHES
+def test_the_archive_is_kept_as_a_tag_with_a_stated_reason():
+    """The legacy tree is preserved by a tag, not a branch.
 
-    assert "legacy/java-topoguard-research" in ARCHIVE_BRANCHES
-    for name, reason in ARCHIVE_BRANCHES.items():
-        assert reason, f"{name} is protected without a stated reason"
+    Its commit is reachable from main's own history, so the branch ref added
+    nothing while still looking like a line of development somebody might
+    commit to. A tag says "this point mattered" without implying that
+    (ADR-059).
+    """
+    from tools.verify_all import ARCHIVE_TAGS
+
+    assert "archive/java-topoguard-research" in ARCHIVE_TAGS
+    for name, reason in ARCHIVE_TAGS.items():
+        assert reason and len(reason) > 20, (
+            f"{name} is preserved without a stated reason")
+
+
+def test_the_gate_accepts_main_as_the_working_branch():
+    """Under the single-branch model there is no branch name to match, and
+    the check reports NOT_APPLICABLE rather than passing silently -- a check
+    that claims to have run when it did not is worse than one that abstains.
+    """
+    from tools.merge_gate import CHECK_SPECS
+
+    spec = next(c for c in CHECK_SPECS if c.name == "branch_matches_task")
+    assert spec.may_be_not_applicable, (
+        "branch_matches_task cannot abstain, so the gate cannot run on main")

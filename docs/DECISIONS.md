@@ -1102,3 +1102,37 @@ would actually hurt.
 
 **No silent degradation.** With no signature backend the verifier raises. A
 verification that cannot detect a forged manifest must not report success.
+
+## ADR-059 — one branch, and the gate moves from merges to commits
+
+**Status**: accepted, supersedes the branch-per-task half of ADR-020's
+working model. The layout rule is unchanged.
+
+**Problem.** The repository ran a branch-per-task model. It worked — every
+merge was gated — and it left refs to reason about, a naming rule to satisfy,
+and a recurring question of what was in flight. The owner asked for `main` to
+be the complete code with nothing else alongside it.
+
+**Decision.** `main` is the only branch. Work happens on it directly, and the
+gate runs against a commit rather than before a merge:
+`merge_gate.py run --task <ID>` after committing, with
+`verify_all`'s `main_tip_gated` failing when the tip has no passing record
+naming it.
+
+**The archive becomes a tag.** `legacy/java-topoguard-research` pointed at
+`f1530e4`, which is a commit in `main`'s own history — the branch ref carried
+no unique history at all. `archive/java-topoguard-research` names the same
+commit. A tag says "this point mattered" without implying a line of
+development somebody might commit to, and `ARCHIVE_TAGS` keeps it checked.
+
+**What is lost, stated plainly.** Gating a merge proved that everything
+arriving on `main` had passed. Gating a commit proves the *tip* passed, not
+every commit on the way there. That is a genuinely weaker guarantee. It is
+accepted because the alternative to an executable check is a documented
+convention, and this project has already measured what those are worth:
+KF-23 merged a branch with a red guard before the gate was executable, and
+KF-54 put a commit on `main` around the gate entirely.
+
+**`branch_matches_task` abstains rather than passes** on `main`. A check that
+reports success when it did not run is worse than one that says it did not
+apply, and the task identity is still verified — by the memory checkpoint.

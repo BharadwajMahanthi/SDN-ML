@@ -1018,3 +1018,22 @@ and its start notification being processed — rather than the near-half of
 short-lived connections it was before.
 
 Fleet, cloud and AI remain NOT_IMPLEMENTED and are not started.
+
+
+## Repository model — single branch (2026-09-26)
+
+`main` is the only branch and the complete product. Work happens on it
+directly; there are no working branches (ADR-059).
+
+The gate moved with the model. It used to run before a merge and now runs
+against a commit on `main`, with `verify_all`'s `main_tip_gated` failing when
+the tip has no passing gate record naming it. **That is a weaker guarantee
+than the branch model gave** — it proves the tip was verified, not every
+commit on the way there — and it is recorded as a trade rather than an
+improvement.
+
+`legacy/java-topoguard-research` is gone as a branch and preserved as the tag
+`archive/java-topoguard-research`. The commit it names is reachable from
+`main`'s own history, so the branch carried no unique history; deleting it
+lost nothing, which was verified with `git merge-base --is-ancestor` before
+it was removed.
