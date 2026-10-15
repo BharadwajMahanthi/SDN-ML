@@ -165,6 +165,21 @@ _LINE = re.compile(
 _FIELD = re.compile(r"(\w+)=(\S+)")
 
 
+def is_ignorable_trace_line(line: str) -> bool:
+    """Whether a line is legitimately not an event.
+
+    tracefs interleaves its own header comments and blank lines with events.
+    Those are not lost observations, and counting them as such would make
+    the completeness attestation permanently false -- which is as useless as
+    one that is permanently true. Anything else that fails to parse *is* a
+    line that should have been an event and was not.
+    """
+    if not isinstance(line, str):
+        return False
+    stripped = line.strip()
+    return not stripped or stripped.startswith("#")
+
+
 def parse_trace_line(line: str) -> RawEvent | None:
     """Parse one tracefs line, or return ``None``.
 
@@ -370,7 +385,10 @@ class TracefsNetworkSensor:
         for line in lines:
             event = parse_trace_line(line)
             if event is None:
-                self._unparsed += 1
+                # A header or a blank line is not a loss; an unrecognised
+                # event line is.
+                if not is_ignorable_trace_line(line):
+                    self._unparsed += 1
                 continue
             with self._lock:
                 if len(self._queue) >= self._queue_limit:
@@ -463,7 +481,7 @@ class TracefsNetworkSensor:
         ``attests_completeness`` is false whenever anything was lost, and the
         reasons are listed rather than summarised into a boolean, because an
         operator needs to know whether the blind window was the kernel's ring
-        buffer or Annulon's own queue.
+        buffer, Annulon's own queue, or a line that could not be parsed.
         """
         loss = self.loss()
         reasons: list[str] = []
@@ -476,6 +494,8 @@ class TracefsNetworkSensor:
             reasons.append(f"the kernel ring buffer lost {loss.overrun + loss.commit_overrun + loss.dropped} event(s)")
         if loss.queue_dropped:
             reasons.append(f"the userspace queue dropped {loss.queue_dropped} event(s)")
+        if self._unparsed:
+            reasons.append(f"{self._unparsed} line(s) could not be parsed")
         return {
             "sensor_id": self.sensor_id,
             "capability": self.capability,
@@ -488,7 +508,15 @@ class TracefsNetworkSensor:
             # Never true merely because a thread is alive. Liveness is proved
             # separately by observing a known action; this only reports what
             # is already known to be wrong.
-            "attests_completeness": running and loss.lossless and not self._reader_error,
+            # ``_unparsed`` belongs here. It was reported beside this field
+            # and excluded from it, so a line that should have been an event
+            # and could not be parsed -- or one dropped for exceeding the
+            # line cap -- left the sensor attesting a complete observation
+            # over a window it knew had a hole in it. Headers and blank
+            # lines are not counted, so this stays reachable.
+            "attests_completeness": (running and loss.lossless
+                                     and not self._reader_error
+                                     and not self._unparsed),
             "degraded_reasons": reasons,
             "known_limitations": {
                 "pid_namespace": "PIDs are observed in the sensor's namespace; "

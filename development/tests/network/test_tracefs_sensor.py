@@ -198,3 +198,76 @@ def test_draining_respects_a_limit_and_preserves_order():
     assert [e.pid for e in first] == [0, 1]
     assert [e.pid for e in sensor.drain()] == [2, 3, 4]
     assert sensor.pending == 0
+
+
+# --- an unparsed line is a hole in the observation (KF-63) ------------------
+
+def test_an_unparsed_line_breaks_the_completeness_attestation():
+    """A line that should have been an event and was not is a lost
+    observation, and the sensor must stop attesting completeness.
+
+    `attests_completeness` was `running and loss.lossless and not
+    reader_error`, with `_unparsed` reported in the very same dict and
+    excluded from the boolean -- so events lost to parse failure rendered as
+    a complete, attested observation. The docstring above `health()` claimed
+    it was "false whenever anything was lost".
+    """
+    from annulon.network.tracefs import TracefsNetworkSensor
+
+    sensor = TracefsNetworkSensor.__new__(TracefsNetworkSensor)
+    health = _health_with(sensor, unparsed=0)
+    assert health["attests_completeness"] is True
+
+    health = _health_with(sensor, unparsed=3)
+    assert health["attests_completeness"] is False
+    assert any("could not be parsed" in r for r in health["degraded_reasons"])
+
+
+def _health_with(sensor, *, unparsed: int) -> dict:
+    """Drive `health()` with a live-looking reader and a chosen loss count."""
+    import threading
+
+    from annulon.network.tracefs import LossCounters
+
+    sensor._unparsed = unparsed
+    sensor._reader_error = None
+    sensor._started_at = None
+    sensor._enabled_events = []
+    sensor._queue = []
+    sensor._lock = threading.Lock()
+    sensor.sensor_id = "s"
+    sensor.capability = "c"
+    sensor._thread = threading.current_thread()
+    sensor.loss = lambda: LossCounters(0, 0, 0, 0)
+    return sensor.health()
+
+
+@pytest.mark.parametrize("line", [
+    "", "   ", "# tracer: nop",
+    "#  TASK-PID  CPU#  ||||  TIMESTAMP  FUNCTION",
+])
+def test_tracefs_headers_are_not_counted_as_lost_observations(line):
+    """The control that keeps the fix above from being useless.
+
+    tracefs interleaves its own headers and blank lines with events. If
+    those counted as unparsed, `attests_completeness` would be permanently
+    false -- a check that cannot pass, which this project has already
+    recorded as being no better than one that cannot fail (KF-56).
+    """
+    from annulon.network.tracefs import is_ignorable_trace_line
+
+    assert is_ignorable_trace_line(line) is True
+
+
+@pytest.mark.parametrize("line", [
+    "garbage that matches no known format",
+    "CPU:0 [LOST 9 EVENTS]",
+    "nearly-an-event-but-not",
+])
+def test_an_unrecognised_event_line_is_counted(line):
+    """Anything that is not a header and does not parse is a line that
+    should have been an event. `[LOST n EVENTS]` especially: that is the
+    kernel saying it dropped events."""
+    from annulon.network.tracefs import is_ignorable_trace_line
+
+    assert is_ignorable_trace_line(line) is False

@@ -35,6 +35,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -42,11 +43,21 @@ from pathlib import Path
 __all__ = [
     "ReleaseManifest", "ManifestError", "SignatureError", "VerificationResult",
     "sign_manifest", "verify_manifest", "hash_file", "signing_available",
-    "MANIFEST_VERSION",
+    "is_valid_version", "MANIFEST_VERSION",
 ]
 
 MANIFEST_VERSION = 1
 _CHUNK = 1 << 20
+
+#: A version string must be ASCII. `str.isdigit()` is true for characters
+#: `int()` refuses ('2' and '9' in superscript and circled forms) and also
+#: for non-ASCII decimal digits that `int()` accepts, so '1.\u0669' would
+#: compare numerically equal to '1.9' while differing as a string -- and the
+#: rollback check compares versions as strings while the downgrade check
+#: compares them numerically. Confining versions to ASCII keeps those two
+#: views of the same version from disagreeing. Non-numeric segments are
+#: still allowed, so '1.0-rc1' remains a version; they order as text.
+_VERSION = re.compile(r"\A[0-9A-Za-z][0-9A-Za-z.+-]*\Z")
 
 
 class ManifestError(ValueError):
@@ -155,9 +166,16 @@ class ReleaseManifest:
         digest = raw["artifact_sha256"]
         if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
             raise ManifestError("artifact_sha256 must be lowercase hex sha-256")
+        for name in ("version",):
+            if not _VERSION.fullmatch(raw[name]):
+                raise ManifestError(
+                    f"{name} {raw[name]!r} is not a valid version string")
         rollback = raw.get("rollback_to")
         if rollback is not None and not isinstance(rollback, str):
             raise ManifestError("rollback_to must be a string or null")
+        if rollback is not None and not _VERSION.fullmatch(rollback):
+            raise ManifestError(
+                f"rollback_to {rollback!r} is not a valid version string")
         return ReleaseManifest(
             package=raw["package"], version=raw["version"],
             artifact_name=raw["artifact_name"], artifact_sha256=digest,
@@ -253,7 +271,20 @@ def verify_manifest(manifest_path: Path, artifact_path: Path,
                 manifest)
         if comparison < 0 and allow_rollback:
             expected = _rollback_target(installed_version)
-            if expected is not None and manifest.version != expected:
+            if expected is None:
+                # Previously `expected is not None and ...` skipped the whole
+                # restriction when no target was registered, so --allow-rollback
+                # accepted *any* validly signed older release. The registry is
+                # in-memory and populated from the install state, which records
+                # no rollback_to after a first install, so a freshly installed
+                # host was exactly the case that went unrestricted.
+                return VerificationResult(
+                    False,
+                    f"refusing to roll back from {installed_version} to "
+                    f"{manifest.version}: no rollback target is recorded for "
+                    f"{installed_version}, and an unknown target cannot "
+                    "authorise an arbitrary older release", manifest)
+            if manifest.version != expected:
                 return VerificationResult(
                     False,
                     f"rollback permitted only to {expected}, not "
@@ -276,12 +307,23 @@ def _rollback_target(installed_version: str) -> str | None:
     return _ROLLBACK_TARGETS.get(installed_version)
 
 
+def is_valid_version(value: object) -> bool:
+    """Whether this is a version string the module will compare.
+
+    Exposed because the install state records a version that is compared
+    against manifest versions, and a value one side accepts and the other
+    cannot read is the gap KF-59 was.
+    """
+    return isinstance(value, str) and _VERSION.fullmatch(value) is not None
+
+
 def _compare(left: str, right: str) -> int:
     """Compare dotted numeric versions. Non-numeric parts compare as text."""
     def parts(value: str):
         out = []
         for piece in value.split("."):
-            out.append((0, int(piece)) if piece.isdigit() else (1, piece))
+            numeric = piece.isdecimal() and piece.isascii()
+            out.append((0, int(piece)) if numeric else (1, piece))
         return out
     a, b = parts(left), parts(right)
     return (a > b) - (a < b)

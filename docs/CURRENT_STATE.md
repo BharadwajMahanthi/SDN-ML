@@ -1067,3 +1067,55 @@ improvement.
 `main`'s own history, so the branch carried no unique history; deleting it
 lost nothing, which was verified with `git merge-base --is-ancestor` before
 it was removed.
+
+
+## Adversarial audit of the whole repository (2026-10-16)
+
+Seven readers were fanned across the governance tooling, the privileged
+broker, the network evidence pipeline, detection and attribution, the supply
+chain, the honesty of the project's own claims, and input validation
+repo-wide, each instructed to make a security property fail rather than to
+confirm it. They produced **66 candidate findings**.
+
+**The verification step did not finish.** Each finding was to be judged by
+three independent readers told to refute it; the run exhausted its budget
+after 47 of 205 agents, so only the governance and supply-chain dimensions
+completed that pass. Everything unverified is recorded in
+`docs/AUDIT_BACKLOG.md` as one reader's unreviewed claim — weaker evidence
+than anything else in `docs/`, and explicitly not a claim about the product.
+Three `critical` candidates were reproduced by hand and are below; the rest
+await triage.
+
+### Eight defects closed, each reproduced before being fixed
+
+| KF | what was wrong | how it was shown |
+|---|---|---|
+| 56 | `current_state_updated` diffed `merge-base main HEAD`..HEAD — empty on main for every commit, so the check could not pass | it rejected ADR-059's own commit, which updated the file |
+| 57 | `verify_all` read the gate record's own `merge_eligible` flag instead of re-deriving it | a record with `full_suite: FAIL` and `merge_eligible: true` was accepted as `OK` |
+| 58 | the rollback restriction did not apply when no target was recorded, so any signed older release was accepted | real Ed25519 signatures; the recorded-target case refused, as control |
+| 59 | `str.isdigit()` is true for characters `int()` rejects, and for non-ASCII digits it accepts | `_compare("1.²", "1.9")` raised `ValueError`; `1.٩` compared equal to `1.9` |
+| 60 | absent or damaged install state disabled downgrade protection entirely | six variants of a missing/corrupt state file accepted a signed downgrade; intact state refused it |
+| 61 | `main_tip_gated` returned WARN, which does not affect the exit status, so the check could not fail — and CI skipped all 55 release tests | clean venv with only pytest: `55 skipped`, build green |
+| 62 | the JSON depth limit ran after `json.loads` had already recursed, so `RecursionError` escaped and could stop the broker | depth 20000 is 40000 bytes, inside the 65536-byte cap |
+| 63 | the tracefs sensor attested completeness while reporting unparsed lines it excluded from the boolean | asserted in both directions, with headers kept uncounted |
+
+Three of these — 56, 61 and the half of 63 that would have been introduced by
+a naive fix — are the same defect shape in different places: **a predicate
+that cannot reach one of its two outcomes.** A check that cannot fail proves
+nothing; a check that cannot pass produces pressure to waive it rather than
+to fix it. Both are recorded as the KF-56 family.
+
+### What this did not establish
+
+- The audit's own verification pass is **incomplete**. 59 candidates are
+  unverified, including three `critical` ones about attribution confidence,
+  process-table generation overlap and detector degradation semantics.
+- No new physical evidence was produced on REF-HOST. Every fix above is
+  demonstrated on macOS Tier 1 plus targeted executed reproductions; the
+  release profile's evidence artifacts are unchanged and none of these fixes
+  has been re-validated there.
+- **CI cannot verify that main's tip was gated**, and nothing here changes
+  that. The gate record is gitignored on purpose so it cannot be committed
+  or hand-edited into history, so no clone has one. ADR-059's enforcement is
+  local-only. That is now stated in the workflow and in the check rather
+  than implied to work everywhere.

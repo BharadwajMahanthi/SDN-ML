@@ -957,3 +957,237 @@ fourth case for an unrelated reason, hiding the property under test.
   consumer of a signed, gated or otherwise authoritative artifact must be
   checked against the strictest existing reader — not against the format.
   The format was followed here; the decision procedure was not.
+
+### KF-58 — the rollback restriction did not apply when no target was recorded
+
+- **Found auditing the supply chain**, by asking what `--allow-rollback` does
+  on a host that has never been upgraded.
+- **The intent.** `manifest.py` states it plainly: "an attacker who cannot
+  forge a signature can still serve an older signed release, so a downgrade
+  is refused unless it is this one", and `_ROLLBACK_TARGETS` exists so "a
+  rollback can only go to the version that release explicitly named".
+- **The code.** `if expected is not None and manifest.version != expected:`
+  — when `expected` is `None` the condition is False, so the restriction was
+  skipped entirely and verification fell through to
+  `"signature, hash and version accepted"`. An unknown target permitted
+  *any* validly signed older release rather than none.
+- **Why it was reachable, not theoretical.** `_ROLLBACK_TARGETS` is in-memory
+  module state, empty in every fresh process. `install()` populates it only
+  under `if state.version and state.rollback_to:`, and `rollback_to` is
+  written from the *previous* version — so a first install leaves it `None`.
+  A freshly installed host was precisely the unrestricted case, which is also
+  the host least likely to be noticed rolling backwards.
+- **Evidence**: demonstrated with real Ed25519 signatures. Installed 1.1 with
+  `rollback_to=None`, served a validly signed 0.1 with `allow_rollback=True`:
+  `ACCEPTED`, reason `"signature, hash and version accepted"`. The negative
+  control — the same downgrade with `rollback_to="1.0"` recorded — was
+  refused with `"rollback permitted only to 1.0, not 0.1"`, so the mechanism
+  worked whenever it was consulted. It was a fail-open default, not a missing
+  feature.
+- **Fix**: an absent rollback target is now a refusal in its own right,
+  stating that an unknown target cannot authorise an arbitrary older release.
+  Two tests cover it, with the `allow_rollback=False` path as the control so
+  the refusal cannot be attributed to downgrades being refused outright.
+- **Generalised** (doctrine §51): the family is *a security restriction whose
+  "unknown" case is permission*. A lookup that returns `None` for "no policy
+  recorded" must mean refuse, never allow; and a test that always establishes
+  the precondition never learns what happens without it. Both existing
+  rollback tests registered a target first.
+
+### KF-59 — `str.isdigit()` is not `int()`-parseable, and versions were unvalidated
+
+- **Found in the same audit**, reading `_compare` adversarially.
+- **Two defects, one root cause.** `_compare` classified a version segment as
+  numeric with `piece.isdigit()`, then called `int(piece)`:
+  - `isdigit()` is True for `²` and `⑨`, which `int()` **rejects**, so
+    `_compare` raised `ValueError` instead of ordering the versions — a crash
+    in a security decision path rather than a refusal. Reachable from the
+    local install state, which is not signed.
+  - `isdigit()` is also True for non-ASCII *decimal* digits, which `int()`
+    **accepts**: `1.٩` compared numerically equal to `1.9` while being a
+    different string. A version is read two ways — `_compare` numerically,
+    the rollback check with `manifest.version != expected` as a string — and
+    those two views disagreed. `_rollback_target` is a dict keyed by the
+    version string, so a homoglyph version also missed the lookup, which
+    before KF-58's fix meant unrestricted rollback.
+- **The deeper gap**: `from_dict` validated `artifact_sha256` as lowercase
+  hex and `artifact_bytes` as a positive non-bool integer, but `version` and
+  `rollback_to` were accepted as any non-empty string.
+- **Fix**: `_VERSION = re.compile(r"\A[0-9A-Za-z][0-9A-Za-z.+-]*\Z")` applied
+  to both fields at the parse boundary, so a version that two comparisons
+  would read differently never reaches either. `_compare` now tests
+  `isdecimal() and isascii()` and orders rather than raising. Non-numeric
+  segments still order as text, so `1.0-rc1` remains a version.
+- **Generalised** (doctrine §51): the family is *a validating predicate that
+  is not the one the consumer applies*. `isdigit()`/`int()`, `isdecimal()`/
+  `int()`, `str()`/`len()` on surrogates — wherever a guard and the operation
+  it guards use different notions of validity, the gap between them is the
+  bug. The guard must be the consumer's own predicate, or stricter. This is
+  the same shape as KF-36's coercion defects and KF-43's `$`-versus-`\Z`:
+  a check that is *nearly* the right check.
+
+### KF-60 — deleting one unsigned local file disabled downgrade protection
+
+- **Found auditing the supply chain**, by asking what the downgrade check
+  compares against when the install state is missing or damaged.
+- **The mechanism.** `verify_manifest` guards the whole downgrade comparison
+  with `if installed_version is not None:`. `InstallState.load` mapped every
+  failure — missing file, empty file, truncated JSON, a JSON array, a dict
+  whose `version` was `null` — onto `InstallState()`, whose `version` is
+  `None`. "No state is a first install, not a failure" was the stated
+  intent, and it made *absent* and *unreadable* the same answer.
+- **Impact.** An attacker who can serve an old signed release — the exact
+  adversary `manifest.py` names — and can delete or corrupt one unsigned
+  local file gets the downgrade check skipped entirely. No signature is
+  forged; the check simply never runs.
+- **Evidence**, with the intact state as the control:
+
+  | install state | result |
+  |---|---|
+  | intact (`version: "1.1"`) | REFUSED — "refusing to downgrade from 1.1 to 0.1" |
+  | file absent | **ACCEPTED** |
+  | file empty | **ACCEPTED** |
+  | truncated JSON | **ACCEPTED** |
+  | a JSON array | **ACCEPTED** |
+  | `{"version": null}` | **ACCEPTED** |
+  | `version` a float / bool / list | **crash** — `AttributeError: 'float' object has no attribute 'split'` |
+
+- **Fix**: `load` now distinguishes the three cases. A missing file returns
+  `None`; a file that exists and cannot be believed raises
+  `InstallStateError`; a file recording no version is in the second category,
+  because `install()` only ever writes a concrete one. `install()` refuses on
+  a damaged state rather than treating it as a clean host, and a genuinely
+  new host is affirmed explicitly with `first_install` — a deleted state file
+  is indistinguishable from a new host, so the operator says which it is.
+  Types are validated against the same version grammar the manifest uses, so
+  the crash is a refusal. All six acceptances are now refusals, and the
+  legitimate paths — first install, upgrade, rollback to the named target,
+  reinstall — were re-checked and still work.
+- **Generalised** (doctrine §51): the family is *a security check that is
+  skipped when its input is missing, where the input is attacker-reachable*.
+  `if x is not None:` around a comparison is a conditional security control,
+  and the condition belongs to whoever can delete the file. Related to KF-58:
+  both are "unknown means allow". The project's own maxim already covers it —
+  absence is not innocence — and it had not been applied to the installer's
+  own state.
+
+### KF-61 — the check ADR-059 rests on could not fail, and CI skipped the release suite
+
+- **Found by an adversarial audit of the single-branch model**, then
+  confirmed by execution. Two defects with one shape.
+- **`main_tip_gated` could not fail.** It returned `WARN` both when no gate
+  record existed and when the record named an earlier commit, and
+  `verify_all.main()` computes its exit status from `FAIL` alone — so an
+  ungated tip exited 0. AGENTS.md, ADR-059 and CURRENT_STATE all state that
+  this check *fails* when the tip has no passing record naming it; no code
+  path produced that. It is the only executable expression of the guarantee
+  ADR-059 traded the branch model for.
+- **It is worse in CI than locally.** `memory/runtime/` is gitignored
+  deliberately, so that a gate result cannot be committed or hand-edited
+  into history. No clone can have one. CI ran `verify_all.py` on every push,
+  where the record is *necessarily* absent, so the check was permanently
+  `WARN` there — unable to pass and unable to fail, the degenerate-predicate
+  family of KF-56, on the mechanism the whole model depends on. The workflow
+  comment claimed "a green gate and a green CI mean the same thing."
+- **And CI never ran the release tests.** CI installed `pytest` alone.
+  `development/tests/supply/test_release_manifest.py` carries a module-level
+  `skipif(not signing_available())`, so without `cryptography` all **55**
+  tests — the entire signed install, update, downgrade and rollback path,
+  including the KF-58 and KF-59 regressions — skipped, and the build went
+  green. Reproduced in a clean venv containing only pytest:
+  `55 skipped in 0.05s`.
+- **Fix**: absent and stale are both `FAIL`. A fourth status, `N/A`, is
+  reported — and named individually in the summary — for a check whose
+  evidence is unavailable *by construction*, and CI passes
+  `--no-local-evidence` so it states that rather than warning. CI installs
+  the `verify` extra, runs with `-ra` so skips are visible, and asserts the
+  backend directly, because a skip cannot be seen in an exit code. The same
+  assertion is a `signature_backend` check in `verify_all`.
+- **The honest residue**: CI *cannot* verify that main's tip was gated, and
+  no change here alters that. ADR-059's enforcement is local-only. That is
+  now stated in the workflow, in the check's docstring and in ADR-059, rather
+  than being implied to work everywhere.
+- **Generalised** (doctrine §51): two families, both already named and both
+  recurring here. First, *a status that does not affect the outcome is not a
+  check* — WARN for a condition the documentation calls a failure is a
+  documented guarantee with no enforcement behind it. Second, *a skipped test
+  is NOT_RUN and must never be read as PASS*; a suite guarded by an optional
+  dependency silently stops existing when the dependency is absent, so the
+  skip condition must be asserted separately from the suite. The audit also
+  caught a test written in this same session —
+  `test_verify_all_warns_when_the_record_names_an_earlier_commit` — that
+  pinned the observed WARN rather than the documented FAIL. Writing the test
+  from the code instead of from the contract is how a defect acquires
+  coverage that protects it.
+
+### KF-62 — the JSON depth limit ran after the parser had already recursed
+
+- **Found by the audit, confirmed by execution.** `ipc.read_message` checked
+  nesting depth with `_check_depth(payload)` — on the *parsed* object.
+- **Cause.** `json.loads` recurses as it parses, so a sufficiently nested
+  message raises `RecursionError` *inside the parser*, before the depth
+  check exists to run. `RecursionError` derives from `RuntimeError`, so it
+  matched neither `read_message`'s
+  `except (json.JSONDecodeError, UnicodeDecodeError, ValueError)` nor the
+  server loop's `except ipc.IpcError` — the latter sitting directly above a
+  comment promising "a decode failure is answered, not crashed on".
+- **Reachability, measured.** `MAX_MESSAGE_BYTES` is 65536 and array nesting
+  costs one byte per level, so 20000 levels is 40000 bytes — well inside the
+  cap. Measured: depth 1000 and 5000 parse and are refused correctly; depth
+  20000 and 32768 raise `RecursionError` that escapes. A caller the broker
+  accepts can therefore stop the privileged broker with a message the depth
+  limit was written to refuse, using less than two thirds of the size limit.
+- **Impact.** Denial of containment, not privilege escalation. The broker is
+  the component that applies and expires restrictions; a compromised core is
+  explicitly inside the threat model, and "must not yield arbitrary
+  privileged execution" is intact. But the core being able to silence the
+  broker by sending it 40 KB is a real loss of the property the broker
+  exists to provide.
+- **Fix**: depth is rejected by scanning the raw text before parsing, in one
+  pass that cannot recurse and that tracks string literals and their escapes
+  so brackets inside values are not counted as structure. `RecursionError`
+  is also caught at the parse site, and the server loop's handler around
+  `read_message` is deliberately broad, because the component holding the
+  privilege must not stop running over something its reader did not expect.
+- **Generalised** (doctrine §51): the family is *a limit enforced after the
+  operation it was meant to bound*. A size, depth, count or time limit
+  checked on the result of the work has already paid for the work. The guard
+  must run on the untrusted input, in a form that cannot itself be made
+  expensive. Related in shape to KF-59: the check was nearly right and sat
+  one step too late rather than one predicate off.
+
+### KF-63 — a sensor attested completeness over a window it knew had a hole
+
+- **Found by the audit, confirmed by reading and by test.** The tracefs
+  sensor's `health()` returned
+  `attests_completeness = running and loss.lossless and not reader_error`,
+  while reporting `unparsed_lines` in the same dictionary and leaving it out
+  of the boolean. The docstring two lines above said the field "is false
+  whenever anything was lost".
+- **Impact.** An event lost because its line could not be parsed — or a line
+  dropped for exceeding the 1 MiB line cap — did not disturb the
+  attestation. The sensor reported a complete, attested observation over a
+  window it had itself recorded as incomplete, and `degraded_reasons` did
+  not mention it either. This is the A2 "truthful observation" claim's core
+  property, and the project's own maxim is that degraded observation must
+  never read as security success.
+- **Why the obvious fix would have been wrong.** `_unparsed` conflated two
+  different things. `parse_trace_line` returns `None` for tracefs' own
+  header comments and blank lines as well as for unrecognised event lines,
+  and tracefs emits headers in normal operation — so simply including
+  `_unparsed` in the attestation would have made it permanently false. That
+  is the other half of KF-56: a check that cannot pass is no better than one
+  that cannot fail, and it would have been "fixed" by being ignored.
+- **Fix**: `is_ignorable_trace_line` separates the two. A blank line or a
+  `#` header is not a loss and is no longer counted; anything else that
+  fails to parse is a line that should have been an event, is counted, and
+  now both clears `attests_completeness` and appears in `degraded_reasons`.
+  `CPU:n [LOST n EVENTS]` is deliberately on the counted side — that is the
+  kernel reporting a drop. Tests assert both directions.
+- **Generalised** (doctrine §51): the family is *a completeness claim
+  computed from a subset of the known failure modes*. Every counter a
+  component keeps because something went wrong belongs in the predicate that
+  claims nothing went wrong, and if including one would make the predicate
+  always false, the counter is measuring two different things and needs
+  splitting — not excluding. The giveaway here was structural: the excluded
+  counter was being printed one line above the boolean that ignored it.

@@ -239,3 +239,97 @@ def test_the_signing_input_is_stable_across_key_order(release):
 def test_the_signature_is_excluded_from_its_own_input(release):
     """Otherwise signing would be impossible and verification circular."""
     assert b"signature" not in release["signed"].to_signing_bytes()
+
+
+# --- the rollback restriction's default (KF-58) -----------------------------
+
+def test_an_unregistered_rollback_target_refuses_rather_than_permitting_any(
+        release):
+    """`--allow-rollback` with no recorded target must refuse.
+
+    `test_a_rollback_is_permitted_only_to_the_named_target` registers a
+    target before every assertion, so the case where none is registered was
+    never exercised -- and that case skipped the restriction entirely:
+    `expected is not None and manifest.version != expected` is False when
+    `expected` is None, so any validly signed older release was accepted.
+
+    It was reachable rather than theoretical. `_ROLLBACK_TARGETS` is
+    in-memory and the installer only populates it when the install state
+    carries a `rollback_to`, which a first install does not write -- so a
+    freshly installed host was exactly the unrestricted one.
+    """
+    result = verify_manifest(release["manifest"], release["artifact"],
+                             release["trusted"], installed_version="3.3.3",
+                             allow_rollback=True)
+    assert not result.ok
+    assert "no rollback target is recorded" in result.reason
+
+
+def test_a_downgrade_is_still_refused_without_allow_rollback(release):
+    """The negative control for the test above: the refusal must come from
+    the missing target, not from downgrades being refused outright."""
+    result = verify_manifest(release["manifest"], release["artifact"],
+                             release["trusted"], installed_version="3.3.3",
+                             allow_rollback=False)
+    assert not result.ok
+    assert "refusing to downgrade" in result.reason
+
+
+# --- version strings are ASCII (KF-59) --------------------------------------
+
+@pytest.mark.parametrize("version", [
+    "1.٩",       # Arabic-Indic nine: isdigit() and int() both accept it,
+                      # so it compared numerically equal to "1.9" while being
+                      # a different string -- and the rollback check compares
+                      # versions as strings
+    "1.²",       # superscript two: isdigit() accepts, int() raises
+    "1.⑨",       # circled nine: isdigit() accepts, int() raises
+    "1.\U0001d7f9",   # mathematical monospace nine
+    "1.9\n",          # KF-43's family, at this boundary
+    "../etc/passwd",
+    "1.9 ",
+])
+def test_a_version_outside_ascii_is_refused_at_the_parse_boundary(version):
+    """A version reaches two comparisons with different semantics: `_compare`
+    reads it numerically, the rollback check compares it as a string. Confine
+    it to ASCII at the boundary so those two views cannot disagree."""
+    raw = {"schema_version": 1, "package": "annulon", "version": version,
+           "artifact_name": "a.whl", "artifact_sha256": "0" * 64,
+           "artifact_bytes": 10, "created_at": "2026-10-15T00:00:00+00:00",
+           "rollback_to": None}
+    with pytest.raises(ManifestError):
+        ReleaseManifest.from_dict(raw)
+
+
+@pytest.mark.parametrize("version", ["1.9", "0.5.0", "1.0-rc1", "2", "1.0+b1"])
+def test_ordinary_versions_still_parse(version):
+    """The positive control: the ASCII rule must not reject real versions,
+    including the non-numeric pre-release forms `_compare` orders as text."""
+    raw = {"schema_version": 1, "package": "annulon", "version": version,
+           "artifact_name": "a.whl", "artifact_sha256": "0" * 64,
+           "artifact_bytes": 10, "created_at": "2026-10-15T00:00:00+00:00",
+           "rollback_to": None}
+    assert ReleaseManifest.from_dict(raw).version == version
+
+
+def test_a_rollback_target_outside_ascii_is_refused():
+    """`rollback_to` is compared against a version, so it needs the same
+    grammar -- otherwise the field that authorises a downgrade is the one
+    field not checked."""
+    raw = {"schema_version": 1, "package": "annulon", "version": "1.0",
+           "artifact_name": "a.whl", "artifact_sha256": "0" * 64,
+           "artifact_bytes": 10, "created_at": "2026-10-15T00:00:00+00:00",
+           "rollback_to": "0.٩"}
+    with pytest.raises(ManifestError):
+        ReleaseManifest.from_dict(raw)
+
+
+@pytest.mark.parametrize("piece", ["²", "⑨", "½", "٩"])
+def test_compare_orders_rather_than_raising_on_digit_like_characters(piece):
+    """`_compare` is reached from a signature-verified manifest and from the
+    local install state, and `str.isdigit()` is true for characters `int()`
+    refuses. It raised ValueError instead of ordering the versions, so a
+    malformed version crashed the installer rather than being refused."""
+    from annulon.supply.manifest import _compare
+    assert _compare(f"1.{piece}", "1.9") in (-1, 0, 1)
+    assert _compare("1.9", f"1.{piece}") in (-1, 0, 1)

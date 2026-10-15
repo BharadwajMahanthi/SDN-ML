@@ -189,14 +189,61 @@ def read_message(connection: socket.socket, *,
         # -Infinity by default. They are not JSON, nothing in this contract
         # can represent them, and a float that compares false against itself
         # has no business inside a privileged decision. Rejected outright.
-        payload = json.loads(body.decode("utf-8"),
-                             parse_constant=_reject_constant)
+        text = body.decode("utf-8")
+        # Depth is rejected before parsing, not after.
+        #
+        # ``_check_depth`` below runs on the parsed object, which is too
+        # late: ``json.loads`` recurses as it parses, so a sufficiently
+        # nested message raises ``RecursionError`` inside the parser. That is
+        # a ``RuntimeError``, not a ``ValueError``, so it was not caught here
+        # and not caught by the server loop either -- which wraps this call
+        # in ``except ipc.IpcError`` under a comment promising that a decode
+        # failure is answered rather than crashed on. 20000 levels fits in
+        # 40000 bytes, well inside MAX_MESSAGE_BYTES, so a caller could kill
+        # the privileged broker with a message the depth limit exists to
+        # refuse. Scanning the bytes costs one pass and cannot recurse.
+        _reject_deep_text(text)
+        payload = json.loads(text, parse_constant=_reject_constant)
     except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
         raise IpcError(f"undecodable message: {type(exc).__name__}") from exc
+    except RecursionError as exc:
+        # Belt and braces. The scan above should make this unreachable, but
+        # the parser must never be able to take the broker down.
+        raise IpcError("message too deeply nested to parse") from exc
     if not isinstance(payload, dict):
         raise IpcError("message must be a JSON object")
     _check_depth(payload)
     return payload
+
+
+def _reject_deep_text(text: str) -> None:
+    """Refuse over-nested JSON by scanning, without building anything.
+
+    Brackets inside string literals are not structure, so strings and their
+    escapes are tracked. Anything else about the text is the parser's
+    business; this only counts depth.
+    """
+    depth = 0
+    in_string = False
+    escaped = False
+    for char in text:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char in "[{":
+            depth += 1
+            if depth > MAX_JSON_DEPTH:
+                raise IpcError(
+                    f"message nested deeper than {MAX_JSON_DEPTH} levels")
+        elif char in "]}":
+            depth -= 1
 
 
 def _reject_constant(name: str) -> None:

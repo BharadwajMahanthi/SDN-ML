@@ -538,9 +538,18 @@ class BrokerServer:
             caller = self._broker.caller_for(credentials)
             try:
                 message = ipc.read_message(connection)
-            except ipc.IpcError as exc:
+            except (ipc.IpcError, Exception) as exc:    # noqa: BLE001
                 # A decode failure is answered, not crashed on, and the
                 # caller's bytes are never echoed back.
+                #
+                # Deliberately broad. This caught only IpcError, which left
+                # the promise in the line above untrue for anything the
+                # parser raised outside that type -- RecursionError on a
+                # deeply nested message was not an IpcError and escaped the
+                # server loop entirely, taking the privileged broker down
+                # with it. The parse is hardened too, but the component that
+                # holds the privilege should not stop running because a
+                # caller sent something its reader did not anticipate.
                 self._reply(connection, self._broker._malformed(
                     f"undecodable: {type(exc).__name__}"))
                 return True

@@ -668,3 +668,51 @@ def test_a_released_action_frees_a_slot(workspace):
     assert response["decision"] == "allow"
     assert broker.journal.active_count() == 0
     assert enforcer.released
+
+
+# --- depth is refused before the parser recurses (KF-62) --------------------
+
+def test_a_deeply_nested_message_is_refused_without_crashing():
+    """`read_message` must not let the parser take the broker down.
+
+    The depth limit was enforced on the *parsed* object, which is too late:
+    `json.loads` recurses while parsing, so a sufficiently nested message
+    raised `RecursionError` inside the parser. `RecursionError` is a
+    `RuntimeError`, so neither `read_message`'s
+    `except (JSONDecodeError, UnicodeDecodeError, ValueError)` nor the server
+    loop's `except ipc.IpcError` caught it, and it escaped `serve_once`.
+
+    20000 levels of nesting is 40000 bytes -- comfortably inside
+    MAX_MESSAGE_BYTES -- so this was reachable with a message well under the
+    size cap, using the very nesting the depth limit exists to refuse.
+    """
+    from annulon.response import ipc
+
+    for depth in (ipc.MAX_JSON_DEPTH + 1, 1000, 20000,
+                  ipc.MAX_MESSAGE_BYTES // 2):
+        body = "[" * depth + "]" * depth
+        assert len(body.encode()) <= ipc.MAX_MESSAGE_BYTES
+        with pytest.raises(ipc.IpcError):
+            ipc._reject_deep_text(body)
+
+
+def test_the_depth_scan_does_not_count_brackets_inside_strings():
+    """The positive control. A scanner that counted brackets in string
+    literals would reject ordinary messages -- a denial rule that refuses
+    legitimate traffic is a defect, not caution."""
+    from annulon.response import ipc
+
+    legitimate = json.dumps({
+        "reason": "blocked [[[[[[[[[[ {{{{{{{{ \"quoted\" ]]]]]]]]]] }}}}",
+        "nested": {"a": {"b": {"c": 1}}},
+    })
+    ipc._reject_deep_text(legitimate)          # must not raise
+
+
+def test_an_escaped_quote_does_not_end_the_string_for_the_depth_scan():
+    """`"he said \\" [[[["` keeps the scanner inside the string literal; a
+    scanner that mishandled the escape would start counting structure in the
+    middle of a value."""
+    from annulon.response import ipc
+
+    ipc._reject_deep_text(json.dumps({"s": 'he said \\" [[[[[[[[[[ \\" ok'}))

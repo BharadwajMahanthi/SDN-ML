@@ -31,6 +31,10 @@ from tools.merge_gate import SCHEMA_VERSION as GATE_SCHEMA_VERSION
 from tools.merge_gate import Gate
 
 OK, WARN, FAIL = "OK", "WARN", "FAIL"
+#: A check whose evidence is unavailable *by construction* here, as
+#: opposed to one that ran and was unhappy. Printed distinctly so it
+#: can never be read as a pass.
+NOT_APPLICABLE = "N/A"
 
 
 @dataclass
@@ -350,7 +354,35 @@ def check_capabilities(root: Path) -> Check:
     return Check("capability_claims", OK, summary)
 
 
-def check_main_tip_gated(root: Path) -> Check:
+def check_signature_backend(root: Path) -> Check:
+    """The signature backend must be installed, or a whole suite vanishes.
+
+    `development/tests/supply/test_release_manifest.py` carries a
+    module-level `skipif(not signing_available())`. Without `cryptography`
+    every test in it skips -- 55 of them, covering the entire signed
+    install, update, downgrade and rollback path -- and pytest reports the
+    run green. CI installed only pytest, so the release-critical suite had
+    never run there: NOT_RUN rendered as PASS, which the project's doctrine
+    forbids in as many words (KF-61).
+
+    A skip is invisible in an exit code, so the condition that causes it is
+    checked directly instead.
+    """
+    sys.path.insert(0, str(root / "development" / "src"))
+    try:
+        from annulon.supply.manifest import signing_available
+    except ImportError as exc:                       # pragma: no cover
+        return Check("signature_backend", FAIL, f"annulon not importable: {exc}")
+    if not signing_available():
+        return Check("signature_backend", FAIL,
+                     "no Ed25519 backend; the 55 signed-release tests would "
+                     "skip and the run would still be green. "
+                     "pip install -e '.[verify]'")
+    return Check("signature_backend", OK,
+                 "Ed25519 backend present; the signed-release suite runs")
+
+
+def check_main_tip_gated(root: Path, *, local_evidence: bool = True) -> Check:
     """Every commit on `main` must have passed the gate.
 
     Under the branch model the gate ran before a merge, and `main_history`
@@ -364,12 +396,31 @@ def check_main_tip_gated(root: Path) -> Check:
     gate is what makes it meaningful, and running it is a step somebody can
     still skip -- which is why the record names a commit rather than just
     saying "passed".
+
+    Absent and stale are both failures, because both mean the tip has no
+    passing record naming it, which is what AGENTS.md and ADR-059 say this
+    check enforces. They used to be WARN, and WARN does not affect the exit
+    status, so the check could not fail -- the same degenerate-predicate
+    family as KF-56, on the one mechanism ADR-059 traded the branch model
+    for (KF-61).
+
+    It cannot run everywhere. The record lives under `memory/runtime/`,
+    which is gitignored deliberately so a gate result cannot be committed or
+    hand-edited into history, so no fresh clone has one and CI can never
+    verify this. `local_evidence=False` says that out loud as NOT_APPLICABLE
+    instead of quietly warning. The honest consequence is that ADR-059's
+    enforcement is local-only; CI cannot substitute for it.
     """
     record = root / "memory" / "runtime" / "gate" / "main.json"
     if not record.is_file():
-        return Check("main_tip_gated", WARN,
-                     "no gate record for main; run "
-                     "tools/merge_gate.py run --task <ID>")
+        if local_evidence:
+            return Check("main_tip_gated", FAIL,
+                         "no gate record for main; run "
+                         "tools/merge_gate.py run --task <ID>")
+        return Check("main_tip_gated", NOT_APPLICABLE,
+                     "gate records are local-only and gitignored, so this "
+                     "cannot be checked away from the machine that ran the "
+                     "gate; ADR-059's enforcement is local")
     try:
         gate = json.loads(record.read_text())
     except (OSError, json.JSONDecodeError) as exc:
@@ -402,7 +453,7 @@ def check_main_tip_gated(root: Path) -> Check:
         return Check("main_tip_gated", FAIL,
                      "gate record disagrees with its own checks")
     if gated != head:
-        return Check("main_tip_gated", WARN,
+        return Check("main_tip_gated", FAIL,
                      f"the gate last passed at {gated[:8]}, HEAD is "
                      f"{head[:8]}; re-run the gate for the current tip")
     return Check("main_tip_gated", OK,
@@ -454,6 +505,11 @@ def check_assurance_case(root: Path) -> Check:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="verify_all", description=__doc__)
     parser.add_argument("--cloud", action="store_true")
+    parser.add_argument("--no-local-evidence", action="store_true",
+                        help="this machine is not the one that ran the gate "
+                             "(CI, a fresh clone); checks that depend on "
+                             "gitignored local evidence report N/A instead "
+                             "of pretending to have run")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     root = default_policy().root
@@ -461,7 +517,9 @@ def main(argv: list[str] | None = None) -> int:
     checks = [check_worktree(root), check_branches(root), check_memory(root),
               check_firewall(root), check_boundaries(root), check_secrets(root),
               check_key_material(root), check_invariants(root),
-              check_capabilities(root), check_main_tip_gated(root),
+              check_capabilities(root), check_signature_backend(root),
+              check_main_tip_gated(
+                  root, local_evidence=not args.no_local_evidence),
               check_assurance_case(root),
               check_tests(root)]
     if args.cloud:
@@ -478,7 +536,15 @@ def main(argv: list[str] | None = None) -> int:
         print("WHOLE-SYSTEM VERIFICATION")
         for c in checks:
             print(f"  {c.status:<5} {c.name:<24} {c.detail}")
-        print(f"\n{len(checks)} checks, {len(failed)} failed, {len(warned)} warned")
+        skipped = [c for c in checks if c.status == NOT_APPLICABLE]
+        tail = (f"\n{len(checks)} checks, {len(failed)} failed, "
+                f"{len(warned)} warned")
+        if skipped:
+            # Named individually: "3 not applicable" is how a missing check
+            # becomes invisible.
+            tail += (f", {len(skipped)} not applicable "
+                     f"({', '.join(c.name for c in skipped)})")
+        print(tail)
     return 1 if failed else 0
 
 

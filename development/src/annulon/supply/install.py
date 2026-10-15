@@ -10,6 +10,15 @@ State is a single JSON file recording what is installed and what it may roll
 back to. It is written after a successful install, so a crash mid-install
 leaves the previous version recorded — which is true, because the previous
 version is what is still on disk.
+
+That file is the whole of the downgrade defence, and it is not signed. The
+threat this module names — "an attacker who cannot forge a signature can
+still serve an older signed release" — is only defeated while the file is
+intact, so absent and corrupt are treated as refusals rather than as a host
+with nothing installed (KF-60). An operator installing onto a genuinely new
+host says so explicitly with ``first_install``. Protecting the file itself is
+the deployment's job: it belongs to root, and an attacker who can rewrite it
+is already inside the boundary this module defends.
 """
 
 from __future__ import annotations
@@ -26,11 +35,16 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from annulon.supply.manifest import (
-    ReleaseManifest, VerificationResult, register_rollback_target,
-    signing_available, verify_manifest,
+    ReleaseManifest, VerificationResult, is_valid_version,
+    register_rollback_target, signing_available, verify_manifest,
 )
 
-__all__ = ["InstallState", "install", "main", "DEFAULT_STATE_PATH"]
+__all__ = ["InstallState", "InstallStateError", "install", "main",
+           "DEFAULT_STATE_PATH"]
+
+
+class InstallStateError(Exception):
+    """The install state exists but cannot be believed."""
 
 DEFAULT_STATE_PATH = Path("/var/lib/annulon/install-state.json")
 
@@ -45,18 +59,50 @@ class InstallState:
     rollback_to: str | None = None
 
     @staticmethod
-    def load(path: Path) -> "InstallState":
+    def load(path: Path) -> "InstallState | None":
+        """The recorded state, or None when there is no state file.
+
+        Absent and unreadable are different answers and used to be the same
+        one. Returning a blank state for both meant `installed_version` was
+        None, which skips the downgrade comparison entirely -- so emptying or
+        truncating this file disabled downgrade protection without forging
+        anything. A file that exists and cannot be parsed is not a clean
+        host, and this raises rather than inventing one.
+        """
+        path = Path(path)
         try:
-            raw = json.loads(Path(path).read_text())
-        except (OSError, json.JSONDecodeError):
-            # No state is a first install, not a failure.
-            return InstallState()
+            text = path.read_text()
+        except FileNotFoundError:
+            return None
+        except OSError as exc:
+            raise InstallStateError(f"unreadable: {exc}") from exc
+        try:
+            raw = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise InstallStateError(f"not valid JSON: {exc}") from exc
         if not isinstance(raw, dict):
-            return InstallState()
+            raise InstallStateError("must be a JSON object")
+        version = raw.get("version")
+        if version is None:
+            # `install()` only ever saves a concrete version, so a state file
+            # recording none was not written by this installer. Accepting it
+            # left the same hole as an empty file: present, parseable, and
+            # still no version to compare against.
+            raise InstallStateError("records no version")
+        if not is_valid_version(version):
+            # str() would turn 1.5 into "1.5" and True into "True"; _compare
+            # would then split a string the signer never wrote. The other
+            # fields are coerced because nothing compares them.
+            raise InstallStateError(
+                f"version {version!r} is not a valid version string")
+        rollback = raw.get("rollback_to")
+        if rollback is not None and not is_valid_version(rollback):
+            raise InstallStateError(
+                f"rollback_to {rollback!r} is not a valid version string")
         return InstallState(
-            version=raw.get("version"), key_id=str(raw.get("key_id", "")),
+            version=version, key_id=str(raw.get("key_id", "")),
             artifact_sha256=str(raw.get("artifact_sha256", "")),
-            rollback_to=raw.get("rollback_to"))
+            rollback_to=rollback)
 
     def save(self, path: Path) -> None:
         path = Path(path)
@@ -101,9 +147,42 @@ def install(manifest_path: Path, artifact_path: Path, *,
             trusted_keys: dict[str, bytes], target: Path,
             state_path: Path = DEFAULT_STATE_PATH,
             allow_rollback: bool = False,
+            first_install: bool = False,
             dry_run: bool = False) -> dict:
     """Verify, then install. Returns a report; raises nothing on refusal."""
-    state = InstallState.load(state_path)
+    def refuse(reason: str, before: str | None = None) -> dict:
+        return {"verified": False, "installed": False, "reason": reason,
+                "installed_before": before, "candidate": None}
+
+    try:
+        state = InstallState.load(state_path)
+    except InstallStateError as exc:
+        return refuse(
+            f"install state at {state_path} cannot be believed ({exc}). A "
+            "state file that exists and cannot be parsed is not a host with "
+            "nothing installed, and treating it as one would accept any "
+            "signed release.")
+
+    if state is None:
+        # Nothing recorded means nothing to compare against, so the downgrade
+        # check cannot run. That is correct on a genuinely new host and is
+        # also what deleting this file looks like, so it has to be affirmed
+        # rather than inferred.
+        if not first_install:
+            return refuse(
+                f"no install state at {state_path}. Pass first_install to "
+                "install onto a host with no recorded version: with no "
+                "recorded version there is nothing to compare against, so "
+                "accepting this silently would let a deleted state file "
+                "disable downgrade protection.")
+        state = InstallState()
+    elif first_install:
+        return refuse(
+            f"first_install was requested but {state_path} already records "
+            f"version {state.version!r}. Refusing a contradictory "
+            "instruction rather than picking one of its two meanings.",
+            state.version)
+
     if state.version and state.rollback_to:
         register_rollback_target(state.version, state.rollback_to)
 
@@ -113,6 +192,9 @@ def install(manifest_path: Path, artifact_path: Path, *,
     report = {"verified": result.ok, "reason": result.reason,
               "installed_before": state.version,
               "candidate": result.manifest.version if result.manifest else None}
+    if state.version is None:
+        # Say so rather than letting a silent pass read as a check that ran.
+        report["downgrade_check"] = "not applicable: no version was recorded"
     if not result.ok:
         report["installed"] = False
         return report
@@ -155,6 +237,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--state", type=Path, default=DEFAULT_STATE_PATH)
     parser.add_argument("--allow-rollback", action="store_true",
                         help="permit the single version this release names")
+    parser.add_argument("--first-install", action="store_true",
+                        help="affirm that this host has no installed version; "
+                             "required when no state file exists, because a "
+                             "deleted one is indistinguishable from a new host")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
 
@@ -165,7 +251,8 @@ def main(argv: list[str] | None = None) -> int:
     report = install(args.manifest, args.artifact,
                      trusted_keys=load_trusted_keys(args.trusted_keys),
                      target=args.target, state_path=args.state,
-                     allow_rollback=args.allow_rollback, dry_run=args.dry_run)
+                     allow_rollback=args.allow_rollback,
+                     first_install=args.first_install, dry_run=args.dry_run)
     print(json.dumps(report, indent=2, sort_keys=True))
     return 0 if report.get("verified") else 1
 

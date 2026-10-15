@@ -211,7 +211,9 @@
         "Ed25519 detached manifests; verification needs the 'verify' extra and refuses rather than falling back to a hash comparison",
         "trusted keys come from an operator-controlled file; nothing in a release can introduce a key",
         "key rotation and revocation are NOT_RUN",
-        "artifacts are not published through a transparency log or provenance attestation"
+        "artifacts are not published through a transparency log or provenance attestation",
+        "downgrade protection depends on an unsigned local state file; absent or damaged state is refused rather than treated as a clean host, and a genuinely new host is affirmed explicitly with --first-install (KF-60)",
+        "rollback is restricted to the version the installed release named; an unrecorded target refuses rather than permitting any older signed release (KF-58)"
       ]
     }
   ]

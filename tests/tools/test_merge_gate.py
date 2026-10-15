@@ -516,10 +516,17 @@ def test_verify_all_refuses_a_forged_not_applicable_on_a_required_check(repo):
     assert result.status == V_FAIL
 
 
-def test_verify_all_warns_when_the_record_names_an_earlier_commit(repo):
-    """A passing record for a commit that is no longer the tip is stale
-    evidence, not absent evidence -- WARN, and it must say both commits."""
-    from tools.verify_all import WARN, check_main_tip_gated
+def test_verify_all_fails_when_the_record_names_an_earlier_commit(repo):
+    """A passing record for a commit that is no longer the tip does not name
+    the tip, so the tip is ungated.
+
+    This asserted WARN when it was written, which was the behaviour rather
+    than the contract: AGENTS.md and ADR-059 both say the check fails when
+    the tip has no passing record naming it, and WARN does not affect
+    verify_all's exit status, so the check could not fail (KF-61).
+    """
+    from tools.verify_all import FAIL as V_FAIL
+    from tools.verify_all import check_main_tip_gated
 
     stale = git(repo, "rev-parse", "HEAD")
     (repo / "docs" / "CURRENT_STATE.md").write_text("# state\nmoved on\n")
@@ -527,8 +534,41 @@ def test_verify_all_warns_when_the_record_names_an_earlier_commit(repo):
     git(repo, "commit", "-q", "-m", "a commit the gate has not seen")
     _write_main_gate(repo, {"focused_tests": NOT_APPLICABLE}, commit=stale)
     result = check_main_tip_gated(repo)
-    assert result.status == WARN
+    assert result.status == V_FAIL
     assert stale[:8] in result.detail
+
+
+def test_verify_all_fails_when_there_is_no_gate_record_at_all(repo):
+    """Absent evidence is not a mild condition here -- it is the KF-54
+    scenario ADR-059 claims this check closes."""
+    from tools.verify_all import FAIL as V_FAIL
+    from tools.verify_all import check_main_tip_gated
+
+    assert not (repo / "memory" / "runtime" / "gate" / "main.json").exists()
+    assert check_main_tip_gated(repo).status == V_FAIL
+
+
+def test_a_missing_record_is_not_applicable_away_from_the_gate_machine(repo):
+    """The record is gitignored on purpose, so no clone has one and CI can
+    never check this. Saying N/A states that; WARN hid it behind a status
+    that reads as a minor grumble and does not affect the exit code."""
+    from tools.verify_all import NOT_APPLICABLE as V_NA
+    from tools.verify_all import check_main_tip_gated
+
+    result = check_main_tip_gated(repo, local_evidence=False)
+    assert result.status == V_NA
+    assert "local" in result.detail
+
+
+def test_not_applicable_is_never_counted_as_a_pass(repo):
+    """N/A must be visible in the summary line. A check that silently
+    disappears is worse than one that warns."""
+    from tools.verify_all import Check, NOT_APPLICABLE as V_NA
+    from tools.verify_all import FAIL as V_FAIL
+    from tools.verify_all import OK as V_OK
+
+    for status in (V_NA, V_FAIL):
+        assert Check("x", status, "d").status != V_OK
 
 
 def test_verify_all_refuses_an_unknown_gate_schema(repo):
