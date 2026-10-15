@@ -37,7 +37,13 @@ def request(**kw) -> ActionRequest:
                 action_type=ActionType.TEMPORARY_EGRESS_RESTRICTION,
                 target=target(), duration=timedelta(minutes=5),
                 reason="unexpected egress observed", finding_id="FN-HOST-0001",
-                requested_at=T0, requesting_component="annulon-core")
+                requested_at=T0, requesting_component="annulon-core",
+                # TEST-NET-3, and concrete on purpose: an unscoped egress
+                # restriction covers every protected destination and is
+                # denied (KF-64), so an unscoped baseline would make every
+                # test here assert against a request denied for a reason
+                # none of them is about.
+                destination_cidr="203.0.113.5/32")
     base.update(kw)
     return ActionRequest(**base)
 
@@ -190,9 +196,37 @@ def test_an_unpermitted_action_type_is_refused():
 
 
 def test_scope_can_be_required_by_policy():
+    """The baseline request now carries a destination, so the unscoped case
+    has to be asked for explicitly to exercise this policy at all."""
     pol = policy(require_destination_scope=True)
-    assert not evaluate(pol=pol).allowed
+    unscoped = evaluate(request(destination_cidr=None), pol)
+    assert not unscoped.allowed
+    assert DenyReason.SCOPE_TOO_BROAD in unscoped.reasons
     assert evaluate(request(destination_cidr="203.0.113.0/24"), pol).allowed
+
+
+def test_an_unscoped_restriction_is_denied_even_without_requiring_scope():
+    """KF-64. An unscoped egress restriction covers every destination, so it
+    covers every protected one.
+
+    This was allowed: the protected-destination check was guarded by
+    `destination_cidr is not None`, and `require_destination_scope` defaults
+    to False. Naming 169.254.169.254/32 was denied DESTINATION_PROTECTED
+    while naming nothing -- which blocks that address and everything else --
+    was allowed. The broader action was permitted and the narrower one
+    refused.
+    """
+    pol = policy()
+    assert pol.require_destination_scope is False
+    decision = evaluate(request(destination_cidr=None), pol)
+    assert not decision.allowed
+    assert DenyReason.DESTINATION_PROTECTED in decision.reasons
+
+
+def test_a_scoped_restriction_at_an_unprotected_address_is_still_allowed():
+    """The control. A denial rule that refuses everything has not protected
+    anything, it has only stopped the product working."""
+    assert evaluate(request(destination_cidr="203.0.113.5/32")).allowed
 
 
 # -- all reasons are reported ----------------------------------------------

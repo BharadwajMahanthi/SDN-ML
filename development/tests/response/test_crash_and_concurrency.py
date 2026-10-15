@@ -79,7 +79,7 @@ def _payload(**overrides):
         "duration_seconds": 300, "reason": "crash matrix",
         "finding_id": "finding-00000001", "requested_at": NOW.isoformat(),
         "requesting_component": "annulon-core", "policy_version": "",
-        "destination_cidr": None}
+        "destination_cidr": "203.0.113.5/32"}
     payload.update(overrides)
     return payload
 

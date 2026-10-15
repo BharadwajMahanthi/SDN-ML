@@ -61,7 +61,7 @@ def _payload(**overrides) -> dict:
         "duration_seconds": 300, "reason": "plausible-looking justification",
         "finding_id": "finding-00000001", "requested_at": NOW.isoformat(),
         "requesting_component": "annulon-core", "policy_version": "",
-        "destination_cidr": None}
+        "destination_cidr": "203.0.113.5/32"}
     target_overrides = overrides.pop("target", None)
     payload.update(overrides)
     if target_overrides:

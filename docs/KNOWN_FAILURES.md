@@ -1191,3 +1191,100 @@ fourth case for an unrelated reason, hiding the property under test.
   always false, the counter is measuring two different things and needs
   splitting — not excluding. The giveaway here was structural: the excluded
   counter was being printed one line above the boolean that ignored it.
+
+### KF-64 — the broadest containment request bypassed the protection the narrow one hit
+
+- **Found by the audit, confirmed by execution.** Two defects in
+  `BrokerPolicy`, both in the privileged-response boundary.
+- **The inversion.** The protected-destination check read
+  `if request.destination_cidr is not None and
+  self.protected.covers_destination(...)`. An unscoped request — no
+  destination at all — skipped it. `require_destination_scope` defaults to
+  **False**, so nothing else caught it either. Measured on the default
+  policy:
+
+  | requested destination | decision |
+  |---|---|
+  | `169.254.169.254/32` | denied `DESTINATION_PROTECTED` |
+  | `127.0.0.1/32` | denied `DESTINATION_PROTECTED` |
+  | `fd00:ec2::254/128` | denied `DESTINATION_PROTECTED` |
+  | `10.0.0.5/32` | allowed |
+  | *(none — restrict all egress)* | **allowed** |
+
+  The unscoped request subsumes all three denials. The narrow action aimed
+  at the metadata endpoint was refused; the broad one that cuts off the
+  metadata endpoint *and everything else* was permitted. The enforcer offers
+  no escape: it installs drop rules into a chain with `policy accept` and
+  carves nothing out, so no total block spares those addresses.
+- **The loader drift.** `BrokerPolicy.load`'s fallback for
+  `protected_destinations` was the hand-written literal
+  `["169.254.169.254/32", "127.0.0.0/8"]`, while `ProtectedScopes` carries
+  five entries. Any policy file omitting the key loaded without the three
+  IPv6 protections — `covers_destination("fd00:ec2::254/128")` returned
+  `False` — reintroducing KF-55 through the loader after it had been fixed
+  in the dataclass.
+- **Fix**: an unscoped egress restriction is denied `DESTINATION_PROTECTED`
+  whenever any destination is protected, which is the same reasoning the
+  contract already applies to a port without an address ("not a narrowing
+  anyone can reason about"). The loader's fallbacks now come from a single
+  `ProtectedScopes()` instance instead of a copy. A scoped request at an
+  unprotected address is still allowed, asserted as a control.
+- **Consequence, stated**: whole-egress containment is unavailable while any
+  destination is protected. That is what protecting them means.
+- **Generalised** (doctrine §51): two families. *A guard whose scope is
+  narrower than the thing it guards* — a check conditioned on the request
+  being specific, when the dangerous case is the unspecific one; the test
+  for any allowlist or denylist check is whether the empty or absent
+  selector is handled, because that is usually the broadest request. And
+  *a default copied rather than referenced*, which is how KF-55's fix was
+  undone: two spellings of the same list drift, and the one in the loader
+  is the one that runs in production.
+
+### KF-65 — the shipped agent's attribution was labelled as though a guard had run
+
+- **Found by the audit, confirmed by reading the delivery path.**
+- **The chain is not wired.** `WorkloadResolver.resolve` upgrades an
+  observation to `AttributionConfidence.CORRELATED` whenever the `/proc`
+  read succeeds. The pid-reuse guard above it compares a recorded start
+  time against the live one — but `annulon-agent` constructs the resolver
+  and no process table, and `normalize.py` never captures `start_ticks`
+  (zero occurrences), so in the shipped path `recorded` is always `None`,
+  the guard never fires, and every still-alive pid was upgraded anyway.
+- **Why the label is wrong, specifically.** The enum defines `CORRELATED` as
+  "the PID was resolved against a process table", and
+  `sufficient_for_workload_attribution` is true for it and false for
+  `PID_ONLY`. So an unchecked pid — one that may have been reused between
+  the event and the `/proc` read — was carrying a finding about a specific
+  workload. The stats compounded it: unverified resolutions were counted in
+  `resolved`, so the counter reported the resolver working.
+- **The claim rested on the harness.** `LIVE_PROCESS_ATTRIBUTION` was
+  `SUPPORTED` on the strength of "40 of 40 on REF-DEV", measured by
+  `development/infra/local/fullchain_experiment.py`, which builds a
+  `ProcessTable` and feeds it with direct `note_start()` calls. It does not
+  use the real netlink connector either, and `annulon-agent` uses neither.
+  All three components exist and are separately evidenced —
+  `collectors/proc_connector.py` has its own tests and physical runs — but
+  connector → table → resolver has never been run as one chain outside the
+  harness.
+- **Why no test caught it.** Every resolver test passes
+  `expected_start_ticks` explicitly, so all of them exercise the harness
+  configuration. There is no `test_attribution.py`; the resolver the shipped
+  agent runs was tested only through the detector's tests, and never in the
+  configuration the agent actually builds.
+- **Fix**: `CORRELATED` is assigned only when the guard ran; otherwise
+  `PID_ONLY`. `resolved_unverified` is counted apart from `resolved`. The
+  agent reports an `attribution_tier` every turn saying plainly that no
+  process table is wired. The capability is now `NOT_RUN` with the harness
+  provenance stated. Three tests cover the shipped configuration, with the
+  verified case as the control so the downgrade cannot become universal.
+- **Not fixed here**: the wiring itself. Doing it needs the netlink
+  connector in the agent's loop and a REF-HOST run to evidence it; writing
+  it on a machine that cannot execute netlink and calling the capability
+  restored would be the same defect in the other direction. Recorded as the
+  next task.
+- **Generalised** (doctrine §51): the family is *a confidence label assigned
+  from the success of a lookup rather than from the evidence the label
+  names*. Every enum value that means "we checked X" must be unreachable
+  along a path where X was not checked, and the way to find these is to ask
+  which configuration the tests construct versus which one the entry point
+  constructs. Here they differed, and only the entry point ships.

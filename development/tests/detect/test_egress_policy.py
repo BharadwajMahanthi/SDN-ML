@@ -255,3 +255,72 @@ def test_a_vanished_process_leaves_the_observation_unchanged(tmp_path):
                                uid=None)
     assert resolver.resolve(observation).process.entity is None
     assert resolver.stats.process_gone == 1
+
+
+# --- the configuration the shipped agent actually runs (KF-65) -------------
+
+def _live_proc(tmp_path, pid="4242", start_ticks="5550000", uid="1500"):
+    proc = tmp_path / pid
+    proc.mkdir()
+    (proc / "stat").write_text(f"{pid} (worker) S " + " ".join(["0"] * 18)
+                               + f" {start_ticks} " + " ".join(["0"] * 30))
+    (proc / "status").write_text(f"Name:\tworker\nUid:\t{uid}\t{uid}\t{uid}\t{uid}\n")
+    return proc
+
+
+def test_resolving_without_a_recorded_start_time_is_pid_only(tmp_path):
+    """With nothing to check the pid against, the result is PID_ONLY.
+
+    Every other resolver test here passes `expected_start_ticks`, so they
+    all exercise the configuration the *experiment harness* runs. The
+    shipped `annulon-agent` wires this resolver and no process table, and
+    `normalize.py` never captures `start_ticks`, so in the delivery path
+    `recorded` is always None and the pid-reuse guard never fires.
+
+    The resolver returned CORRELATED anyway. CORRELATED is defined as "the
+    PID was resolved against a process table" and is
+    `sufficient_for_workload_attribution`; PID_ONLY is not. So an unchecked
+    pid -- one that may have been reused between the event and the /proc
+    read -- was carrying a finding about a specific workload.
+    """
+    _live_proc(tmp_path)
+    resolver = WorkloadResolver(host_id="h", boot_id="b", proc_root=tmp_path)
+
+    resolved = resolver.resolve(_observation(
+        confidence=AttributionConfidence.PID_ONLY, uid=None))
+
+    assert resolved.process.confidence is AttributionConfidence.PID_ONLY
+    assert not resolved.process.confidence.sufficient_for_workload_attribution
+    assert resolver.stats.resolved_unverified == 1
+    assert resolver.stats.resolved == 0
+
+
+def test_a_recorded_start_time_that_matches_still_earns_correlated(tmp_path):
+    """The control. If checking the pid did not raise confidence, the check
+    would not be worth running."""
+    _live_proc(tmp_path)
+    resolver = WorkloadResolver(host_id="h", boot_id="b", proc_root=tmp_path)
+
+    resolved = resolver.resolve(
+        _observation(confidence=AttributionConfidence.PID_ONLY, uid=None),
+        expected_start_ticks=5550000)
+
+    assert resolved.process.confidence is AttributionConfidence.CORRELATED
+    assert resolved.process.confidence.sufficient_for_workload_attribution
+    assert resolver.stats.resolved == 1
+    assert resolver.stats.resolved_unverified == 0
+
+
+def test_verified_and_unverified_resolutions_are_counted_apart(tmp_path):
+    """Folding the unverified ones into `resolved` is what let the gap go
+    unnoticed: the stat said the resolver was working."""
+    _live_proc(tmp_path)
+    resolver = WorkloadResolver(host_id="h", boot_id="b", proc_root=tmp_path)
+
+    resolver.resolve(_observation(confidence=AttributionConfidence.PID_ONLY,
+                                  uid=None))
+    resolver.resolve(_observation(confidence=AttributionConfidence.PID_ONLY,
+                                  uid=None), expected_start_ticks=5550000)
+
+    assert resolver.stats.to_dict()["resolved"] == 1
+    assert resolver.stats.to_dict()["resolved_unverified"] == 1

@@ -1119,3 +1119,44 @@ to fix it. Both are recorded as the KF-56 family.
   or hand-edited into history, so no clone has one. ADR-059's enforcement is
   local-only. That is now stated in the workflow and in the check rather
   than implied to work everywhere.
+
+### Backlog triage, continued (2026-10-16)
+
+The three `critical` candidates were reproduced by hand. All three were
+real, and the third was worse than reported.
+
+| KF | what was wrong | how it was shown |
+|---|---|---|
+| 64 | the protected-destination check was skipped for an **unscoped** request, and `require_destination_scope` defaults to False — so blocking one protected address was denied while blocking everything was allowed | the default policy denied `169.254.169.254/32`, `127.0.0.1/32` and `fd00:ec2::254/128`, and allowed the unscoped request that subsumes all three |
+| 64 | `BrokerPolicy.load`'s fallback hard-copied two IPv4 destinations, dropping the three IPv6 ones — reintroducing KF-55 through the loader | a policy file omitting the key loaded 2 of 5 entries; `covers_destination("fd00:ec2::254/128")` was `False` |
+| 65 | the shipped agent labelled attribution `CORRELATED` although its pid-reuse guard never runs | `annulon-agent` wires no process table and `normalize.py` never captures `start_ticks`, so `recorded` is always `None` |
+
+**`LIVE_PROCESS_ATTRIBUTION` is now `NOT_RUN`, down from `SUPPORTED`.** The
+40-of-40 measurement is real but belongs to
+`development/infra/local/fullchain_experiment.py`, which builds a
+`ProcessTable` and feeds it with direct `note_start()` calls. The shipped
+entry point wires neither that table nor the netlink connector in
+`collectors/proc_connector.py`. All three components have their own
+evidence; the chain has never run as a chain outside the harness. The agent
+now states an `attribution_tier` every turn rather than leaving the tier to
+be inferred, and findings on that path are `INCONCLUSIVE`, not `SUPPORTED`.
+
+Fixing KF-64 required changing five test files whose default request was
+unscoped. They were testing crash, concurrency, IPC and fuzz behaviour, not
+scoping, and had used "no destination" as a convenient payload; they now
+name a TEST-NET-3 address. Two tests did assert the old behaviour directly —
+`test_scope_can_be_required_by_policy` and the fuzz table's
+`_acceptable("destination_cidr", …)`, which returned `True` for `None` and
+`""`. Both were corrected, and the reason is recorded in each, because
+changing an assertion to match new behaviour is the move that most needs
+explaining later.
+
+### The exact next task
+
+**Wire connector → table → resolver in `annulon-agent`, and evidence it on
+REF-HOST.** All three components exist and are separately evidenced; what
+is missing is the wiring and one run that exercises them together. It was
+deliberately not done here: netlink cannot execute on the macOS Tier 1
+machine this session ran on, and writing the wiring where it cannot be run
+and then restoring the capability claim would be KF-65 again with the sign
+flipped.

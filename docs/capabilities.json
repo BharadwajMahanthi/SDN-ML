@@ -185,17 +185,17 @@
     {
       "id": "LIVE_PROCESS_ATTRIBUTION",
       "pack": "host",
-      "status": "SUPPORTED",
-      "profiles": [
-        "REF-DEV"
-      ],
+      "status": "NOT_RUN",
+      "profiles": [],
       "evidence": "docs/evidence/v2-rel-01-attribution.json",
       "limitations": [
+        "MEASURED IN THE EXPERIMENT HARNESS, NOT THE SHIPPED AGENT. The 40-of-40 figure comes from development/infra/local/fullchain_experiment.py, which constructs a ProcessTable and feeds it with direct note_start() calls. `annulon-agent` wires neither the table nor the netlink connector, so in the shipped path nothing records a start time, the pid-reuse guard never runs, and attribution cannot exceed PID_ONLY (KF-65)",
+        "the agent states this every turn as `attribution_tier` rather than leaving it to be inferred; findings on that path are INCONCLUSIVE, not SUPPORTED",
+        "the three pieces each have evidence separately -- the netlink connector in collectors/proc_connector.py has its own runs and tests -- but connector -> table -> resolver has never been run as one chain outside the harness",
         "identity is captured when the process connector reports a start; a process that connects before that notification is processed is still unattributable",
         "only an in-kernel capture at the moment of the connect removes that window, which is NETWORK_TELEMETRY_EBPF and remains NOT_RUN",
         "the table is bounded by age and size, so a process older than the retention window falls back to a /proc read that can fail",
-        "measured on REF-DEV; not yet re-run on REF-HOST",
-        "measured 40 of 40 in isolation on REF-DEV; the chain-level rate also counts host processes the experiment never fed to the table"
+        "measured on REF-DEV; not yet re-run on REF-HOST"
       ]
     },
     {

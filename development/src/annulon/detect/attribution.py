@@ -47,13 +47,19 @@ class ProcessFacts:
 @dataclass
 class ResolutionStats:
     resolved: int = 0
+    #: Resolved, but with no recorded start time to check the pid against,
+    #: so pid reuse could not be ruled out. Counted separately because
+    #: folding it into ``resolved`` is what made the gap invisible.
+    resolved_unverified: int = 0
     process_gone: int = 0
     start_time_mismatch: int = 0
     unreadable: int = 0
     not_attempted: int = 0
 
     def to_dict(self) -> dict:
-        return {"resolved": self.resolved, "process_gone": self.process_gone,
+        return {"resolved": self.resolved,
+                "resolved_unverified": self.resolved_unverified,
+                "process_gone": self.process_gone,
                 "start_time_mismatch": self.start_time_mismatch,
                 "unreadable": self.unreadable,
                 "not_attempted": self.not_attempted}
@@ -132,7 +138,26 @@ class WorkloadResolver:
             self.stats.start_time_mismatch += 1
             return observation
 
-        self.stats.resolved += 1
+        # Whether the pid-reuse guard above actually ran.
+        #
+        # CORRELATED is defined as "the PID was resolved against a process
+        # table". With no recorded start time there was no table and no
+        # check: the pid was read out of /proc just now, and nothing rules
+        # out that it was reused between the event and this read. Assigning
+        # CORRELATED regardless made the guard's outcome indistinguishable
+        # from the guard never having run, and CORRELATED is
+        # `sufficient_for_workload_attribution` while PID_ONLY is not -- so
+        # an unchecked pid carried a finding about a specific workload.
+        #
+        # The shipped entry point is exactly this case: `annulon-agent`
+        # wires this resolver and no process table, and `normalize.py`
+        # never captures start_ticks, so `recorded` is always None there
+        # (KF-65).
+        verified = recorded is not None
+        if verified:
+            self.stats.resolved += 1
+        else:
+            self.stats.resolved_unverified += 1
         resolved = replace(
             process,
             start_ticks=facts.start_ticks,
@@ -143,7 +168,8 @@ class WorkloadResolver:
             entity=EntityRef(EntityKind.WORKLOAD,
                              f"host={self._host_id};boot={self._boot_id}",
                              str(facts.uid)),
-            confidence=AttributionConfidence.CORRELATED)
+            confidence=(AttributionConfidence.CORRELATED if verified
+                        else AttributionConfidence.PID_ONLY))
         return replace(observation, process=resolved)
 
     def resolve_all(self, observations) -> list[NetworkObservation]:

@@ -64,7 +64,7 @@ def _valid_request() -> dict:
         "finding_id": "finding-00001234",
         "requested_at": datetime(2026, 9, 21, 12, tzinfo=timezone.utc).isoformat(),
         "requesting_component": "annulon-core", "policy_version": "",
-        "destination_cidr": None,
+        "destination_cidr": "203.0.113.5/32",
     }
 
 
@@ -219,7 +219,13 @@ def _acceptable(field: str, value) -> bool:
             isinstance(value, str) and len(value) <= 64
             and all(0x20 <= ord(c) != 0x7F for c in value))
     if field == "destination_cidr":
-        return value is None or value == ""
+        # Was `value is None or value == ""`, which asserted that omitting
+        # the destination is acceptable. It is not: an unscoped egress
+        # restriction covers every protected destination, including the
+        # metadata endpoint and loopback, so it is denied (KF-64). The empty
+        # string is the same case -- the contract coerces it to None -- so
+        # neither spelling of "unscoped" produces an allow any more.
+        return False
     return False
 
 

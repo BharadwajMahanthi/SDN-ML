@@ -84,7 +84,12 @@ def _request(clock: Clock, **overrides) -> ActionRequest:
                 action_type=ActionType.TEMPORARY_EGRESS_RESTRICTION,
                 target=_target(), duration=timedelta(minutes=5),
                 reason="suspected exfiltration", finding_id="finding-00001234",
-                requested_at=clock(), requesting_component="annulon-core")
+                requested_at=clock(), requesting_component="annulon-core",
+                # TEST-NET-3. Concrete rather than unscoped: an unscoped
+                # egress restriction covers every protected destination, so
+                # it is denied (KF-64). These tests are about the socket and
+                # the journal, not about scoping.
+                destination_cidr="203.0.113.5/32")
     base.update(overrides)
     return ActionRequest(**base)
 
@@ -486,7 +491,8 @@ def test_the_kernel_identifies_the_caller_over_a_real_socket(short_socket_dir):
     with RunningBroker(short_socket_dir, _policy(), clock) as running:
         result = running.client().request_egress_restriction(
             _target(), duration=timedelta(minutes=5),
-            reason="suspected exfiltration", finding_id="finding-00001234")
+            reason="suspected exfiltration", finding_id="finding-00001234",
+            destination_cidr="203.0.113.5/32")
     assert result.outcome is ResponseOutcome.APPLIED
     assert running.enforcer.applied, "nothing reached the backend"
 

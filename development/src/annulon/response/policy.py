@@ -122,6 +122,11 @@ class ProtectedScopes:
         return False
 
 
+#: One instance, so `load`'s fallbacks cannot drift from the dataclass the
+#: rest of the code uses. Two copies of a protection list is one too many.
+_SCOPE_DEFAULTS = ProtectedScopes()
+
+
 @dataclass
 class BrokerPolicy:
     """What the broker will permit. Loaded from a broker-owned file."""
@@ -192,13 +197,21 @@ class BrokerPolicy:
             require_destination_scope=bool(raw.get("require_destination_scope", False)),
             protected=ProtectedScopes(
                 protected_uids=protected_uids,
+                # The fallbacks come from ProtectedScopes itself rather than
+                # being copied here. The copy had drifted: it listed the two
+                # IPv4 destinations and none of the three IPv6 ones added by
+                # KF-55, so any policy file that omitted the key silently
+                # loaded a protection list that did not cover
+                # fd00:ec2::254 -- reintroducing, through the loader, the
+                # exact gap KF-55 closed in the dataclass.
                 protected_service_names=frozenset(
-                    str(s) for s in raw.get("protected_service_names", [
-                        "annulon-broker", "annulon-core", "sshd",
-                        "amazon-ssm-agent", "systemd", "snapd"])),
+                    str(s) for s in raw.get(
+                        "protected_service_names",
+                        _SCOPE_DEFAULTS.protected_service_names)),
                 protected_destinations=tuple(
-                    str(d) for d in raw.get("protected_destinations", [
-                        "169.254.169.254/32", "127.0.0.0/8"]))))
+                    str(d) for d in raw.get(
+                        "protected_destinations",
+                        _SCOPE_DEFAULTS.protected_destinations))))
 
     # -- evaluation ------------------------------------------------------
 
@@ -249,8 +262,26 @@ class BrokerPolicy:
         if request.action_type is ActionType.TEMPORARY_EGRESS_RESTRICTION:
             if self.require_destination_scope and request.destination_cidr is None:
                 reasons.append(DenyReason.SCOPE_TOO_BROAD)
-            if request.destination_cidr is not None and \
-                    self.protected.covers_destination(request.destination_cidr):
+            if request.destination_cidr is None:
+                # An unscoped restriction covers every destination, so it
+                # covers every protected one. Guarding this check with
+                # `destination_cidr is not None` inverted the boundary:
+                # naming 169.254.169.254/32 was denied DESTINATION_PROTECTED
+                # while naming nothing -- which blocks that address and the
+                # whole internet besides -- was allowed, and
+                # require_destination_scope defaults to False. The enforcer
+                # installs drop rules into a chain with `policy accept` and
+                # carves nothing out, so there is no form of a total block
+                # that spares these addresses.
+                #
+                # This is the same reasoning the contract already applies to
+                # a port without an address: a restriction nobody can bound
+                # is not a narrowing. The consequence is that whole-egress
+                # containment is unavailable while any destination is
+                # protected, which is what protecting them means.
+                if self.protected.protected_destinations:
+                    reasons.append(DenyReason.DESTINATION_PROTECTED)
+            elif self.protected.covers_destination(request.destination_cidr):
                 reasons.append(DenyReason.DESTINATION_PROTECTED)
             if active_actions >= self.max_active_actions:
                 reasons.append(DenyReason.TOO_MANY_ACTIVE_ACTIONS)

@@ -128,12 +128,21 @@ established. Each separation is enforced by a type, not a convention.
 
 ### A2 limitations, stated
 
-- **Short-lived connections are now attributable**, because identity is
-  captured when the process connector reports a start rather than read from
-  `/proc` afterwards: measured 40 of 40 against 0 of 40 for the previous
-  behaviour (ADR-057). The residual window is a process that connects before
-  its start notification is processed, which only an in-kernel capture
-  removes. `NETWORK_TELEMETRY_EBPF` remains NOT_RUN.
+- **Short-lived connections are attributable by the design, and not by the
+  shipped agent.** Capturing identity when a process start is reported,
+  rather than reading `/proc` afterwards, measured 40 of 40 against 0 of 40
+  (ADR-057) — in `development/infra/local/fullchain_experiment.py`, which
+  builds a `ProcessTable` and feeds it with direct `note_start()` calls.
+  `annulon-agent` wires neither that table nor the netlink connector, so on
+  the shipped path nothing records a start time, the pid-reuse guard never
+  runs, and attribution cannot exceed `PID_ONLY` — which makes those
+  findings `INCONCLUSIVE` rather than `SUPPORTED` (KF-65).
+  `LIVE_PROCESS_ATTRIBUTION` is `NOT_RUN` accordingly. The three components
+  each have their own evidence; connector → table → resolver has never run
+  as one chain outside the harness. The residual window *the design* leaves
+  is a process that connects before its start notification is processed,
+  which only an in-kernel capture removes; `NETWORK_TELEMETRY_EBPF` remains
+  NOT_RUN.
 - Flow identity is **not namespace-qualified** on the tracefs tier, and the
   data says so via `flow_key_is_namespace_qualified`.
 - Detection covers a deterministic egress allowlist. **No behavioural,

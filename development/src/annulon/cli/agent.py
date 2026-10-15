@@ -87,7 +87,23 @@ class Agent:
         return {"observations": len(observations),
                 "findings": len(result.findings),
                 "trustworthy_absence": health.trustworthy_absence,
+                # Stated every turn, not inferred from the absence of a
+                # complaint. This agent wires the late-/proc resolver and no
+                # process table, so a pid is read after the fact and reuse
+                # cannot be ruled out: attribution tops out at PID_ONLY and
+                # findings are INCONCLUSIVE rather than SUPPORTED. The
+                # 40-of-40 attribution figure was measured with a table fed
+                # by the experiment harness, which is not this path (KF-65).
+                "attribution_tier": self.attribution_tier,
+                "attribution": self.resolver.stats.to_dict(),
                 "outcomes": outcomes}
+
+    @property
+    def attribution_tier(self) -> str:
+        """What this agent's wiring can establish, named rather than implied."""
+        return ("late_proc_only: no process table is wired, so a connection "
+                "cannot be bound to a process instance and attribution "
+                "cannot exceed PID_ONLY")
 
 
 def _allowlist(config: dict) -> EgressAllowlist:
