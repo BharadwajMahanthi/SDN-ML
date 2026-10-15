@@ -191,13 +191,25 @@ class Gate:
     def check_state_updated(self, waived: str | None) -> CheckResult:
         if waived:
             return CheckResult("current_state_updated", NOT_APPLICABLE, waived)
-        code, base = self.git("merge-base", "main", "HEAD")
+        # The range is the commit being gated, not a fork point.
+        #
+        # This check used to diff `merge-base main HEAD`..HEAD, which was
+        # right while work happened on a branch. Under the single-branch
+        # model HEAD *is* main, so the merge base is HEAD itself and the
+        # range was always empty -- the check could not pass on any commit,
+        # however much it changed. It reported FAIL on ADR-059's own commit,
+        # which did update the file. A check that cannot pass is exactly as
+        # worthless as one that cannot fail, and it fails closed, so it
+        # would have been "fixed" by routine waiving.
+        code, base = self.git("rev-parse", "--verify", "HEAD^1")
         if code != 0:
-            return CheckResult("current_state_updated", INCONCLUSIVE, "no merge base")
+            return CheckResult("current_state_updated", INCONCLUSIVE,
+                               "HEAD has no parent to compare against")
         _, files = self.git("diff", "--name-only", f"{base}..HEAD")
         ok = "docs/CURRENT_STATE.md" in files.split("\n")
         return CheckResult("current_state_updated", PASS if ok else FAIL,
-                           "CURRENT_STATE.md " + ("changed" if ok else "unchanged"))
+                           f"CURRENT_STATE.md {'changed' if ok else 'unchanged'} in "
+                           f"{base[:8]}..{self.head()[:8]}")
 
     def check_checkpoint(self, task: str) -> CheckResult:
         buckets = sorted((self.root / "memory" / "runtime" / "buckets").glob("*.jsonl"))

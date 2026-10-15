@@ -43,8 +43,9 @@ REPORTED / HYPOTHESIS / NOT_RUN / BLOCKED.
 ## Repository layout (ADR-020)
 
 The legacy Floodlight/TopoGuard tree has been removed from `main` (ADR-045)
-and preserved on the long-lived branch `legacy/java-topoguard-research`. The
-repository is now Python only:
+and preserved at the tag `archive/java-topoguard-research`. It was a
+long-lived branch until ADR-059 made `main` the only branch. The repository
+is now Python only:
 
 ```
 development/src/annulon      the platform
@@ -143,10 +144,32 @@ PYTHON_MIGRATION_MATRIX.md.
 
 ## Exact next action
 
-**V2-SAFE-02** on branch `feat/v2-safe-02-privileged-broker`: the separate
-broker process, authenticated local IPC with peer credentials, and a bounded
-durable action journal. The contract and policy exist and refuse a
-compromised core in unit tests; nothing is physically enforced yet.
+> Kept current deliberately. AGENTS.md §1 points every new session at this
+> file, so a stale entry here does not just age — it misdirects. This section
+> said "V2-SAFE-02 on branch `feat/v2-safe-02-privileged-broker`" until
+> 2026-10-15, long after that work shipped and after ADR-059 abolished
+> working branches.
+
+**Updated 2026-10-15.** Nothing is in flight. Work happens on `main`
+directly (ADR-059); commit, then run
+`python tools/merge_gate.py run --task <TASK-ID>`.
+
+The Ubuntu/x86_64 release blockers are closed on the development side. What
+remains is owner-level or deliberately deferred, and none of it is a code
+change this session can make:
+
+| item | kind | where |
+|---|---|---|
+| publish the `archive/java-topoguard-research` tag | owner — 403 on push | this file, below |
+| rotate the three committed lab CA keys (KF-35) | owner — published history | KF-35 |
+| replace the root AWS access keys (KF-19) | owner — account credentials | KF-19 |
+| `NETWORK_TELEMETRY_EBPF` | NOT_RUN, advantage measured and narrow | capabilities.json |
+| `SDN_FABRIC_CONTAINMENT` | NOT_RUN | capabilities.json |
+| Fleet / cloud / AI | NOT_IMPLEMENTED, explicitly not started | capabilities.json |
+
+The two NOT_RUN capabilities are the only remaining development work, and
+both are scoped additions rather than release blockers — the shipped profile
+does not claim either.
 
 
 ## Owner action — committed lab CA private keys (KF-35)
@@ -165,23 +188,34 @@ Option B — purge from history:
 ```bash
 # Requires git-filter-repo. Rewrites every commit; all clones must be re-cloned.
 git filter-repo --invert-paths --path-glob '*/.tls/ca/ca.key' --path-glob '*/.tls/ca/ca.pem'
-git push --force origin main legacy/java-topoguard-research
+git push --force origin main 'refs/tags/archive/java-topoguard-research'
 ```
 
 Coordinate before running it: a force-push to a public repository breaks
-every existing clone and fork, and the archive branch must be rewritten in
-the same pass or it will reintroduce the blobs.
+every existing clone and fork. `git filter-repo` rewrites tags along with
+commits, so the archive tag must be force-pushed in the same pass or it will
+keep pointing at an unrewritten commit and reintroduce the blobs.
 
-## Owner action — publishing is blocked by repository permissions
+## Owner action — the archive tag is unpublished (REMOTE_PUSH_BLOCKED)
 
-`git push` to `origin` fails with HTTP 403. The authenticated GitHub account
-is `mbkirusa`; the repository is `BharadwajMahanthi/SDN-ML`, and that account
-has no write access to it.
+**Updated 2026-10-15.** `main` is now published: `origin/main` and local
+`main` are both at `5f3de01`, so the Annulon work and the removal of the Java
+tree are on the public repository. The earlier note here — that `main` was 25
+commits ahead and the published repository still showed only the Java tree —
+is superseded.
 
-Consequence: `main` is **25 commits ahead of `origin/main`** locally, and the
-archive branch `legacy/java-topoguard-research` exists only on this machine.
-Until this is resolved, the published repository still shows the Java tree
-and does not contain any Annulon work.
+Writes from this machine are still refused. `git push origin tag
+archive/java-topoguard-research` returns HTTP 403: the authenticated GitHub
+account is `mbkirusa`, the repository is `BharadwajMahanthi/SDN-ML`, and that
+account has no write access. Attempted once and recorded; not retried, and no
+remote history altered.
+
+Consequence, stated narrowly: the tag `archive/java-topoguard-research` exists
+only on this machine. The **commit** it names is already on `origin` —
+`git merge-base --is-ancestor` confirms it is reachable from `origin/main` —
+so what is missing publicly is the name, not the history. Nothing is
+disclosed by publishing it that is not already published, and nothing is lost
+while it is unpublished beyond the label.
 
 Resolution is owner-level, either:
 
@@ -192,12 +226,8 @@ Resolution is owner-level, either:
 Then:
 
 ```bash
-git push origin legacy/java-topoguard-research   # publish the archive first
-git push origin main
+git push origin tag archive/java-topoguard-research
 ```
-
-Publishing the archive branch discloses nothing new: its blobs are already in
-`origin/main` (see KF-35).
 
 
 ## V2-SAFE-02 — the privileged broker (complete, 2026-09-21)

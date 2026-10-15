@@ -16,6 +16,7 @@ import pytest
 from tools.merge_gate import (
     FAIL,
     INCONCLUSIVE,
+    MERGEABLE,
     NOT_APPLICABLE,
     NOT_RUN,
     PASS,
@@ -259,6 +260,77 @@ def test_open_ownership_claim_blocks(repo):
     assert Gate(repo).check_ownership("V2-CORE-01").status == PASS
 
 
+def test_every_git_derived_check_can_come_out_non_blocking_on_main(repo):
+    """KF-56's family: a check whose predicate goes degenerate after a model
+    change, and fails closed.
+
+    Every other test here either drives one check in isolation or writes
+    synthetic statuses through write_gate(), so no test ever asked the real
+    checks whether a correctly-prepared commit on main can satisfy them. One
+    could not, and a check that always fails looks like diligence from the
+    outside -- the pressure it creates is to waive it, not to fix it.
+
+    Prepare a commit that genuinely satisfies every git-derived check, then
+    run those checks for real. The pytest-backed ones are left out because
+    running the suite inside the suite is recursive, not because they are
+    exempt; their ranges are not git-derived.
+    """
+    git(repo, "checkout", "-q", "main")
+    (repo / "docs" / "CURRENT_STATE.md").write_text("# state\nmain work\n")
+    (repo / "feature.py").write_text("VALUE = 2\n")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "work on main")
+
+    gate = Gate(repo)
+    results = [
+        gate.check_branch("V2-CORE-01"),
+        gate.check_clean(),
+        gate.check_state_updated(None),
+        gate.check_checkpoint("V2-CORE-01"),
+        gate.check_ownership("V2-CORE-01"),
+    ]
+    blocking = [f"{r.name}={r.status} ({r.detail})"
+                for r in results if r.status not in MERGEABLE]
+    assert not blocking, (
+        "a correctly-prepared commit on main could not satisfy: "
+        + "; ".join(blocking))
+
+
+def test_current_state_check_can_both_pass_and_fail_on_main(repo):
+    """The gate runs against a commit on main now, so this check has to be
+    able to reach PASS there.
+
+    It could not. It diffed `merge-base main HEAD`..HEAD, which is correct
+    for a branch and degenerate on main: the merge base of main and HEAD is
+    HEAD, so the range was empty for every commit ever made. It failed
+    closed, and the only test for it asserted FAIL on a branch, so nothing
+    noticed until the gate rejected ADR-059's own commit -- which had
+    updated the file two lines above where the check was reading. Assert
+    both directions, on main, so the next degenerate range is caught by the
+    direction that is supposed to succeed.
+    """
+    git(repo, "checkout", "-q", "main")
+    (repo / "docs" / "CURRENT_STATE.md").write_text("# state\nmain update\n")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "state update on main")
+    assert Gate(repo).check_state_updated(None).status == PASS
+
+    (repo / "unrelated.py").write_text("y = 2\n")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "no state change on main")
+    assert Gate(repo).check_state_updated(None).status == FAIL
+
+
+def test_current_state_is_inconclusive_on_a_parentless_commit(repo):
+    """A root commit has nothing to diff against. That is not a pass: the
+    check reports INCONCLUSIVE, which is not in MERGEABLE, so it blocks."""
+    root = git(repo, "rev-list", "--max-parents=0", "HEAD").split("\n")[0]
+    git(repo, "checkout", "-q", "--detach", root)
+    result = Gate(repo).check_state_updated(None)
+    assert result.status == INCONCLUSIVE
+    assert result.status not in MERGEABLE
+
+
 def test_unchanged_current_state_blocks_unless_waived(repo):
     git(repo, "checkout", "-q", "-b", "feat/v2-core-01-nostate", "main")
     (repo / "other.py").write_text("x = 1\n")
@@ -352,3 +424,118 @@ def test_the_gate_accepts_main_as_the_working_branch():
     spec = next(c for c in CHECK_SPECS if c.name == "branch_matches_task")
     assert spec.may_be_not_applicable, (
         "branch_matches_task cannot abstain, so the gate cannot run on main")
+
+
+# --- tools/verify_all.py's reader of the gate artifact -----------------------
+#
+# Under the single-branch model the whole repository's integrity claim rests
+# on one artifact: memory/runtime/gate/main.json. merge_gate.validate() is
+# careful with it and refuses to trust its self-assessment. verify_all's
+# reader of the same file had no tests at all, and did trust it.
+
+
+def _write_main_gate(repo: Path, statuses: dict[str, str], *,
+                     commit: str | None = None, **overrides) -> Path:
+    """Write a gate record for main the way verify_all expects to find it."""
+    from tools.merge_gate import CHECK_SPECS
+
+    path = repo / "memory" / "runtime" / "gate" / "main.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    checks = [{"name": spec.name, "status": statuses.get(spec.name, PASS),
+               "detail": ""} for spec in CHECK_SPECS]
+    blocking = [f"{c['name']}: {c['status']}"
+                for c in checks if c["status"] not in MERGEABLE]
+    record = {
+        "schema_version": SCHEMA_VERSION,
+        "task_id": "V2-CORE-01",
+        "branch": "main",
+        "head_commit": commit or git(repo, "rev-parse", "HEAD"),
+        "generated_utc": "2026-01-01T00:00:00+00:00",
+        "checks": checks,
+        "blocking": blocking,
+        "merge_eligible": not blocking,
+    }
+    record.update(overrides)
+    path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
+    return path
+
+
+def test_verify_all_accepts_a_genuine_passing_record_for_the_tip(repo):
+    from tools.verify_all import OK, check_main_tip_gated
+
+    _write_main_gate(repo, {"focused_tests": NOT_APPLICABLE})
+    result = check_main_tip_gated(repo)
+    assert result.status == OK, result.detail
+
+
+def test_verify_all_ignores_a_forged_merge_eligible_flag(repo):
+    """The forgery merge_gate.validate() already refuses, aimed at the other
+    reader of the same file.
+
+    A record carrying a failed check but `merge_eligible: true` satisfied
+    verify_all, because it read the flag instead of the checks. Editing one
+    boolean in an ignored file was enough to make the repo-wide verifier
+    declare main's tip gated.
+    """
+    from tools.verify_all import FAIL as V_FAIL
+    from tools.verify_all import check_main_tip_gated
+
+    _write_main_gate(repo, {"full_suite": FAIL},
+                     merge_eligible=True, blocking=[])
+    result = check_main_tip_gated(repo)
+    assert result.status == V_FAIL
+    assert "full_suite" in result.detail
+
+
+def test_verify_all_refuses_a_record_that_omits_a_check(repo):
+    """A missing check is NOT_RUN, not a pass -- deleting an entry must not
+    be a way to drop a requirement."""
+    from tools.verify_all import FAIL as V_FAIL
+    from tools.verify_all import check_main_tip_gated
+
+    path = _write_main_gate(repo, {})
+    record = json.loads(path.read_text())
+    record["checks"] = [c for c in record["checks"] if c["name"] != "full_suite"]
+    record["merge_eligible"] = True
+    record["blocking"] = []
+    path.write_text(json.dumps(record))
+    result = check_main_tip_gated(repo)
+    assert result.status == V_FAIL
+    assert "full_suite" in result.detail
+
+
+def test_verify_all_refuses_a_forged_not_applicable_on_a_required_check(repo):
+    """NOT_APPLICABLE is permitted for some checks and not others. The
+    distinction has to survive being read from the file."""
+    from tools.verify_all import FAIL as V_FAIL
+    from tools.verify_all import check_main_tip_gated
+
+    _write_main_gate(repo, {"full_suite": NOT_APPLICABLE},
+                     merge_eligible=True, blocking=[])
+    result = check_main_tip_gated(repo)
+    assert result.status == V_FAIL
+
+
+def test_verify_all_warns_when_the_record_names_an_earlier_commit(repo):
+    """A passing record for a commit that is no longer the tip is stale
+    evidence, not absent evidence -- WARN, and it must say both commits."""
+    from tools.verify_all import WARN, check_main_tip_gated
+
+    stale = git(repo, "rev-parse", "HEAD")
+    (repo / "docs" / "CURRENT_STATE.md").write_text("# state\nmoved on\n")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "a commit the gate has not seen")
+    _write_main_gate(repo, {"focused_tests": NOT_APPLICABLE}, commit=stale)
+    result = check_main_tip_gated(repo)
+    assert result.status == WARN
+    assert stale[:8] in result.detail
+
+
+def test_verify_all_refuses_an_unknown_gate_schema(repo):
+    """The record's shape is versioned. An unrecognised version means the
+    reader cannot know what the fields mean, which is not a pass."""
+    from tools.verify_all import FAIL as V_FAIL
+    from tools.verify_all import check_main_tip_gated
+
+    _write_main_gate(repo, {}, schema_version=SCHEMA_VERSION + 1)
+    assert check_main_tip_gated(repo).status == V_FAIL

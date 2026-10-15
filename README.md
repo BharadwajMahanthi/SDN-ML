@@ -68,7 +68,7 @@ human working here.
 
 Annulon began as an analysis of a Floodlight/TopoGuard SDN research prototype.
 The concepts were recovered and reimplemented; the original Java tree is
-preserved on the `legacy/java-topoguard-research` branch and is no longer part
+preserved at the `archive/java-topoguard-research` tag and is no longer part
 of the product. `docs/LEGACY_CAPABILITY_MAP.md` and
 `docs/LEGACY_SECURITY_MODEL.md` record what was learned from it and why
 specific behaviours were rejected.

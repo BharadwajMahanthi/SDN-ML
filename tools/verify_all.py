@@ -27,6 +27,8 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from tools.context_policy import default_policy
+from tools.merge_gate import SCHEMA_VERSION as GATE_SCHEMA_VERSION
+from tools.merge_gate import Gate
 
 OK, WARN, FAIL = "OK", "WARN", "FAIL"
 
@@ -373,13 +375,32 @@ def check_main_tip_gated(root: Path) -> Check:
     except (OSError, json.JSONDecodeError) as exc:
         return Check("main_tip_gated", FAIL, f"gate record unreadable: {exc}")
 
+    if gate.get("schema_version") != GATE_SCHEMA_VERSION:
+        return Check("main_tip_gated", FAIL,
+                     f"gate record schema {gate.get('schema_version')!r} is not "
+                     f"{GATE_SCHEMA_VERSION}; re-run the gate")
+
     code, head = _run(["git", "rev-parse", "HEAD"], root, 60)
     head = head.strip()
     gated = str(gate.get("head_commit", "")).strip()
-    if not gate.get("merge_eligible"):
-        blocking = gate.get("blocking") or []
+
+    # Re-derive eligibility from the per-check statuses rather than reading
+    # the record's own merge_eligible flag.
+    #
+    # merge_gate.validate() already refuses to trust that flag, because a
+    # producer bug or a hand-edited artifact must not be able to assert its
+    # own eligibility -- there is a test for exactly that forgery. This
+    # check trusted it, which made the repo-wide verifier the weakest reader
+    # of the one artifact the single-branch model now rests on: setting
+    # "merge_eligible": true by hand was enough to satisfy it. Gate.evaluate
+    # is the single place the decision is made, so use it here too.
+    blocking = Gate.evaluate(gate.get("checks", []))
+    if blocking:
         return Check("main_tip_gated", FAIL,
                      f"the last gate run did not pass: {blocking[:2]}")
+    if not gate.get("merge_eligible"):
+        return Check("main_tip_gated", FAIL,
+                     "gate record disagrees with its own checks")
     if gated != head:
         return Check("main_tip_gated", WARN,
                      f"the gate last passed at {gated[:8]}, HEAD is "

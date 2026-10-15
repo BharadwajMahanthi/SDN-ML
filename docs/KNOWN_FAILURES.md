@@ -892,3 +892,68 @@ fourth case for an unrelated reason, hiding the property under test.
   capabilities that existed when it was written*. Adding a capability must
   include re-reading every guard that constrains it, because a guard silently
   becomes partial rather than failing.
+
+### KF-56 — a gate check that could not pass, and failed closed
+
+- **Found while completing the single-branch migration (ADR-059).** The gate
+  reported `current_state_updated: FAIL` on the very commit that introduced
+  ADR-059 — a commit whose diff plainly contains `docs/CURRENT_STATE.md`.
+- **Cause.** The check diffed `merge-base main HEAD`..HEAD. That is correct
+  while work happens on a branch, and degenerate once HEAD *is* main: the
+  merge base of main and itself is HEAD, so the range was `HEAD..HEAD` —
+  empty for every commit that has ever existed. The check could not pass on
+  any input.
+- **Why it survived.** `tests/tools/test_merge_gate.py` asserted
+  `check_state_updated(None).status == FAIL` on a feature branch, and
+  nothing anywhere asserted that the check could reach `PASS`. A test that
+  only ever confirms the failing direction cannot distinguish "correctly
+  rejects" from "rejects everything". Every other test in that file either
+  drove one check in isolation or wrote synthetic statuses through
+  `write_gate()`, so the real checks were never once asked whether a
+  correctly-prepared commit on main could satisfy them.
+- **Why failing closed made it worse, not safer.** A check that always fails
+  produces no pressure to fix it; it produces pressure to waive it. The
+  waiver (`--waive-current-state`) already existed, so the cheap response to
+  this defect was to pass the flag forever and call the gate green.
+- **Fix**: the range is `HEAD^1..HEAD` — the commit being gated. A parentless
+  commit is `INCONCLUSIVE`, which is not in `MERGEABLE`, so it blocks rather
+  than passing by default. Two tests now assert both directions on main, and
+  `test_every_git_derived_check_can_come_out_non_blocking_on_main` runs every
+  git-derived check for real against a commit prepared to satisfy all of them.
+- **Generalised** (doctrine §51): the family is *a predicate that goes
+  degenerate when the model around it changes*. Both halves are defects — a
+  check that cannot fail proves nothing, and a check that cannot pass is
+  indistinguishable from one that is merely strict. Every check needs a test
+  in the direction that is supposed to succeed, and changing the model
+  underneath a check means re-deriving its inputs, not just re-reading its
+  logic. ADR-059 changed what `HEAD` means relative to `main`; this check
+  read git through an assumption that change invalidated.
+
+### KF-57 — the repository-wide verifier trusted the gate record's self-assessment
+
+- **Found while auditing the single-branch model.** `verify_all.py`'s
+  `check_main_tip_gated` decided whether main's tip was gated by reading
+  `merge_eligible` out of `memory/runtime/gate/main.json`.
+- **Cause.** `merge_gate.validate()` deliberately refuses to trust that
+  field, re-deriving eligibility from the per-check statuses through
+  `Gate.evaluate` — "the single place merge eligibility is decided, used by
+  both the producer and the validator so they cannot drift apart" — and
+  `test_a_forged_merge_eligible_flag_is_ignored` holds it to that. A third
+  reader was added in the single-branch migration and did not get the memo.
+  `check_main_tip_gated` had no tests of any kind.
+- **Impact.** Editing one boolean in a gitignored file was sufficient to make
+  the repository-wide verifier declare main's tip gated with a failing suite
+  in the record. Under ADR-059 that artifact is the whole of main's integrity
+  claim, so its weakest reader set the real bar. Demonstrated: a record with
+  `full_suite: FAIL` and `merge_eligible: true` was accepted as `OK`.
+- **Fix**: `check_main_tip_gated` calls `Gate.evaluate` on the stored checks,
+  validates `schema_version`, and reports `FAIL` when the record disagrees
+  with its own checks. Six tests cover it, including the forged flag, a
+  deleted check entry, a forged `NOT_APPLICABLE` on a check that may not have
+  one, staleness, and an unknown schema version.
+- **Generalised** (doctrine §51): the family is *a second reader of a
+  trust-boundary artifact that re-implements the decision instead of calling
+  it*. A security decision needs exactly one implementation, and every new
+  consumer of a signed, gated or otherwise authoritative artifact must be
+  checked against the strictest existing reader — not against the format.
+  The format was followed here; the decision procedure was not.
